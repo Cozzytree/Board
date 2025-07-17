@@ -3,7 +3,7 @@ import type { Shape, Board } from "./index";
 export type ShapeEvent =
    | "mousedown"
    | "mouseup"
-   | "mousemove"
+   | "mouseover"
    | "move"
    | "resize";
 
@@ -23,6 +23,7 @@ export type ShapeProps = {
    rotate?: number;
    ctx: CanvasRenderingContext2D;
    board: Board;
+   strokeWidth?: number;
 };
 
 export type ToolCallback = (args: { mode: modes; submode: submodes }) => void;
@@ -47,8 +48,9 @@ export interface ShapeInterface {
       addStyles?: boolean;
    }): void;
    ID(): string;
-   mouseup(): void;
-   mousedown(): void;
+   mouseup(s: ShapeEventData): void;
+   mouseover(s: ShapeEventData): void;
+   mousedown(s: ShapeEventData): void;
    IsDraggable(p: Point): boolean;
    IsResizable(p: Point): resizeDirection | null;
    Resize(current: Point, old: BoxInterface, d: resizeDirection): void;

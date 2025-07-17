@@ -34,13 +34,39 @@ class SelectionTool implements Tool {
             if (lastInserted.IsDraggable(mouse)) {
                this.draggedShape = lastInserted;
                return;
-            } else {
-               if (this.board.shapeStore.removeById(lastInserted.ID())) {
-                  this.board.shapeStore.setLastInserted = null;
-               }
-
-               this.board.render();
             }
+
+            const resize = lastInserted.IsResizable(mouse);
+            if (resize) {
+               this.resizableShape = {
+                  s: lastInserted,
+                  d: resize,
+                  oldProps: new Box({
+                     x1: lastInserted.left,
+                     y1: lastInserted.top,
+                     x2: lastInserted.left + lastInserted.width,
+                     y2: lastInserted.top + lastInserted.height,
+                  }),
+               };
+               if (lastInserted instanceof ActiveSelection) {
+                  lastInserted.shapes.forEach((s) => {
+                     s.oldProps = new Box({
+                        x1: s.s.left,
+                        y1: s.s.top,
+                        x2: s.s.left + s.s.width,
+                        y2: s.s.top + s.s.height,
+                     });
+                  });
+                  console.log(lastInserted.shapes);
+               }
+               return;
+            }
+
+            // remove the selection if not resizable or draggable
+            if (this.board.shapeStore.removeById(lastInserted.ID())) {
+               this.board.shapeStore.setLastInserted = null;
+            }
+            this.board.render();
          }
 
          const dragOrResize = this.board.shapeStore.forEach((s) => {
@@ -95,6 +121,7 @@ class SelectionTool implements Tool {
          );
          this.lastPoint = mouse;
          this.draw(this.draggedShape);
+         return;
       }
 
       if (this.resizableShape) {
@@ -104,6 +131,7 @@ class SelectionTool implements Tool {
             this.resizableShape.d,
          );
          this.draw(this.resizableShape.s);
+         return;
       }
 
       if (
@@ -123,7 +151,18 @@ class SelectionTool implements Tool {
             "br",
          );
          this.draw(this.activeShape);
+         return;
       }
+
+      this.board.shapeStore.forEach((s) => {
+         if (s.isWithin(mouse)) {
+            s.mouseover({ e: { point: mouse } });
+            return true;
+         }
+
+         document.body.style.cursor = "default";
+         return false;
+      });
    }
 
    pointerup(e: PointerEvent | MouseEvent): void {
@@ -161,9 +200,16 @@ class SelectionTool implements Tool {
          this.board.canvas2.width,
          this.board.canvas2.height,
       );
+      this.board.canvas2.style.zIndex = "100";
       shapes.forEach((s) => {
-         s.draw({ active: false, addStyles: false, ctx: this.board.ctx2 });
+         s.draw({
+            active: false,
+            addStyles: false,
+            ctx: this.board.ctx2,
+            resize: this.draggedShape || this.resizableShape ? true : false,
+         });
       });
+      // this.board.canvas2.style.zIndex = "5";
    }
 }
 

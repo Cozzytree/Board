@@ -6,14 +6,15 @@ import type {
    ShapeEventData,
    ShapeProps,
 } from "../types";
+import { resizeRect } from "../utils/resize";
 import { IsIn } from "../utils/utilfunc";
 
 type ActiveSeletionProps = {
-   shapes?: Shape[];
+   shapes?: { oldProps?: Box; s: Shape }[];
 };
 
 class ActiveSelection extends Shape {
-   declare shapes: Shape[];
+   declare shapes: { oldProps?: Box; s: Shape }[];
    constructor(props: ShapeProps & ActiveSeletionProps) {
       super(props);
       this.shapes = props.shapes || [];
@@ -38,7 +39,20 @@ class ActiveSelection extends Shape {
       return false;
    }
 
-   IsResizable(): resizeDirection | null {
+   IsResizable(p: Point): resizeDirection | null {
+      const d = resizeRect(
+         p,
+         new Box({
+            x1: this.left,
+            x2: this.left + this.width,
+            y1: this.top,
+            y2: this.top + this.height,
+         }),
+         this.padding,
+      );
+      if (d) {
+         return d.rd;
+      }
       return null;
    }
 
@@ -47,7 +61,7 @@ class ActiveSelection extends Shape {
       const dy = current.y - prev.y;
 
       this.shapes.forEach((s) => {
-         s.dragging(prev, current);
+         s.s.dragging(prev, current);
          this.draw({ active: false, addStyles: false, ctx: this.board.ctx2 });
       });
 
@@ -134,9 +148,14 @@ class ActiveSelection extends Shape {
                this.height = old.y1 - current.y;
             }
       }
+
+      this.shapes.forEach((s) => {
+         if (s.oldProps) s.s.Resize(current, s.oldProps, d);
+      });
    }
 
    mouseup(s: ShapeEventData): void {
+      console.log(this.width);
       this.shapes = [];
       let updateBox = new Box({
          x1: Infinity,
@@ -166,7 +185,7 @@ class ActiveSelection extends Shape {
             inner.y2 = inner.y1 + s.height;
          }
          if (IsIn({ inner, outer })) {
-            this.shapes.push(s);
+            this.shapes.push({ s });
             updateBox = updateBox.compareAndReturnSmall(inner);
          }
 
@@ -184,7 +203,10 @@ class ActiveSelection extends Shape {
       this.emit("mouseup", s);
    }
 
-   mousedown(): void {}
+   mousedown(e: ShapeEventData): void {
+      console.log(this.width);
+      this.emit("mousedown", e);
+   }
 }
 
 export default ActiveSelection;

@@ -3,9 +3,11 @@ import type {
    BoxInterface,
    Point,
    resizeDirection,
+   ShapeEventData,
    ShapeProps,
 } from "../types";
 import { resizeRect } from "../utils/resize";
+import type { DrawProps } from "./shape";
 
 type RectProps = {
    rx?: number;
@@ -23,6 +25,48 @@ class Rect extends Shape {
       this.ry = props.ry || 0;
 
       this.type = "rect";
+   }
+
+   mousedown(s: ShapeEventData): void {}
+
+   mouseup(s: ShapeEventData): void {}
+
+   mouseover(s: ShapeEventData): void {
+      const r = resizeRect(
+         s.e.point,
+         new Box({
+            x1: this.left,
+            y1: this.top,
+            x2: this.left + this.width,
+            y2: this.top + this.height,
+         }),
+         this.padding,
+      );
+      if (r) {
+         switch (r.rd) {
+            case "tl":
+            case "br":
+               document.body.style.cursor = "nwse-resize";
+               break;
+
+            case "tr":
+            case "bl":
+               document.body.style.cursor = "nesw-resize";
+               break;
+
+            case "t":
+            case "b":
+               document.body.style.cursor = "ns-resize";
+               break;
+
+            case "l":
+            case "r":
+               document.body.style.cursor = "ew-resize";
+               break;
+         }
+      }
+
+      this.emit("mouseover", s);
    }
 
    IsDraggable(p: Pointer): boolean {
@@ -66,15 +110,7 @@ class Rect extends Shape {
       return this.id;
    }
 
-   draw({
-      active,
-      addStyles = true,
-      ctx,
-   }: {
-      active: boolean;
-      ctx?: CanvasRenderingContext2D;
-      addStyles?: boolean;
-   }): void {
+   draw({ active, addStyles = true, ctx, resize = false }: DrawProps): void {
       const context = ctx || this.ctx;
 
       const r = Math.min(
@@ -90,8 +126,16 @@ class Rect extends Shape {
       context.save();
       context.beginPath();
 
-      context.strokeStyle = this.stroke;
-      context.fillStyle = this.fill;
+      if (resize) {
+         context.strokeStyle = "#808070";
+         context.fillStyle = "#606060";
+         context.lineWidth = 3;
+         context.setLineDash([6, 6]);
+      } else {
+         context.lineWidth = this.strokeWidth;
+         context.strokeStyle = this.stroke;
+         context.fillStyle = this.fill;
+      }
 
       context.roundRect(this.left, this.top, this.width, this.height, r);
       context.stroke();

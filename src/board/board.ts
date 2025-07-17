@@ -177,6 +177,11 @@ class Board implements BoardInterface {
       this.canvas.removeEventListener("pointerdown", this.handlePointerDown);
       this.canvas.removeEventListener("pointermove", this.handlePointerMove);
       this.canvas.removeEventListener("pointerup", this.handlePointerUp);
+
+      this.shapeStore.forEach((s) => {
+         s.clean();
+         return false;
+      });
    }
 }
 

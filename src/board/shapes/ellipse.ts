@@ -3,9 +3,11 @@ import type {
    BoxInterface,
    Point,
    resizeDirection,
+   ShapeEventData,
    ShapeProps,
 } from "../types";
 import { resizeRect } from "../utils/resize";
+import type { DrawProps } from "./shape";
 
 type EllipseProps = {
    rx?: number;
@@ -97,26 +99,71 @@ class Ellipse extends Shape {
       drawDot(x + w, y + h); // bottom-right
    }
 
-   draw({
-      active,
-      addStyles = true,
-      ctx,
-   }: {
-      active: boolean;
-      ctx?: CanvasRenderingContext2D;
-      addStyles?: boolean;
-   }): void {
+   mouseup(s: ShapeEventData): void {}
+
+   mouseover(s: ShapeEventData): void {
+      const r = resizeRect(
+         s.e.point,
+         new Box({
+            x1: this.left - this.rx,
+            y1: this.top - this.ry,
+            x2: this.left + this.rx,
+            y2: this.top + this.ry,
+         }),
+         this.padding,
+      );
+      if (r) {
+         switch (r.rd) {
+            case "tl":
+            case "br":
+               document.body.style.cursor = "nwse-resize";
+               break;
+
+            case "tr":
+            case "bl":
+               document.body.style.cursor = "nesw-resize";
+               break;
+
+            case "t":
+            case "b":
+               document.body.style.cursor = "ns-resize";
+               break;
+
+            case "l":
+            case "r":
+               document.body.style.cursor = "ew-resize";
+               break;
+         }
+      }
+
+      this.emit("mouseover", s);
+   }
+
+   draw({ active, addStyles = true, ctx, resize }: DrawProps): void {
       if (active) {
          this.activeRect();
       }
       const context = ctx || this.ctx;
 
       context.beginPath();
-      context.fillStyle = this.fill;
-      context.strokeStyle = this.stroke;
+
+      if (resize) {
+         context.strokeStyle = "#808070";
+         context.fillStyle = "#606060";
+         context.lineWidth = 3;
+         context.setLineDash([6, 6]);
+      } else {
+         context.lineWidth = this.strokeWidth;
+         context.strokeStyle = this.stroke;
+         context.fillStyle = this.fill;
+      }
 
       context.ellipse(this.left, this.top, this.rx, this.ry, 0, 0, Math.PI * 2);
-      context.fill();
+
+      if (addStyles) {
+         context.fill();
+      }
+
       context.stroke();
       context.closePath();
    }

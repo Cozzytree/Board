@@ -10,7 +10,15 @@ import type {
    shapeType,
    ShapeEventData,
 } from "../types";
-import type { Board } from "../index";
+import { Box, type Board } from "../index";
+import { IsIn } from "../utils/utilfunc";
+
+export type DrawProps = {
+   active: boolean;
+   ctx?: CanvasRenderingContext2D;
+   addStyles?: boolean;
+   resize?: boolean;
+};
 
 abstract class Shape implements ShapeProps {
    padding = 4;
@@ -18,6 +26,7 @@ abstract class Shape implements ShapeProps {
    declare id: string;
    declare board: Board;
 
+   strokeWidth: number;
    fill: string;
    height: number;
    width: number;
@@ -29,17 +38,11 @@ abstract class Shape implements ShapeProps {
 
    private eventListeners = new Map<ShapeEvent, Set<ShapeEventCallback>>();
 
-   abstract draw(options: {
-      active: boolean;
-      ctx?: CanvasRenderingContext2D;
-      addStyles?: boolean;
-   }): void;
+   abstract draw(options: DrawProps): void;
    abstract ID(): string;
    abstract IsResizable(p: Point): resizeDirection | null;
    abstract IsDraggable(p: Point): boolean;
    abstract Resize(current: Point, old: BoxInterface, d: resizeDirection): void;
-   abstract mouseup(s: ShapeEventData): void;
-   abstract mousedown(s: ShapeEventData): void;
 
    abstract dragging(mousedown: Point, move: Point): void;
 
@@ -53,6 +56,7 @@ abstract class Shape implements ShapeProps {
       width,
       ctx,
       board,
+      strokeWidth,
    }: ShapeProps) {
       this.fill = fill || "#000000";
       this.height = height || 100;
@@ -63,6 +67,7 @@ abstract class Shape implements ShapeProps {
       this.top = top || 0;
       this.ctx = ctx;
       this.board = board;
+      this.strokeWidth = strokeWidth || 2;
 
       this.id = uuidv4();
    }
@@ -113,6 +118,33 @@ abstract class Shape implements ShapeProps {
    protected emit(event: ShapeEvent, data?: ShapeEventData): void {
       this.eventListeners.get(event)?.forEach((callback) => {
          callback(this, data);
+      });
+   }
+
+   mouseup(s: ShapeEventData): void {
+      this.emit("mouseup", s);
+   }
+   mouseover(s: ShapeEventData): void {
+      this.emit("mouseover", s);
+   }
+
+   mousedown(s: ShapeEventData): void {
+      this.emit("mousedown", s);
+   }
+
+   clean() {
+      this.eventListeners.clear();
+   }
+
+   isWithin(p: Point): boolean {
+      return IsIn({
+         inner: new Box({ x1: p.x, y1: p.y, x2: p.x + 1, y2: p.y + 1 }),
+         outer: new Box({
+            x1: this.left - this.padding,
+            y1: this.top - this.padding,
+            x2: this.left + this.width + this.padding * 2,
+            y2: this.top + this.height + this.padding * 2,
+         }),
       });
    }
 }
