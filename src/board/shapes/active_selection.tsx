@@ -97,8 +97,33 @@ class ActiveSelection extends Shape {
                this.top = current.y;
                this.height = old.y2 - current.y;
             }
+
+            this.shapes.forEach((s) => {
+               if (s.oldProps)
+                  s.s.Resize(
+                     {
+                        x: current.x + (s.oldProps.x1 - current.x),
+                        y: current.y + (s.oldProps.y1 - current.y),
+                     },
+                     s.oldProps,
+                     d,
+                  );
+            });
+
             break;
          case "tr":
+            this.shapes.forEach((s) => {
+               if (s.oldProps)
+                  s.s.Resize(
+                     {
+                        x: current.x - (current.x - s.oldProps.x2),
+                        y: current.y - (current.y - s.oldProps.y2),
+                     },
+                     s.oldProps,
+                     d,
+                  );
+            });
+
             if (current.x < old.x1) {
                this.left = current.x;
                this.width = old.x1 - current.x;
@@ -148,10 +173,6 @@ class ActiveSelection extends Shape {
                this.height = old.y1 - current.y;
             }
       }
-
-      this.shapes.forEach((s) => {
-         if (s.oldProps) s.s.Resize(current, s.oldProps, d);
-      });
    }
 
    mouseup(s: ShapeEventData): void {

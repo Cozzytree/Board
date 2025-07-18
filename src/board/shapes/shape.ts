@@ -23,7 +23,7 @@ export type DrawProps = {
 abstract class Shape implements ShapeProps {
    padding = 4;
    declare type: shapeType;
-   declare id: string;
+   declare private id: string;
    declare board: Board;
 
    strokeWidth: number;
@@ -35,11 +35,11 @@ abstract class Shape implements ShapeProps {
    stroke: string;
    top: number;
    ctx: CanvasRenderingContext2D;
+   scale: number;
 
    private eventListeners = new Map<ShapeEvent, Set<ShapeEventCallback>>();
 
    abstract draw(options: DrawProps): void;
-   abstract ID(): string;
    abstract IsResizable(p: Point): resizeDirection | null;
    abstract IsDraggable(p: Point): boolean;
    abstract Resize(current: Point, old: BoxInterface, d: resizeDirection): void;
@@ -57,6 +57,7 @@ abstract class Shape implements ShapeProps {
       ctx,
       board,
       strokeWidth,
+      scale,
    }: ShapeProps) {
       this.fill = fill || "#000000";
       this.height = height || 100;
@@ -67,6 +68,7 @@ abstract class Shape implements ShapeProps {
       this.top = top || 0;
       this.ctx = ctx;
       this.board = board;
+      this.scale = scale || 1;
       this.strokeWidth = strokeWidth || 2;
 
       this.id = uuidv4();
@@ -146,6 +148,10 @@ abstract class Shape implements ShapeProps {
             y2: this.top + this.height + this.padding * 2,
          }),
       });
+   }
+
+   ID(): string {
+      return this.id;
    }
 }
 

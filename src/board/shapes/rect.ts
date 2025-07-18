@@ -106,10 +106,6 @@ class Rect extends Shape {
       return null;
    }
 
-   ID(): string {
-      return this.id;
-   }
-
    draw({ active, addStyles = true, ctx, resize = false }: DrawProps): void {
       const context = ctx || this.ctx;
 

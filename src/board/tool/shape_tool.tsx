@@ -1,4 +1,13 @@
-import { Board, Box, Ellipse, Pointer, Rect, type Shape } from "../index";
+import {
+   Board,
+   Box,
+   Ellipse,
+   Path,
+   Pentagon,
+   Pointer,
+   Rect,
+   type Shape,
+} from "../index";
 import type { Point, submodes, Tool, ToolCallback } from "../types";
 
 class ShapeTool implements Tool {
@@ -19,6 +28,16 @@ class ShapeTool implements Tool {
       this.board.activeShapes.clear();
 
       switch (this.submode) {
+         case "path:pentagon":
+            this.newShape = new Pentagon({
+               board: this.board,
+               ctx: this.board.ctx,
+               width: 0,
+               height: 0,
+               left: mouse.x,
+               top: mouse.y,
+            });
+            break;
          case "rect":
             this.newShape = new Rect({
                ctx: this.board.ctx,
@@ -26,6 +45,7 @@ class ShapeTool implements Tool {
                top: mouse.y,
                width: 0,
                height: 0,
+               board: this.board,
             });
             break;
          case "circle":
@@ -37,6 +57,7 @@ class ShapeTool implements Tool {
                height: 0,
                rx: 0,
                ry: 0,
+               board: this.board,
             });
             break;
       }

@@ -145,6 +145,7 @@ class Ellipse extends Shape {
       }
       const context = ctx || this.ctx;
 
+      context.save();
       context.beginPath();
 
       if (resize) {
@@ -166,6 +167,7 @@ class Ellipse extends Shape {
 
       context.stroke();
       context.closePath();
+      context.restore();
    }
 
    Resize(current: Point, old: BoxInterface, d: resizeDirection): void {

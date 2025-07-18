@@ -1,6 +1,7 @@
 import type { BoardInterface, modes, submodes, Tool } from "./types";
 import {
    Ellipse,
+   Pentagon,
    Rect,
    SelectionTool,
    Shape,
@@ -87,6 +88,7 @@ class Board implements BoardInterface {
             fill: "#FF6050",
             rx: 10,
             ry: 10,
+            board: this,
          }),
          new Ellipse({
             ctx: this.ctx,
@@ -94,6 +96,15 @@ class Board implements BoardInterface {
             left: 500,
             rx: 50,
             ry: 50,
+            board: this,
+         }),
+         new Pentagon({
+            ctx: this.ctx,
+            top: 400,
+            left: 200,
+            board: this,
+            width: 120,
+            height: 120,
          }),
       );
 

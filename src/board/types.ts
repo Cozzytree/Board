@@ -24,6 +24,7 @@ export type ShapeProps = {
    ctx: CanvasRenderingContext2D;
    board: Board;
    strokeWidth?: number;
+   scale?: number;
 };
 
 export type ToolCallback = (args: { mode: modes; submode: submodes }) => void;
@@ -47,7 +48,6 @@ export interface ShapeInterface {
       ctx?: CanvasRenderingContext2D;
       addStyles?: boolean;
    }): void;
-   ID(): string;
    mouseup(s: ShapeEventData): void;
    mouseover(s: ShapeEventData): void;
    mousedown(s: ShapeEventData): void;
@@ -63,19 +63,27 @@ export interface BoardInterface {
    offset: [number, number];
 }
 
-export type modes = "cursor" | "shape" | "draw";
+export type modes = "cursor" | "shape" | "line" | "draw";
 
+export type submodeline = "line" | "line:straight" | "line:anchor";
 export type submodecursor = "grab" | "free";
 export type submodeshape =
    | "rect"
    | "circle"
+   | "path"
    | "path:triangle"
    | "path:pentagon";
 export type submodedraw = "pencil";
 
-export type submodes = submodecursor | submodeshape | submodedraw;
+export type submodes = submodecursor | submodeshape | submodedraw | submodeline;
 
-export type shapeType = "path" | "rect" | "ellipse" | "text" | "selection";
+export type shapeType =
+   | "path"
+   | "rect"
+   | "ellipse"
+   | "text"
+   | "selection"
+   | "line";
 
 export interface BoxInterface {
    x1: number;

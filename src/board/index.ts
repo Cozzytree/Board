@@ -8,10 +8,13 @@ import Pointer from "./utils/point";
 import Ellipse from "./shapes/ellipse";
 import Box from "./utils/box";
 import ActiveSelection from "./shapes/active_selection";
+import Path from "./shapes/paths/path";
+import Pentagon from "./shapes/paths/pentagon";
 
 export {
    Pointer,
    Shape,
+   Path,
    ShapeTool,
    Rect,
    Ellipse,
@@ -20,4 +23,5 @@ export {
    Box,
    SelectionTool,
    ActiveSelection,
+   Pentagon,
 };

@@ -57,7 +57,6 @@ class SelectionTool implements Tool {
                         y2: s.s.top + s.s.height,
                      });
                   });
-                  console.log(lastInserted.shapes);
                }
                return;
             }
