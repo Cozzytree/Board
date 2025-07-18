@@ -2,10 +2,10 @@ import {
    Board,
    Box,
    Ellipse,
-   Path,
    Pentagon,
    Pointer,
    Rect,
+   Triangle,
    type Shape,
 } from "../index";
 import type { Point, submodes, Tool, ToolCallback } from "../types";
@@ -27,7 +27,25 @@ class ShapeTool implements Tool {
       this.mouseDownPoint = mouse;
       this.board.activeShapes.clear();
 
+      const lastInserted = this.board.shapeStore.getLastInsertedShape();
+      if (lastInserted?.type === "selection") {
+         if (this.board.shapeStore.removeById(lastInserted.ID())) {
+            this.board.shapeStore.setLastInserted = null;
+         }
+         this.board.render();
+      }
+
       switch (this.submode) {
+         case "path:triangle":
+            this.newShape = new Triangle({
+               board: this.board,
+               ctx: this.board.ctx,
+               width: 0,
+               height: 0,
+               left: mouse.x,
+               top: mouse.y,
+            });
+            break;
          case "path:pentagon":
             this.newShape = new Pentagon({
                board: this.board,

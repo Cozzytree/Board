@@ -1,15 +1,16 @@
-import Shape from "./shapes/shape";
-import Rect from "./shapes/rect";
-import Board from "./board";
-import ShapeStore from "./shapes/shape_store";
-import SelectionTool from "./tool/selection_tool";
-import ShapeTool from "./tool/shape_tool";
-import Pointer from "./utils/point";
-import Ellipse from "./shapes/ellipse";
-import Box from "./utils/box";
+import Shape from "@/board/shapes/shape";
+import Rect from "@/board/shapes/rect";
+import Board from "@/board/board";
+import ShapeStore from "@/board/shapes/shape_store";
+import SelectionTool from "@/board/tool/selection_tool";
+import ShapeTool from "@/board/tool/shape_tool";
+import Pointer from "@/board/utils/point";
+import Ellipse from "@/board/shapes/ellipse";
+import Box from "@/board/utils/box";
 import ActiveSelection from "./shapes/active_selection";
-import Path from "./shapes/paths/path";
-import Pentagon from "./shapes/paths/pentagon";
+import Path from "@/board/shapes/paths/path";
+import Pentagon from "@/board/shapes/paths/pentagon";
+import Triangle from "@/board/shapes/paths/triangle";
 
 export {
    Pointer,
@@ -24,4 +25,5 @@ export {
    SelectionTool,
    ActiveSelection,
    Pentagon,
+   Triangle,
 };

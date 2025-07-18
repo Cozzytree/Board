@@ -48,6 +48,7 @@ export interface ShapeInterface {
       ctx?: CanvasRenderingContext2D;
       addStyles?: boolean;
    }): void;
+   ID(): string;
    mouseup(s: ShapeEventData): void;
    mouseover(s: ShapeEventData): void;
    mousedown(s: ShapeEventData): void;
@@ -65,12 +66,11 @@ export interface BoardInterface {
 
 export type modes = "cursor" | "shape" | "line" | "draw";
 
-export type submodeline = "line" | "line:straight" | "line:anchor";
+export type submodeline = "line:straight" | "line:anchor";
 export type submodecursor = "grab" | "free";
 export type submodeshape =
    | "rect"
    | "circle"
-   | "path"
    | "path:triangle"
    | "path:pentagon";
 export type submodedraw = "pencil";

@@ -1,7 +1,7 @@
 import type { BoardInterface, modes, submodes, Tool } from "./types";
 import {
    Ellipse,
-   Pentagon,
+   Triangle,
    Rect,
    SelectionTool,
    Shape,
@@ -98,13 +98,11 @@ class Board implements BoardInterface {
             ry: 50,
             board: this,
          }),
-         new Pentagon({
-            ctx: this.ctx,
-            top: 400,
-            left: 200,
+         new Triangle({
             board: this,
-            width: 120,
-            height: 120,
+            ctx: this.ctx,
+            left: 500,
+            top: 500,
          }),
       );
 

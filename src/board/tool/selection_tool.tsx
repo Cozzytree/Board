@@ -30,7 +30,7 @@ class SelectionTool implements Tool {
       this.board.activeShapes.clear();
       if (this.subMode === "free") {
          const lastInserted = this.board.shapeStore.getLastInsertedShape();
-         if (lastInserted && lastInserted.type === "selection") {
+         if (lastInserted?.type === "selection") {
             if (lastInserted.IsDraggable(mouse)) {
                this.draggedShape = lastInserted;
                return;
@@ -154,7 +154,7 @@ class SelectionTool implements Tool {
       }
 
       this.board.shapeStore.forEach((s) => {
-         if (s.isWithin(mouse)) {
+         if (s.isWithin(mouse) && this.board.activeShapes.has(s)) {
             s.mouseover({ e: { point: mouse } });
             return true;
          }
@@ -208,7 +208,7 @@ class SelectionTool implements Tool {
             resize: this.draggedShape || this.resizableShape ? true : false,
          });
       });
-      // this.board.canvas2.style.zIndex = "5";
+      this.board.canvas2.style.zIndex = "5";
    }
 }
 

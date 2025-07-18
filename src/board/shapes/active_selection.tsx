@@ -23,10 +23,6 @@ class ActiveSelection extends Shape {
       this.stroke = "#606055";
    }
 
-   ID(): string {
-      return this.id;
-   }
-
    IsDraggable(p: Point): boolean {
       const condition =
          p.x > this.left &&
