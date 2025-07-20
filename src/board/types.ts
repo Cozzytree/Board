@@ -1,5 +1,10 @@
 import type { Shape, Board } from "./index";
 
+export type ConnectionPoint = {
+   s: Shape | null;
+   position: () => Point;
+};
+
 export type ShapeEvent =
    | "mousedown"
    | "mouseup"
@@ -25,6 +30,8 @@ export type ShapeProps = {
    board: Board;
    strokeWidth?: number;
    scale?: number;
+   flipX?: boolean;
+   flipY?: boolean;
 };
 
 export type ToolCallback = (args: { mode: modes; submode: submodes }) => void;
@@ -72,7 +79,8 @@ export type submodeshape =
    | "rect"
    | "circle"
    | "path:triangle"
-   | "path:pentagon";
+   | "path:pentagon"
+   | "path:plus";
 export type submodedraw = "pencil";
 
 export type submodes = submodecursor | submodeshape | submodedraw | submodeline;

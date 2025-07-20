@@ -7,6 +7,9 @@ import {
    Shape,
    ShapeStore,
    ShapeTool,
+   Parallelogram,
+   PlusPath,
+   PlainLine,
 } from "./index";
 
 type BoardProps = {
@@ -104,6 +107,28 @@ class Board implements BoardInterface {
             left: 500,
             top: 500,
          }),
+         new Parallelogram({
+            board: this,
+            ctx: this.ctx,
+            left: 400,
+            top: 300,
+            width: 200,
+         }),
+         new PlusPath({
+            board: this,
+            ctx: this.ctx,
+            left: 200,
+            top: 200,
+            width: 120,
+            fill: "red",
+         }),
+         new PlainLine({
+            board: this,
+            ctx: this.ctx,
+            left: 500,
+            top: 300,
+            width: 200
+         })
       );
 
       this.currentTool = new SelectionTool(this, "free");

@@ -6,10 +6,14 @@ import {
    BrushIcon,
    CircleIcon,
    GrabIcon,
+   Minus,
    PencilIcon,
    PentagonIcon,
+   PlusIcon,
    PointerIcon,
    ShapesIcon,
+   Spline,
+   SplinePointer,
    TriangleIcon,
    type LucideIcon,
 } from "lucide-react";
@@ -40,9 +44,18 @@ const tools: {
          { sm: "rect", I: BoxIcon },
          { sm: "path:pentagon", I: PentagonIcon },
          { sm: "path:triangle", I: TriangleIcon },
+         { sm: "path:plus", I: PlusIcon },
       ],
    },
 
+   {
+      mode: "line",
+      I: SplinePointer,
+      subMode: [
+         { sm: "line:anchor", I: Spline },
+         { sm: "line:straight", I: Minus },
+      ],
+   },
    { mode: "draw", I: BrushIcon, subMode: [{ sm: "pencil", I: PencilIcon }] },
 ];
 

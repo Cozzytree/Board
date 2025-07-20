@@ -10,7 +10,11 @@ import Box from "@/board/utils/box";
 import ActiveSelection from "./shapes/active_selection";
 import Path from "@/board/shapes/paths/path";
 import Pentagon from "@/board/shapes/paths/pentagon";
+import Parallelogram from "@/board/shapes/paths/parallelogram";
 import Triangle from "@/board/shapes/paths/triangle";
+import PlusPath from "@/board/shapes/paths/plus";
+import Line from "@/board/shapes/line/line";
+import PlainLine from "@/board/shapes/line/line-plain";
 
 export {
    Pointer,
@@ -26,4 +30,8 @@ export {
    ActiveSelection,
    Pentagon,
    Triangle,
+   Parallelogram,
+   PlusPath,
+   Line,
+   PlainLine
 };

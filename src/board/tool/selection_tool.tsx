@@ -3,14 +3,17 @@ import type Shape from "../shapes/shape";
 import type { Point, resizeDirection, submodes, Tool } from "../types";
 import { ActiveSelection, Box, Pointer } from "../index";
 
+type ResizeShapeProps = {
+   s: Shape;
+   d: resizeDirection;
+   oldProps: Box;
+   index?: number; // for lines
+} | null;
+
 class SelectionTool implements Tool {
    private board: Board;
    private draggedShape: Shape | null = null;
-   private resizableShape: {
-      s: Shape;
-      d: resizeDirection;
-      oldProps: Box;
-   } | null = null;
+   private resizableShape: ResizeShapeProps = null;
    private lastPoint: Point = new Pointer({ x: 0, y: 0 });
    private subMode: submodes;
    private mouseDownPoint: Point = new Pointer({ x: 0, y: 0 });
@@ -181,6 +184,11 @@ class SelectionTool implements Tool {
          this.resizableShape = null;
       }
 
+      this.board.shapeStore.forEach((s) => {
+         s.mouseup({ e: { point: mouse } });
+         return false;
+      });
+
       this.board.render();
       this.board.ctx2.clearRect(
          0 - this.board.offset[0],
@@ -193,7 +201,8 @@ class SelectionTool implements Tool {
    cleanUp(): void {}
 
    private draw(...shapes: Shape[]) {
-      this.board.ctx2.clearRect(
+      const ctx = this.board.ctx2;
+      ctx.clearRect(
          0 - this.board.offset[0],
          0 - this.board.offset[1],
          this.board.canvas2.width,
@@ -204,11 +213,11 @@ class SelectionTool implements Tool {
          s.draw({
             active: false,
             addStyles: false,
-            ctx: this.board.ctx2,
+            ctx: ctx,
             resize: this.draggedShape || this.resizableShape ? true : false,
          });
       });
-      this.board.canvas2.style.zIndex = "5";
+      // this.board.canvas2.style.zIndex = "5";
    }
 }
 

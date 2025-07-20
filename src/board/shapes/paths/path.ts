@@ -24,6 +24,8 @@ abstract class Path extends Shape {
       this.points = props.points || [];
       this.type = "path";
       this.lastPoints = [];
+
+      this.scaleShape();
    }
 
    IsDraggable(p: Point): boolean {
@@ -38,7 +40,7 @@ abstract class Path extends Shape {
       });
    }
 
-   draw({ ctx, active, addStyles, resize }: DrawProps): void {
+   draw({ ctx, active, addStyles = true, resize }: DrawProps): void {
       if (this.points.length < 2) return;
       const context = ctx || this.ctx;
 
@@ -59,6 +61,7 @@ abstract class Path extends Shape {
       }
       context.scale(this.scale, this.scale);
 
+      context.beginPath();
       context.moveTo(this.points[0].x, this.points[0].y);
       for (let i = 1; i < this.points.length; i++) {
          context.lineTo(this.points[i].x, this.points[i].y);
@@ -98,16 +101,20 @@ abstract class Path extends Shape {
          case "br":
             if (current.x > old.x1) {
                newWidth = current.x - old.x1;
+               this.flipX = false;
             } else {
                newWidth = old.x1 - current.x;
                this.left = current.x;
+               this.flipX = true;
             }
 
             if (current.y > old.y1) {
                newHeight = current.y - old.y1;
+               this.flipY = false;
             } else {
                newHeight = old.y1 - current.y;
                this.top = current.y;
+               this.flipY = true;
             }
             break;
          case "tl":
@@ -126,8 +133,42 @@ abstract class Path extends Shape {
                this.top = old.y2;
                newHeight = current.y - old.y2;
             }
+            break;
+         case "bl":
+            if (current.x < old.x2) {
+               this.left = current.x;
+               newWidth = old.x2 - current.x;
+            } else {
+               this.left = old.x2;
+               newWidth = current.x - old.x2;
+            }
+
+            if (current.y > old.y1) {
+               newHeight = current.y - old.y1;
+            } else {
+               newHeight = old.y1 - current.y;
+               this.top = current.y;
+            }
+            break;
+         case "tr":
+            if (current.x > old.x1) {
+               newWidth = current.x - old.x1;
+            } else {
+               newWidth = old.x1 - current.x;
+               this.left = current.x;
+            }
+
+            if (current.y < old.y2) {
+               this.top = current.y;
+               newHeight = old.y2 - current.y;
+            } else {
+               this.top = old.y2;
+               newHeight = current.y - old.y2;
+            }
       }
 
+      newWidth = Math.max(newWidth, 20);
+      newHeight = Math.max(newHeight, 20);
       const widthDiff = newWidth - (old.x2 - old.x1);
       const heightDiff = newHeight - (old.y2 - old.y1);
       this.points.forEach((p, i) => {

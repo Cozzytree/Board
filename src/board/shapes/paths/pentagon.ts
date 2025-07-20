@@ -1,17 +1,10 @@
-import type {
-   BoxInterface,
-   Point,
-   resizeDirection,
-   ShapeProps,
-} from "../../types";
+import type { ShapeProps } from "../../types";
 import { Path, Pointer } from "../../index";
 import type { PathProps } from "./path";
 
 class Pentagon extends Path {
    constructor(props: ShapeProps & PathProps) {
       super(props);
-
-      this.scaleShape();
    }
 
    scaleShape(): void {

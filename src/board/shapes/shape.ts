@@ -9,9 +9,11 @@ import type {
    ShapeProps,
    shapeType,
    ShapeEventData,
+   ConnectionPoint,
 } from "../types";
 import { Box, type Board } from "../index";
 import { IsIn } from "../utils/utilfunc";
+import { resizeRect } from "../utils/resize";
 
 export type DrawProps = {
    active: boolean;
@@ -22,10 +24,15 @@ export type DrawProps = {
 
 abstract class Shape implements ShapeProps {
    padding = 4;
+
+   declare connections: ConnectionPoint[];
+   private lastFlippedState: { x: boolean; y: boolean };
    declare type: shapeType;
    declare private id: string;
    declare board: Board;
 
+   flipX: boolean;
+   flipY: boolean;
    strokeWidth: number;
    fill: string;
    height: number;
@@ -58,6 +65,8 @@ abstract class Shape implements ShapeProps {
       board,
       strokeWidth,
       scale,
+      flipX,
+      flipY,
    }: ShapeProps) {
       this.fill = fill || "#000000";
       this.height = height || 100;
@@ -70,8 +79,11 @@ abstract class Shape implements ShapeProps {
       this.board = board;
       this.scale = scale || 1;
       this.strokeWidth = strokeWidth || 2;
-
+      this.flipX = flipX || false;
+      this.flipY = flipY || false;
       this.id = uuidv4();
+
+      this.lastFlippedState = { x: false, y: false };
    }
 
    activeRect(ctx?: CanvasRenderingContext2D) {
@@ -127,6 +139,40 @@ abstract class Shape implements ShapeProps {
       this.emit("mouseup", s);
    }
    mouseover(s: ShapeEventData): void {
+      const r = resizeRect(
+         s.e.point,
+         new Box({
+            x1: this.left,
+            y1: this.top,
+            x2: this.left + this.width,
+            y2: this.top + this.height,
+         }),
+         this.padding,
+      );
+      if (r) {
+         switch (r.rd) {
+            case "tl":
+            case "br":
+               document.body.style.cursor = "nwse-resize";
+               break;
+
+            case "tr":
+            case "bl":
+               document.body.style.cursor = "nesw-resize";
+               break;
+
+            case "t":
+            case "b":
+               document.body.style.cursor = "ns-resize";
+               break;
+
+            case "l":
+            case "r":
+               document.body.style.cursor = "ew-resize";
+               break;
+         }
+      }
+
       this.emit("mouseover", s);
    }
 

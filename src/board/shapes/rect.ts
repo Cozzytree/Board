@@ -25,48 +25,27 @@ class Rect extends Shape {
       this.ry = props.ry || 0;
 
       this.type = "rect";
+
+      this.adjustConnections();
    }
 
-   mousedown(s: ShapeEventData): void {}
+   private adjustConnections() {
+      this.connections = [
+         { position: () => new Pointer({ x: this.left + this.width * 0.5, y: this.top }), s: null },
+         { position: () => new Pointer({ x: this.left + this.width, y: this.top + this.height * 0.5 }), s: null },
+         { position: () => new Pointer({ x: this.left + this.width * 0.5, y: this.top + this.height }), s: null },
+         { position: () => new Pointer({ x: this.left, y: this.top + this.height * 0.5 }), s: null },
+      ]
+   }
 
-   mouseup(s: ShapeEventData): void {}
+   mousedown(s: ShapeEventData): void {
+      this.emit("mousedown", s);
+   }
 
-   mouseover(s: ShapeEventData): void {
-      const r = resizeRect(
-         s.e.point,
-         new Box({
-            x1: this.left,
-            y1: this.top,
-            x2: this.left + this.width,
-            y2: this.top + this.height,
-         }),
-         this.padding,
-      );
-      if (r) {
-         switch (r.rd) {
-            case "tl":
-            case "br":
-               document.body.style.cursor = "nwse-resize";
-               break;
-
-            case "tr":
-            case "bl":
-               document.body.style.cursor = "nesw-resize";
-               break;
-
-            case "t":
-            case "b":
-               document.body.style.cursor = "ns-resize";
-               break;
-
-            case "l":
-            case "r":
-               document.body.style.cursor = "ew-resize";
-               break;
-         }
-      }
-
-      this.emit("mouseover", s);
+   mouseup(s: ShapeEventData): void {
+      this.width = Math.max(this.width, 20);
+      this.height = Math.max(this.height, 20);
+      this.emit("mouseup", s);
    }
 
    IsDraggable(p: Pointer): boolean {
