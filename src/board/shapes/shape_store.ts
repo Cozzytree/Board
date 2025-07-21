@@ -1,11 +1,14 @@
-import type { ShapeInterface } from "../types";
+import type { Identity, ShapeInterface } from "../types";
+import type { ActiveSeletionProps } from "./active_selection";
 
-class ShapeStore<T extends ShapeInterface> {
+class ShapeStore<T extends ShapeInterface & ActiveSeletionProps> {
    declare store: Map<string, T>;
    declare private lastInserted: T | null;
+   declare private copy: Identity<T>[];
 
    constructor() {
       this.store = new Map();
+      this.copy = [];
       this.lastInserted = null;
    }
 
@@ -38,6 +41,14 @@ class ShapeStore<T extends ShapeInterface> {
 
    set setLastInserted(v: T | null) {
       this.lastInserted = v;
+   }
+
+   set insertCopy(items: Identity<T>[]) {
+      this.copy = items;
+   }
+
+   get getLastCopy(): Identity<T>[] {
+      return this.copy;
    }
 }
 

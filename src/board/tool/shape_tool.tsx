@@ -11,35 +11,35 @@ import {
 import type { Point, submodes, Tool, ToolCallback } from "../types";
 
 class ShapeTool implements Tool {
-   private board: Board;
+   private _board: Board;
    private submode: submodes;
    private newShape: Shape | null = null;
    private mouseDownPoint: Point = new Pointer({ x: 0, y: 0 });
 
    constructor(board: Board, submode?: submodes) {
-      this.board = board;
+      this._board = board;
       this.submode = submode || "rect";
    }
 
    cleanUp(): void {}
    pointerDown(e: PointerEvent | MouseEvent): void {
-      const mouse = this.board.getTransFormedCoords(e);
+      const mouse = this._board.getTransFormedCoords(e);
       this.mouseDownPoint = mouse;
-      this.board.activeShapes.clear();
+      this._board.activeShapes.clear();
 
-      const lastInserted = this.board.shapeStore.getLastInsertedShape();
+      const lastInserted = this._board.shapeStore.getLastInsertedShape();
       if (lastInserted?.type === "selection") {
-         if (this.board.shapeStore.removeById(lastInserted.ID())) {
-            this.board.shapeStore.setLastInserted = null;
+         if (this._board.shapeStore.removeById(lastInserted.ID())) {
+            this._board.shapeStore.setLastInserted = null;
          }
-         this.board.render();
+         this._board.render();
       }
 
       switch (this.submode) {
          case "path:triangle":
             this.newShape = new Triangle({
-               board: this.board,
-               ctx: this.board.ctx,
+               _board: this._board,
+               ctx: this._board.ctx,
                width: 0,
                height: 0,
                left: mouse.x,
@@ -48,8 +48,8 @@ class ShapeTool implements Tool {
             break;
          case "path:pentagon":
             this.newShape = new Pentagon({
-               board: this.board,
-               ctx: this.board.ctx,
+               _board: this._board,
+               ctx: this._board.ctx,
                width: 0,
                height: 0,
                left: mouse.x,
@@ -58,35 +58,35 @@ class ShapeTool implements Tool {
             break;
          case "rect":
             this.newShape = new Rect({
-               ctx: this.board.ctx,
+               ctx: this._board.ctx,
                left: mouse.x,
                top: mouse.y,
                width: 0,
                height: 0,
-               board: this.board,
+               _board: this._board,
             });
             break;
          case "circle":
             this.newShape = new Ellipse({
-               ctx: this.board.ctx,
+               ctx: this._board.ctx,
                left: mouse.x,
                top: mouse.y,
                width: 0,
                height: 0,
                rx: 0,
                ry: 0,
-               board: this.board,
+               _board: this._board,
             });
             break;
       }
 
       if (this.newShape) {
-         this.board.shapeStore.insert(this.newShape);
+         this._board.shapeStore.insert(this.newShape);
       }
    }
 
    pointermove(e: PointerEvent | MouseEvent): void {
-      const mouse = this.board.getTransFormedCoords(e);
+      const mouse = this._board.getTransFormedCoords(e);
       if (this.newShape) {
          this.newShape.Resize(
             mouse,
@@ -102,24 +102,38 @@ class ShapeTool implements Tool {
       }
    }
 
-   pointerup(e: PointerEvent | MouseEvent, cb?: ToolCallback): void {
-      this.board.ctx2.clearRect(0, 0, this.board.canvas2.width, this.board.canvas2.height);
-      this.newShape = null;
-      cb?.({ mode: "cursor", submode: "free" });
-      this.board.render();
+   pointerup(_: PointerEvent | MouseEvent, cb?: ToolCallback): void {
+      this._board.ctx2.clearRect(
+         0,
+         0,
+         this._board.canvas2.width,
+         this._board.canvas2.height,
+      );
+
+      if (this.newShape) {
+         this._board.setActiveShape(this.newShape);
+         this.newShape = null;
+         cb?.({ mode: "cursor", submode: "free" });
+         this._board.render();
+      }
    }
 
    private draw(...shapes: Shape[]) {
-      const ctx = this.board.ctx2;
+      const ctx = this._board.ctx2;
 
       ctx.setTransform(1, 0, 0, 1, 0, 0);
-      ctx.clearRect(0, 0, this.board.canvas2.width, this.board.canvas2.height);
+      ctx.clearRect(
+         0,
+         0,
+         this._board.canvas2.width,
+         this._board.canvas2.height,
+      );
       ctx.save();
 
-      ctx.translate(this.board.offset.x, this.board.offset.y);
-      ctx.scale(this.board.scale, this.board.scale);
+      ctx.translate(this._board.offset.x, this._board.offset.y);
+      ctx.scale(this._board.scale, this._board.scale);
 
-      this.board.canvas2.style.zIndex = "100";
+      this._board.canvas2.style.zIndex = "100";
       shapes.forEach((s) => {
          s.draw({
             active: false,

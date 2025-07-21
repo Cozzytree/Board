@@ -1,4 +1,3 @@
-import { v4 as uuidv4 } from "uuid";
 import { Box, Pointer, Shape } from "../index";
 import type {
    BoxInterface,
@@ -26,45 +25,11 @@ class Rect extends Shape {
       this.ry = props.ry || 0;
 
       this.type = "rect";
-
-      this.adjustConnections();
-   }
-
-   private adjustConnections() {
-      this.connections = [
-         {
-            position: () =>
-               new Pointer({ x: this.left + this.width * 0.5, y: this.top }),
-            s: null,
-         },
-         {
-            position: () =>
-               new Pointer({
-                  x: this.left + this.width,
-                  y: this.top + this.height * 0.5,
-               }),
-            s: null,
-         },
-         {
-            position: () =>
-               new Pointer({
-                  x: this.left + this.width * 0.5,
-                  y: this.top + this.height,
-               }),
-            s: null,
-         },
-         {
-            position: () =>
-               new Pointer({ x: this.left, y: this.top + this.height * 0.5 }),
-            s: null,
-         },
-      ];
    }
 
    clone(): Shape {
-      const props = this.cloneProps()
-      console.log(props);
-      return new Rect({ ...props, rx: this.rx, ry: this.ry })
+      const props = this.cloneProps();
+      return new Rect({ ...props, rx: this.rx, ry: this.ry });
    }
 
    mousedown(s: ShapeEventData): void {

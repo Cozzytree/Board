@@ -1,5 +1,14 @@
-import type { Box } from "../index";
-import type { Point } from "../types";
+import {
+   ActiveSelection,
+   Board,
+   Rect,
+   Box,
+   type Shape,
+   Pointer,
+} from "../index";
+import type { ActiveSeletionProps } from "../shapes/active_selection";
+import type { ActiveSelectionShape } from "../shapes/shape_types";
+import type { Identity, Point } from "../types";
 
 function IsIn({ inner, outer }: { inner: Box; outer: Box }): boolean {
    return (
@@ -110,4 +119,62 @@ function isPointNearSegment({
    return distSq <= padding * padding;
 }
 
-export { IsIn, isNearLineSegment, isPointOnSegment, isPointNearSegment };
+function generateShapeByShapeType(
+   val: Identity<Shape & ActiveSeletionProps>,
+   board: Board,
+   ctx: CanvasRenderingContext2D,
+): Shape | null {
+   if (!val) return null;
+   if (val.type === "rect") {
+      return new Rect({
+         _board: board,
+         ctx,
+         //@ts-expect-error not needed
+         rx: val?.rx || 0,
+         //@ts-expect-error not needed
+         ry: val?.ry || 0,
+         fill: val.fill,
+         strokeWidth: val.strokeWidth,
+         stroke: val.stroke,
+         width: val.width,
+         height: val.height,
+         left: val.left,
+         top: val.top,
+      });
+   } else if (val.type === "selection") {
+      if (!val.shapes || val.shapes.length == 0) return null;
+      const shapes: ActiveSelectionShape[] = [];
+      val.shapes.forEach((s: Identity<Shape>) => {
+         const newS = generateShapeByShapeType(s, board, ctx);
+         if (!newS) return;
+         shapes.push({
+            s: newS,
+            offset: new Pointer({
+               x: newS.left - val.left,
+               y: newS.top - val.top,
+            }),
+         });
+      });
+
+      if (!shapes.length) return null;
+
+      return new ActiveSelection({
+         shapes: shapes,
+         _board: board,
+         ctx: ctx,
+         width: val.width,
+         height: val.height,
+         left: val.left,
+         top: val.top,
+      });
+   }
+   return null;
+}
+
+export {
+   IsIn,
+   isNearLineSegment,
+   generateShapeByShapeType,
+   isPointOnSegment,
+   isPointNearSegment,
+};

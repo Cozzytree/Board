@@ -1,17 +1,12 @@
-import { SCALE_RATE } from "@/board/constants";
 import type { BoardInterface, modes, Point, submodes, Tool } from "./types";
 import {
-   Ellipse,
-   Triangle,
    Rect,
    SelectionTool,
    Shape,
    ShapeStore,
-   ShapeTool,
-   Parallelogram,
-   PlusPath,
-   PlainLine,
    Pointer,
+   ActiveSelection,
+   ShapeTool,
 } from "./index";
 
 type BoardProps = {
@@ -23,11 +18,11 @@ type BoardProps = {
 
 class Board implements BoardInterface {
    currentTool: Tool;
+   _lastMousePosition: Point = { x: 0, y: 0 };
    declare activeShapes: Set<Shape>;
    declare shapeStore: ShapeStore<Shape>;
    declare canvas2: HTMLCanvasElement;
    declare ctx2: CanvasRenderingContext2D;
-   private handleKeyDown: (e: KeyboardEvent) => void;
    private handlePointerDown: (e: PointerEvent) => void;
    private handlePointerMove: (e: PointerEvent) => void;
    private handlePointerUp: (e: PointerEvent) => void;
@@ -96,7 +91,7 @@ class Board implements BoardInterface {
             fill: "#FF6050",
             rx: 10,
             ry: 10,
-            board: this,
+            _board: this,
          }),
          // new Ellipse({
          //    ctx: this.ctx,
@@ -141,10 +136,8 @@ class Board implements BoardInterface {
       this.handlePointerDown = this.onmousedown.bind(this);
       this.handlePointerMove = this.onmousemove.bind(this);
       this.handlePointerUp = this.onmouseup.bind(this);
-      this.handleKeyDown = this.onkeydown.bind(this);
       this.handleWheel = this.onWheel.bind(this);
 
-      document.addEventListener("keydown", this.handleKeyDown);
       this.canvas.addEventListener("pointerdown", this.handlePointerDown);
       this.canvas.addEventListener("pointermove", this.handlePointerMove);
       this.canvas.addEventListener("pointerup", this.handlePointerUp);
@@ -153,30 +146,102 @@ class Board implements BoardInterface {
       this.render();
    }
 
+   set setCanvasWidth(width: number) {
+      this.canvas.width = width;
+      this.canvas2.width = width;
+   }
+
+   set setCanvasHeight(height: number) {
+      this.canvas.height = height;
+      this.canvas2.height = height;
+   }
+
+   getActiveShapes(): Shape[] {
+      const s: Shape[] = [];
+      const iter = this.activeShapes.values(); // Get Iterator<Shape>
+      let entry = iter.next();
+      while (!entry.done) {
+         s.push(entry.value);
+         entry = iter.next();
+      }
+      return s;
+   }
+
+   discardActiveShapes() {
+      // this.shapeStore.setLastInserted = null;
+      this.activeShapes.clear();
+   }
+
+   setActiveShape(...shapes: Shape[]) {
+      if (shapes.length == 1) {
+         this.activeShapes.add(shapes[0]);
+      } else {
+         //
+      }
+   }
+
+   removeShape(...shapes: Shape[]): number {
+      let count = 0;
+      this.discardActiveShapes();
+      shapes.forEach((s) => {
+         if (s instanceof ActiveSelection && s.type === "selection") {
+            s.shapes.forEach((as) => {
+               if (this.shapeStore.removeById(as.s.ID())) count++;
+            });
+         }
+         if (this.shapeStore.removeById(s.ID())) count++;
+      });
+
+      this.render();
+      return count;
+   }
+
+   add(...shapes: Shape[]) {
+      const lastInserted = this.shapeStore.getLastInsertedShape();
+      if (lastInserted?.type === "selection") {
+         this.shapeStore.removeById(lastInserted.ID());
+      }
+
+      this.shapeStore.insert(...shapes);
+      this.discardActiveShapes();
+      this.setActiveShape(...shapes);
+   }
+
    private setTool(tool: Tool) {
       if (this.currentTool?.cleanUp) this.currentTool.cleanUp();
       this.currentTool = tool;
    }
 
    render() {
+      const { ctx, canvas, offset, scale, shapeStore, activeShapes } = this;
+
       this.ctx.setTransform(1, 0, 0, 1, 0, 0);
-      this.ctx.clearRect(
-         0,
-         0,
-         this.canvas.width,
-         this.canvas.height,
-      );
+      this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
-      this.ctx.save();
-      this.ctx.translate(this.offset.x, this.offset.y);
-      this.ctx.scale(this.scale, this.scale);
+      // Compute world-space viewport
+      const viewLeft = -offset.x / scale;
+      const viewTop = -offset.y / scale;
+      const viewRight = viewLeft + canvas.width / scale;
+      const viewBottom = viewTop + canvas.height / scale;
 
-      this.shapeStore.forEach((s) => {
-         if (this.activeShapes.has(s)) {
-            s.draw({ active: true });
-         } else {
-            s.draw({ active: false });
+      ctx.save();
+      ctx.translate(offset.x, offset.y);
+      ctx.scale(scale, scale);
+
+      shapeStore.forEach((s) => {
+         const { x, y, width, height } = s.getBounds();
+
+         // Check AABB intersection
+         if (
+            x + width < viewLeft ||
+            x > viewRight ||
+            y + height < viewTop ||
+            y > viewBottom
+         ) {
+            return false; // entirely off-screen, skip draw
          }
+
+         s.draw({ active: activeShapes.has(s) });
          return false;
       });
       this.ctx.restore();
@@ -209,6 +274,8 @@ class Board implements BoardInterface {
          this.setTool(new SelectionTool(this, sm));
       } else if (m === "shape") {
          this.setTool(new ShapeTool(this, sm));
+      } else if (m === "draw") {
+         //
       }
 
       if (!originUi) {
@@ -239,17 +306,15 @@ class Board implements BoardInterface {
       this.canvas.removeEventListener("pointerdown", this.handlePointerDown);
       this.canvas.removeEventListener("pointermove", this.handlePointerMove);
       this.canvas.removeEventListener("pointerup", this.handlePointerUp);
-      document.removeEventListener("keydown", this.handleKeyDown);
       window.removeEventListener("wheel", this.handleWheel);
+      if (this.currentTool) {
+         this.currentTool.cleanUp();
+      }
 
       this.shapeStore.forEach((s) => {
          s.clean();
          return false;
       });
-   }
-
-   duplicateShape(s: Shape) {
-      return s.clone();
    }
 
    private onWheel(e: WheelEvent) {
@@ -283,31 +348,6 @@ class Board implements BoardInterface {
          this.offset.y = mouseY - worldY * this.scale;
       }
       this.render();
-   }
-
-   private onkeydown(e: KeyboardEvent) {
-      if (e.key === "Delete") {
-         this.activeShapes.forEach((s) => {
-            if (this.shapeStore.removeById(s.ID())) {
-               this.activeShapes.delete(s);
-            }
-         });
-         this.render();
-      }
-      if (e.ctrlKey) {
-         switch (e.key) {
-            case "d":
-               e.preventDefault();
-               [...this.activeShapes].forEach((s) => {
-                  this.activeShapes.delete(s);
-                  const ns = this.duplicateShape(s);
-                  this.shapeStore.insert(ns);
-                  this.activeShapes.add(ns);
-               });
-               this.render();
-               break;
-         }
-      }
    }
 }
 

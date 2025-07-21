@@ -10,6 +10,7 @@ import type {
    shapeType,
    ShapeEventData,
    ConnectionPoint,
+   Identity,
 } from "../types";
 import { Box, type Board } from "../index";
 import { IsIn } from "../utils/utilfunc";
@@ -22,14 +23,15 @@ export type DrawProps = {
    resize?: boolean;
 };
 
+const keysNotNeeded = ["ctx", "eventListeners"];
+
 abstract class Shape implements ShapeProps {
    padding = 4;
 
-   declare connections: ConnectionPoint[];
    private lastFlippedState: { x: boolean; y: boolean };
    declare type: shapeType;
    declare id: string;
-   declare board: Board;
+   declare _board: Board;
 
    flipX: boolean;
    flipY: boolean;
@@ -50,7 +52,7 @@ abstract class Shape implements ShapeProps {
    abstract IsResizable(p: Point): resizeDirection | null;
    abstract IsDraggable(p: Point): boolean;
    abstract Resize(current: Point, old: BoxInterface, d: resizeDirection): void;
-   abstract clone(): Shape
+   abstract clone(): Shape;
 
    abstract dragging(mousedown: Point, move: Point): void;
 
@@ -63,7 +65,7 @@ abstract class Shape implements ShapeProps {
       top,
       width,
       ctx,
-      board,
+      _board,
       strokeWidth,
       scale,
       flipX,
@@ -77,7 +79,7 @@ abstract class Shape implements ShapeProps {
       this.stroke = stroke || "#FFFFFF";
       this.top = top || 0;
       this.ctx = ctx;
-      this.board = board;
+      this._board = _board;
       this.scale = scale || 1;
       this.strokeWidth = strokeWidth || 2;
       this.flipX = flipX || false;
@@ -87,16 +89,15 @@ abstract class Shape implements ShapeProps {
       this.lastFlippedState = { x: false, y: false };
    }
 
-
    protected cloneProps(): ShapeProps {
       return {
          fill: this.fill,
-         board: this.board,
+         _board: this._board,
          ctx: this.ctx,
          flipX: this.flipX,
          flipY: this.flipY,
-         left: this.left + 10,
-         top: this.top + 10,
+         left: this.left,
+         top: this.top,
          height: this.height,
          width: this.width,
          rotate: this.rotate,
@@ -105,7 +106,7 @@ abstract class Shape implements ShapeProps {
          strokeWidth: this.strokeWidth,
          id: uuidv4(),
          type: this.type,
-      }
+      };
    }
 
    activeRect(ctx?: CanvasRenderingContext2D) {
@@ -220,6 +221,28 @@ abstract class Shape implements ShapeProps {
 
    ID(): string {
       return this.id;
+   }
+
+   getBounds() {
+      return {
+         x: this.left,
+         y: this.top,
+         width: this.width,
+         height: this.height,
+      };
+   }
+
+   toObject(): Identity<Shape> {
+      const obj = {} as { [K in keyof this]: this[K] };
+      for (const key of Object.keys(this) as Array<keyof this>) {
+         if (
+            !String(key).startsWith("_") &&
+            !keysNotNeeded.includes(String(key))
+         ) {
+            obj[key] = this[key];
+         }
+      }
+      return obj;
    }
 }
 

@@ -29,9 +29,9 @@ class Ellipse extends Shape {
    }
 
    clone(): Shape {
-      const props = this.cloneProps()
+      const props = this.cloneProps();
       console.log(props);
-      return new Ellipse({ ...props, rx: this.rx, ry: this.ry })
+      return new Ellipse({ ...props, rx: this.rx, ry: this.ry });
    }
 
    IsDraggable(p: Pointer): boolean {
@@ -100,8 +100,6 @@ class Ellipse extends Shape {
       drawDot(x, y + h); // bottom-left
       drawDot(x + w, y + h); // bottom-right
    }
-
-   mouseup(s: ShapeEventData): void { }
 
    mouseover(s: ShapeEventData): void {
       const r = resizeRect(

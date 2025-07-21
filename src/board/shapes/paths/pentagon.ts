@@ -1,10 +1,15 @@
 import type { ShapeProps } from "../../types";
-import { Path, Pointer } from "../../index";
+import { Path, Pointer, Shape } from "@/board/index";
 import type { PathProps } from "./path";
 
 class Pentagon extends Path {
    constructor(props: ShapeProps & PathProps) {
       super(props);
+   }
+
+   clone(): Shape {
+      const props = this.cloneProps();
+      return new Pentagon({ ...props, points: this.points });
    }
 
    scaleShape(): void {

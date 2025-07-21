@@ -1,9 +1,15 @@
-import { Path, Pointer } from "@/board/index";
+import { Path, Pointer, Shape } from "@/board/index";
 import type { ShapeProps } from "@/board/types";
+import type { PathProps } from "./path";
 
 class PlusPath extends Path {
-   constructor(props: ShapeProps) {
+   constructor(props: ShapeProps & PathProps) {
       super(props);
+   }
+
+   clone(): Shape {
+      const props = this.cloneProps();
+      return new PlusPath({ ...props, points: this.points });
    }
 
    scaleShape(): void {

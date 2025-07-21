@@ -1,3 +1,5 @@
+export type Identity<T> = { [K in keyof T]: T[K] | any };
+
 import type { Shape, Board } from "./index";
 
 export type ConnectionPoint = {
@@ -10,7 +12,12 @@ export type ShapeEvent =
    | "mouseup"
    | "mouseover"
    | "move"
-   | "resize";
+   | "resize"
+   | "shape:removed"
+   | "shape:created"
+   | "shape:updated"
+   | "shape:resize"
+   | "shape:move";
 
 export type ShapeEventData = {
    e: { point: Point };
@@ -27,13 +34,13 @@ export type ShapeProps = {
    fill?: string;
    rotate?: number;
    ctx: CanvasRenderingContext2D;
-   board: Board;
+   _board: Board;
    strokeWidth?: number;
    scale?: number;
    flipX?: boolean;
    flipY?: boolean;
-   id?: string,
-   type?: shapeType
+   id?: string;
+   type?: shapeType;
 };
 
 export type ToolCallback = (args: { mode: modes; submode: submodes }) => void;
@@ -72,6 +79,8 @@ export interface BoardInterface {
    ctx: CanvasRenderingContext2D;
    modes: { m: modes; sm: submodes };
    offset: Point;
+   onMouseMove?: () => void;
+   onMouseUp?: () => void;
 }
 
 export type modes = "cursor" | "shape" | "line" | "draw";
