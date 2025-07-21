@@ -3,6 +3,7 @@ import Rect from "@/board/shapes/rect";
 import Board from "@/board/board";
 import ShapeStore from "@/board/shapes/shape_store";
 import SelectionTool from "@/board/tool/selection_tool";
+import DrawTool from "./tool/draw_tool";
 import ShapeTool from "@/board/tool/shape_tool";
 import Pointer from "@/board/utils/point";
 import Ellipse from "@/board/shapes/ellipse";
@@ -13,6 +14,7 @@ import Pentagon from "@/board/shapes/paths/pentagon";
 import Parallelogram from "@/board/shapes/paths/parallelogram";
 import Triangle from "@/board/shapes/paths/triangle";
 import PlusPath from "@/board/shapes/paths/plus";
+import SimplePath from "./shapes/paths/simple_path";
 import Line from "@/board/shapes/line/line";
 import PlainLine from "@/board/shapes/line/line-plain";
 
@@ -33,5 +35,7 @@ export {
    Parallelogram,
    PlusPath,
    Line,
-   PlainLine
+   PlainLine,
+   DrawTool,
+   SimplePath,
 };

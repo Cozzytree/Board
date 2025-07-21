@@ -5,7 +5,7 @@ import type {
    Point,
    resizeDirection,
    submodes,
-   Tool,
+   ToolInterface,
 } from "../types";
 import { ActiveSelection, Box, Pointer } from "../index";
 import { generateShapeByShapeType } from "../utils/utilfunc";
@@ -17,7 +17,7 @@ type ResizeShapeProps = {
    index?: number; // for lines
 } | null;
 
-class SelectionTool implements Tool {
+class SelectionTool implements ToolInterface {
    private handleKeyDown: (e: KeyboardEvent) => void;
    private _board: Board;
    private draggedShape: Shape | null = null;

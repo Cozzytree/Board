@@ -45,7 +45,7 @@ export type ShapeProps = {
 
 export type ToolCallback = (args: { mode: modes; submode: submodes }) => void;
 
-export interface Tool {
+export interface ToolInterface {
    pointerDown(e: PointerEvent | MouseEvent): void;
    pointermove(e: PointerEvent | MouseEvent): void;
    pointerup(e: PointerEvent | MouseEvent, cb?: ToolCallback): void;

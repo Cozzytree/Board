@@ -7,6 +7,7 @@ import {
    Pointer,
    ActiveSelection,
    ShapeTool,
+   DrawTool,
 } from "./index";
 
 type BoardProps = {
@@ -275,7 +276,7 @@ class Board implements BoardInterface {
       } else if (m === "shape") {
          this.setTool(new ShapeTool(this, sm));
       } else if (m === "draw") {
-         //
+         this.setTool(new DrawTool(this));
       }
 
       if (!originUi) {

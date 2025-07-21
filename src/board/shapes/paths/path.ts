@@ -17,12 +17,13 @@ abstract class Path extends Shape {
    declare points: Point[];
    private lastPoints: Point[];
 
+   static type = "path";
+
    abstract scaleShape(): void;
 
    constructor(props: ShapeProps & PathProps) {
       super(props);
       this.points = props.points || [];
-      this.type = "path";
       this.lastPoints = [];
 
       this.scaleShape();

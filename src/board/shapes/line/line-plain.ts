@@ -12,7 +12,7 @@ class PlainLine extends Line {
          const dx = Math.abs(po.x + this.left - p.x);
          const dy = Math.abs(po.y + this.top - p.y);
          if (dx < this.padding && dy < this.padding) {
-            return;
+            return null;
          }
       });
    }

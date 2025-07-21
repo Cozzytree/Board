@@ -9,7 +9,6 @@ import type {
    ShapeProps,
    shapeType,
    ShapeEventData,
-   ConnectionPoint,
    Identity,
 } from "../types";
 import { Box, type Board } from "../index";
@@ -53,7 +52,6 @@ abstract class Shape implements ShapeProps {
    abstract IsDraggable(p: Point): boolean;
    abstract Resize(current: Point, old: BoxInterface, d: resizeDirection): void;
    abstract clone(): Shape;
-
    abstract dragging(mousedown: Point, move: Point): void;
 
    constructor({
@@ -244,6 +242,40 @@ abstract class Shape implements ShapeProps {
       }
       return obj;
    }
+
+   /**
+    * @param {String|Object} key Property name or object (if object, iterate over the object properties)
+    * @param {Object|Function} value Property value (if function, the value is passed into it and its return value is used as a new one)
+    */
+   set(key: string | Record<string, any>, value?: any) {
+      if (typeof key === "object") {
+         this._setObject(key);
+      } else {
+         this._set(key, value);
+      }
+      return this;
+   }
+
+   protected _set(key: string, value: any) {
+      this[key as keyof this] = value;
+   }
+
+   protected _setObject(obj: Record<string, any>) {
+      for (const prop in obj) {
+         this._set(prop, obj[prop]);
+      }
+   }
+
+   /**
+    * Basic getter
+    * @param {String} property Property name
+    * @return {*} value of a property
+    */
+   get(property: string): any {
+      return this[property as keyof this];
+   }
+
+   setCoords() {}
 }
 
 export default Shape;

@@ -17,10 +17,10 @@ type RectProps = {
 class Rect extends Shape {
    declare rx: number;
    declare ry: number;
+   static type = "rect";
 
    constructor(props: ShapeProps & RectProps) {
       super({ ...props });
-      this.type = "rect";
       this.rx = props.rx || 0;
       this.ry = props.ry || 0;
 

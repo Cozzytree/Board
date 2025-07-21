@@ -257,6 +257,22 @@ class Ellipse extends Shape {
       //       }
       // }
    }
+
+   _set(key: string, value: any) {
+      super._set(key, value);
+      switch (key) {
+         case "rx":
+            this.rx = value;
+            this.set("width", value * 2);
+            break;
+
+         case "ry":
+            this.ry = value;
+            this.set("height", value * 2);
+            break;
+      }
+      return this;
+   }
 }
 
 export default Ellipse;

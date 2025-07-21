@@ -8,9 +8,9 @@ import {
    Triangle,
    type Shape,
 } from "../index";
-import type { Point, submodes, Tool, ToolCallback } from "../types";
+import type { Point, submodes, ToolInterface, ToolCallback } from "../types";
 
-class ShapeTool implements Tool {
+class ShapeTool implements ToolInterface {
    private _board: Board;
    private submode: submodes;
    private newShape: Shape | null = null;
