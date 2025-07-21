@@ -190,24 +190,21 @@ class SelectionTool implements Tool {
       });
 
       this.board.render();
-      this.board.ctx2.clearRect(
-         0 - this.board.offset[0],
-         0 - this.board.offset[1],
-         this.board.canvas2.width,
-         this.board.canvas2.height,
-      );
+      this.board.ctx2.clearRect(0, 0, this.board.canvas2.width, this.board.canvas2.height);
    }
 
-   cleanUp(): void {}
+   cleanUp(): void { }
 
    private draw(...shapes: Shape[]) {
       const ctx = this.board.ctx2;
-      ctx.clearRect(
-         0 - this.board.offset[0],
-         0 - this.board.offset[1],
-         this.board.canvas2.width,
-         this.board.canvas2.height,
-      );
+
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.clearRect(0, 0, this.board.canvas2.width, this.board.canvas2.height);
+      ctx.save();
+
+      ctx.translate(this.board.offset.x, this.board.offset.y);
+      ctx.scale(this.board.scale, this.board.scale);
+
       this.board.canvas2.style.zIndex = "100";
       shapes.forEach((s) => {
          s.draw({
@@ -217,7 +214,7 @@ class SelectionTool implements Tool {
             resize: this.draggedShape || this.resizableShape ? true : false,
          });
       });
-      // this.board.canvas2.style.zIndex = "5";
+      ctx.restore();
    }
 }
 

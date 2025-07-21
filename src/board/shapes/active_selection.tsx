@@ -172,7 +172,6 @@ class ActiveSelection extends Shape {
    }
 
    mouseup(s: ShapeEventData): void {
-      console.log(this.width);
       this.shapes = [];
       let updateBox = new Box({
          x1: Infinity,

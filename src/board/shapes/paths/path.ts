@@ -49,13 +49,16 @@ abstract class Path extends Shape {
          this.activeRect();
       }
       context.translate(this.left, this.top);
+
+      const currentScale = context.getTransform().a;
+
       if (resize) {
          context.strokeStyle = "#808070";
          context.fillStyle = "#606060";
-         context.lineWidth = 3;
-         context.setLineDash([6, 6]);
+         context.lineWidth = 3 / currentScale;
+         context.setLineDash([6 / currentScale, 6 / currentScale]);
       } else {
-         context.lineWidth = this.strokeWidth;
+         context.lineWidth = this.strokeWidth / currentScale;
          context.strokeStyle = this.stroke;
          context.fillStyle = this.fill;
       }

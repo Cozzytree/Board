@@ -1,3 +1,4 @@
+import { v4 as uuidv4 } from "uuid";
 import { Box, Pointer, Shape } from "../index";
 import type {
    BoxInterface,
@@ -31,11 +32,39 @@ class Rect extends Shape {
 
    private adjustConnections() {
       this.connections = [
-         { position: () => new Pointer({ x: this.left + this.width * 0.5, y: this.top }), s: null },
-         { position: () => new Pointer({ x: this.left + this.width, y: this.top + this.height * 0.5 }), s: null },
-         { position: () => new Pointer({ x: this.left + this.width * 0.5, y: this.top + this.height }), s: null },
-         { position: () => new Pointer({ x: this.left, y: this.top + this.height * 0.5 }), s: null },
-      ]
+         {
+            position: () =>
+               new Pointer({ x: this.left + this.width * 0.5, y: this.top }),
+            s: null,
+         },
+         {
+            position: () =>
+               new Pointer({
+                  x: this.left + this.width,
+                  y: this.top + this.height * 0.5,
+               }),
+            s: null,
+         },
+         {
+            position: () =>
+               new Pointer({
+                  x: this.left + this.width * 0.5,
+                  y: this.top + this.height,
+               }),
+            s: null,
+         },
+         {
+            position: () =>
+               new Pointer({ x: this.left, y: this.top + this.height * 0.5 }),
+            s: null,
+         },
+      ];
+   }
+
+   clone(): Shape {
+      const props = this.cloneProps()
+      console.log(props);
+      return new Rect({ ...props, rx: this.rx, ry: this.ry })
    }
 
    mousedown(s: ShapeEventData): void {
@@ -101,13 +130,15 @@ class Rect extends Shape {
       context.save();
       context.beginPath();
 
+      const currentScale = context.getTransform().a;
+
       if (resize) {
          context.strokeStyle = "#808070";
          context.fillStyle = "#606060";
-         context.lineWidth = 3;
-         context.setLineDash([6, 6]);
+         context.lineWidth = 3 / currentScale;
+         context.setLineDash([6 / currentScale, 6 / currentScale]);
       } else {
-         context.lineWidth = this.strokeWidth;
+         context.lineWidth = this.strokeWidth / currentScale;
          context.strokeStyle = this.stroke;
          context.fillStyle = this.fill;
       }

@@ -28,8 +28,10 @@ class Ellipse extends Shape {
       this.type = "ellipse";
    }
 
-   ID(): string {
-      return this.id;
+   clone(): Shape {
+      const props = this.cloneProps()
+      console.log(props);
+      return new Ellipse({ ...props, rx: this.rx, ry: this.ry })
    }
 
    IsDraggable(p: Pointer): boolean {
@@ -99,7 +101,7 @@ class Ellipse extends Shape {
       drawDot(x + w, y + h); // bottom-right
    }
 
-   mouseup(s: ShapeEventData): void {}
+   mouseup(s: ShapeEventData): void { }
 
    mouseover(s: ShapeEventData): void {
       const r = resizeRect(
@@ -148,13 +150,15 @@ class Ellipse extends Shape {
       context.save();
       context.beginPath();
 
+      const currentScale = context.getTransform().a;
+
       if (resize) {
          context.strokeStyle = "#808070";
          context.fillStyle = "#606060";
-         context.lineWidth = 3;
-         context.setLineDash([6, 6]);
+         context.lineWidth = 3 / currentScale;
+         context.setLineDash([6 / currentScale, 6 / currentScale]);
       } else {
-         context.lineWidth = this.strokeWidth;
+         context.lineWidth = this.strokeWidth / currentScale;
          context.strokeStyle = this.stroke;
          context.fillStyle = this.fill;
       }

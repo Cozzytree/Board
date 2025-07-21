@@ -32,6 +32,8 @@ export type ShapeProps = {
    scale?: number;
    flipX?: boolean;
    flipY?: boolean;
+   id?: string,
+   type?: shapeType
 };
 
 export type ToolCallback = (args: { mode: modes; submode: submodes }) => void;
@@ -62,13 +64,14 @@ export interface ShapeInterface {
    IsDraggable(p: Point): boolean;
    IsResizable(p: Point): resizeDirection | null;
    Resize(current: Point, old: BoxInterface, d: resizeDirection): void;
+   clone(): Shape;
 }
 
 export interface BoardInterface {
    canvas: HTMLCanvasElement;
    ctx: CanvasRenderingContext2D;
    modes: { m: modes; sm: submodes };
-   offset: [number, number];
+   offset: Point;
 }
 
 export type modes = "cursor" | "shape" | "line" | "draw";

@@ -28,7 +28,7 @@ abstract class Shape implements ShapeProps {
    declare connections: ConnectionPoint[];
    private lastFlippedState: { x: boolean; y: boolean };
    declare type: shapeType;
-   declare private id: string;
+   declare id: string;
    declare board: Board;
 
    flipX: boolean;
@@ -50,6 +50,7 @@ abstract class Shape implements ShapeProps {
    abstract IsResizable(p: Point): resizeDirection | null;
    abstract IsDraggable(p: Point): boolean;
    abstract Resize(current: Point, old: BoxInterface, d: resizeDirection): void;
+   abstract clone(): Shape
 
    abstract dragging(mousedown: Point, move: Point): void;
 
@@ -84,6 +85,27 @@ abstract class Shape implements ShapeProps {
       this.id = uuidv4();
 
       this.lastFlippedState = { x: false, y: false };
+   }
+
+
+   protected cloneProps(): ShapeProps {
+      return {
+         fill: this.fill,
+         board: this.board,
+         ctx: this.ctx,
+         flipX: this.flipX,
+         flipY: this.flipY,
+         left: this.left + 10,
+         top: this.top + 10,
+         height: this.height,
+         width: this.width,
+         rotate: this.rotate,
+         scale: this.scale,
+         stroke: this.stroke,
+         strokeWidth: this.strokeWidth,
+         id: uuidv4(),
+         type: this.type,
+      }
    }
 
    activeRect(ctx?: CanvasRenderingContext2D) {

@@ -103,27 +103,32 @@ class ShapeTool implements Tool {
    }
 
    pointerup(e: PointerEvent | MouseEvent, cb?: ToolCallback): void {
-      this.board.ctx2.clearRect(
-         0 - this.board.offset[0],
-         0 - this.board.offset[1],
-         this.board.canvas2.width,
-         this.board.canvas2.height,
-      );
+      this.board.ctx2.clearRect(0, 0, this.board.canvas2.width, this.board.canvas2.height);
       this.newShape = null;
       cb?.({ mode: "cursor", submode: "free" });
       this.board.render();
    }
 
    private draw(...shapes: Shape[]) {
-      this.board.ctx2.clearRect(
-         0 - this.board.offset[0],
-         0 - this.board.offset[1],
-         this.board.canvas2.width,
-         this.board.canvas2.height,
-      );
+      const ctx = this.board.ctx2;
+
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.clearRect(0, 0, this.board.canvas2.width, this.board.canvas2.height);
+      ctx.save();
+
+      ctx.translate(this.board.offset.x, this.board.offset.y);
+      ctx.scale(this.board.scale, this.board.scale);
+
+      this.board.canvas2.style.zIndex = "100";
       shapes.forEach((s) => {
-         s.draw({ active: false, addStyles: false, ctx: this.board.ctx2 });
+         s.draw({
+            active: false,
+            addStyles: false,
+            ctx: ctx,
+            resize: true,
+         });
       });
+      ctx.restore();
    }
 }
 
