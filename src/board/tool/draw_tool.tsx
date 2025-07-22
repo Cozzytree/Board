@@ -1,9 +1,8 @@
-import { Pointer, SimplePath, type Board } from "@/board/index";
-import type { ToolCallback, Point } from "../types";
+import { SimplePath, type Board } from "@/board/index";
+import type { ToolCallback } from "../types";
 import Tool from "./tool";
 
 class DrawTool extends Tool {
-   private points: Point[] = [];
    private shape: SimplePath | null = null;
 
    constructor(board: Board) {
@@ -14,8 +13,9 @@ class DrawTool extends Tool {
    pointerDown(e: PointerEvent | MouseEvent): void {
       const mouse = this._board.getTransFormedCoords(e);
 
-      this.points.push(new Pointer(mouse));
       this.shape = new SimplePath({
+         left: mouse.x,
+         top: mouse.y,
          _board: this._board,
          ctx: this._board.ctx,
       });
@@ -25,16 +25,21 @@ class DrawTool extends Tool {
       if (!this.shape) return;
       const mouse = this._board.getTransFormedCoords(e);
 
-      this.shape.set("points", [...this.shape.get("points"), mouse]);
+      this.shape.set("points", [
+         ...this.shape.get("points"),
+         { x: mouse.x - this.shape.left, y: mouse.y - this.shape.top },
+      ]);
       this.draw(this.shape);
    }
 
    cleanUp(): void {}
 
-   pointerup(e: PointerEvent | MouseEvent, cb?: ToolCallback): void {
+   pointerup(): void {
       if (!this.shape) return;
 
       this._board.add(this.shape);
+      this._board.discardActiveShapes();
+      this.shape.setCoords();
       this._board.render();
 
       this._board.ctx2.clearRect(
@@ -44,7 +49,6 @@ class DrawTool extends Tool {
          this._board.canvas2.height,
       );
 
-      this.points = [];
       this.shape = null;
    }
 }

@@ -202,17 +202,14 @@ class SelectionTool implements ToolInterface {
 
       // const mouse = this._board.getTransFormedCoords(e);
       if (this.draggedShape) {
+         this.draggedShape.mouseup({ e: { point: mouse } });
          this.draggedShape = null;
       }
 
       if (this.resizableShape) {
+         this.resizableShape.s.mouseup({ e: { point: mouse } });
          this.resizableShape = null;
       }
-
-      this._board.shapeStore.forEach((s) => {
-         s.mouseup({ e: { point: mouse } });
-         return false;
-      });
 
       this._board.render();
       this._board.ctx2.clearRect(

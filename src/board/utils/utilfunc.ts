@@ -5,10 +5,12 @@ import {
    Box,
    type Shape,
    Pointer,
+   SimplePath,
 } from "../index";
 import type { ActiveSeletionProps } from "../shapes/active_selection";
+import type { PathProps } from "../shapes/paths/path";
 import type { ActiveSelectionShape } from "../shapes/shape_types";
-import type { Identity, Point } from "../types";
+import type { BoxInterface, Identity, Point, resizeDirection } from "../types";
 
 function IsIn({ inner, outer }: { inner: Box; outer: Box }): boolean {
    return (
@@ -120,7 +122,7 @@ function isPointNearSegment({
 }
 
 function generateShapeByShapeType(
-   val: Identity<Shape & ActiveSeletionProps>,
+   val: Identity<Shape & ActiveSeletionProps & PathProps>,
    board: Board,
    ctx: CanvasRenderingContext2D,
 ): Shape | null {
@@ -167,12 +169,57 @@ function generateShapeByShapeType(
          left: val.left,
          top: val.top,
       });
+   } else if (val.type === "path") {
+      if (val.pathType === "simplePath") {
+         return new SimplePath({
+            ...val,
+            ctx,
+            _board: board,
+         });
+      }
    }
+
    return null;
+}
+
+function flipXandYByDirection(
+   current: Point,
+   fixedX: number,
+   fixedY: number,
+   wasFlippedX: boolean,
+   wasFlippedY: boolean,
+   d: resizeDirection,
+   old: BoxInterface,
+): { flipX: boolean; flipY: boolean } {
+   let flipX: boolean = wasFlippedX;
+   let flipY: boolean = wasFlippedY;
+   if (d === "br") {
+      flipX = wasFlippedX ? current.x > fixedX : current.x < fixedX;
+      flipY = wasFlippedY ? current.y > fixedY : current.y < fixedY;
+   } else if (d === "tl") {
+      fixedX = old.x2;
+      fixedY = old.y2;
+      flipX = wasFlippedX ? current.x < fixedX : current.x > fixedX;
+      flipY = wasFlippedY ? current.y < fixedY : current.y > fixedY;
+   } else if (d === "tr") {
+      fixedX = old.x1;
+      fixedY = old.y2;
+      flipX = wasFlippedX ? current.x > fixedX : current.x < fixedX;
+      flipY = wasFlippedY ? current.y < fixedY : current.y > fixedY;
+   } else if (d === "bl") {
+      fixedX = old.x2;
+      fixedY = old.y1;
+      flipX = wasFlippedX ? current.x < fixedX : current.x > fixedX;
+      flipY = wasFlippedY ? current.y > fixedY : current.y < fixedY;
+   }
+
+   return { flipX, flipY };
+   // return wasFlipped ? current > fixed : current < fixed;
 }
 
 export {
    IsIn,
+   flipXandYByDirection,
    isNearLineSegment,
    generateShapeByShapeType,
    isPointOnSegment,

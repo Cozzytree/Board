@@ -17,7 +17,6 @@ type RectProps = {
 class Rect extends Shape {
    declare rx: number;
    declare ry: number;
-   static type = "rect";
 
    constructor(props: ShapeProps & RectProps) {
       super({ ...props });
@@ -33,13 +32,13 @@ class Rect extends Shape {
    }
 
    mousedown(s: ShapeEventData): void {
-      this.emit("mousedown", s);
+      super.mousedown(s);
    }
 
    mouseup(s: ShapeEventData): void {
       this.width = Math.max(this.width, 20);
       this.height = Math.max(this.height, 20);
-      this.emit("mouseup", s);
+      super.mouseup(s);
    }
 
    IsDraggable(p: Pointer): boolean {

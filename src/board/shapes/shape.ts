@@ -27,7 +27,7 @@ const keysNotNeeded = ["ctx", "eventListeners"];
 abstract class Shape implements ShapeProps {
    padding = 4;
 
-   private lastFlippedState: { x: boolean; y: boolean };
+   protected lastFlippedState: { x: boolean; y: boolean };
    declare type: shapeType;
    declare id: string;
    declare _board: Board;
