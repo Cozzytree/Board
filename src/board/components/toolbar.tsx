@@ -1,9 +1,5 @@
 import { useBoard } from "../board_provider";
-import {
-   Popover,
-   PopoverContent,
-   PopoverTrigger,
-} from "@/components/ui/popover";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 
 export default function Toolbar() {
@@ -18,8 +14,7 @@ export default function Toolbar() {
                   // if (e.target.container)
                }}
                key={i}
-               className="flex items-center"
-            >
+               className="flex items-center">
                <Popover>
                   <PopoverTrigger asChild>
                      <button
@@ -32,15 +27,13 @@ export default function Toolbar() {
                               ? "bg-primary text-background"
                               : "hover:bg-foreground/10",
                            "py-[0.25em] px-[0.4em] rounded-sm",
-                        )}
-                     >
+                        )}>
                         <t.I width={17} />
                      </button>
                   </PopoverTrigger>
                   <PopoverContent
                      side="left"
-                     className="w-fit flex flex-col bg-background gap-1 p-1 items-center rounded-xs border border-muted shadow"
-                  >
+                     className="w-fit flex flex-col bg-background gap-1 p-1 items-center rounded-xs border border-muted shadow">
                      {t.subMode.map((sm, index) => (
                         <div key={index} className="">
                            <button
@@ -53,8 +46,7 @@ export default function Toolbar() {
                               onClick={() => {
                                  if (mode.sm == sm.sm) return;
                                  setMode(t.mode, sm.sm);
-                              }}
-                           >
+                              }}>
                               <sm.I width={16} />
                            </button>
                         </div>

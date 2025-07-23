@@ -233,10 +233,7 @@ abstract class Shape implements ShapeProps {
    toObject(): Identity<Shape> {
       const obj = {} as { [K in keyof this]: this[K] };
       for (const key of Object.keys(this) as Array<keyof this>) {
-         if (
-            !String(key).startsWith("_") &&
-            !keysNotNeeded.includes(String(key))
-         ) {
+         if (!String(key).startsWith("_") && !keysNotNeeded.includes(String(key))) {
             obj[key] = this[key];
          }
       }
@@ -257,6 +254,9 @@ abstract class Shape implements ShapeProps {
    }
 
    protected _set(key: string, value: any) {
+      if (typeof value === "function") {
+         value = value();
+      }
       this[key as keyof this] = value;
    }
 

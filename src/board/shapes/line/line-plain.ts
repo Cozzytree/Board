@@ -1,20 +1,15 @@
-import { Line } from "@/board/index";
-import type { Point, resizeDirection, ShapeProps } from "@/board/types";
+import { Line, Shape } from "@/board/index";
+import type { BoxInterface, Point, resizeDirection, ShapeProps } from "@/board/types";
 import type { DrawProps } from "../shape";
+import type { LineProps } from "../shape_types";
 
 class PlainLine extends Line {
-   constructor(props: ShapeProps) {
+   constructor(props: ShapeProps & LineProps) {
       super(props);
    }
-
-   IsResizable(p: Point): resizeDirection | null {
-      this.points.forEach((po) => {
-         const dx = Math.abs(po.x + this.left - p.x);
-         const dy = Math.abs(po.y + this.top - p.y);
-         if (dx < this.padding && dy < this.padding) {
-            return null;
-         }
-      });
+   clone(): Shape {
+      const props = super.cloneProps();
+      return new PlainLine({ ...props, points: this.points });
    }
 
    draw({ active = true, ctx }: DrawProps): void {
@@ -36,6 +31,15 @@ class PlainLine extends Line {
       context.lineTo(this.points[1].x, this.points[1].y);
       context.stroke();
       context.restore();
+   }
+
+   Resize(current: Point, b: BoxInterface, resize: resizeDirection): void {
+      const index = resize === "br" ? this.points.length - 1 : this.resizeIndex;
+      if (index === null || index < 0 || index > this.points.length - 1) return;
+      this.points[index] = {
+         x: current.x - this.left,
+         y: current.y - this.top,
+      };
    }
 }
 

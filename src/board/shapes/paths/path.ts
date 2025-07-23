@@ -1,14 +1,8 @@
+import type { BoxInterface, Point, resizeDirection, ShapeEventData, ShapeProps } from "../../types";
+import type { DrawProps } from "../shape";
 import { resizeRect } from "../../utils/resize";
 import { Box, Shape } from "../../index";
-import type {
-   BoxInterface,
-   Point,
-   resizeDirection,
-   ShapeEventData,
-   ShapeProps,
-} from "../../types";
-import { IsIn, flipXandYByDirection } from "../../utils/utilfunc";
-import type { DrawProps } from "../shape";
+import { IsIn, flipXandYByDirection, setCoords } from "@/board/utils/utilfunc";
 
 export type PathProps = {
    points?: Point[];
@@ -17,18 +11,25 @@ export type PathProps = {
 
 class Path extends Shape {
    declare points: Point[];
-   private lastPoints: Point[];
+   protected lastPoints: Point[];
    declare pathType: string;
-
-   scaleShape(): void {}
 
    constructor(props: ShapeProps & PathProps) {
       super(props);
       this.points = props.points || [];
-      this.lastPoints = [];
-
+      this.lastPoints = this.points.map((p) => p);
       this.type = "path";
-      this.scaleShape();
+   }
+
+   setCoords(): void {
+      const { box, points } = setCoords(this.points, this.left, this.top);
+      this.set({
+         points,
+         left: box.x1,
+         top: box.y1,
+         width: box.x2 - box.x1,
+         height: box.y2 - box.y1,
+      });
    }
 
    clone(): Shape {
@@ -241,7 +242,6 @@ class Path extends Shape {
          p.x = scaledX;
          p.y = scaledY;
       });
-      this.scaleShape();
       super.set({
          width: newWidth,
          height: newHeight,

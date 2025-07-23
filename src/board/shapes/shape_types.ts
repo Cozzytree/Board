@@ -6,3 +6,10 @@ export type ActiveSelectionShape = {
    s: Shape;
    offset?: Point;
 };
+
+export type LineType = "curve" | "straight";
+
+export type LineProps = {
+   points?: Point[];
+   lineType?: LineType;
+};

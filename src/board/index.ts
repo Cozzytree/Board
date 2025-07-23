@@ -5,6 +5,7 @@ import ShapeStore from "@/board/shapes/shape_store";
 import SelectionTool from "@/board/tool/selection_tool";
 import DrawTool from "./tool/draw_tool";
 import ShapeTool from "@/board/tool/shape_tool";
+import LineTool from "@/board/tool/line_tool";
 import Pointer from "@/board/utils/point";
 import Ellipse from "@/board/shapes/ellipse";
 import Box from "@/board/utils/box";
@@ -17,11 +18,13 @@ import PlusPath from "@/board/shapes/paths/plus";
 import SimplePath from "./shapes/paths/simple_path";
 import Line from "@/board/shapes/line/line";
 import PlainLine from "@/board/shapes/line/line-plain";
+import AnchorLine from "@/board/shapes/line/line-anchor";
 
 export {
    Pointer,
    Shape,
    Path,
+   LineTool,
    ShapeTool,
    Rect,
    Ellipse,
@@ -38,4 +41,5 @@ export {
    PlainLine,
    DrawTool,
    SimplePath,
+   AnchorLine,
 };

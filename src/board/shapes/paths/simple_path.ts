@@ -3,7 +3,7 @@ import Path, { type PathProps } from "./path";
 import type Shape from "../shape";
 import type { DrawProps } from "../shape";
 import Box from "@/board/utils/box";
-import { IsIn } from "@/board/utils/utilfunc";
+import { IsIn, setCoords } from "@/board/utils/utilfunc";
 
 // flipX formula
 // left + width - this.left + p.x (flipped)
@@ -87,44 +87,6 @@ class SimplePath extends Path {
       context.stroke();
       context.closePath();
       context.restore();
-   }
-
-   setCoords(): void {
-      let minX = Infinity;
-      let minY = Infinity;
-      let maxX = -Infinity;
-      let maxY = -Infinity;
-
-      // Step 1: Find absolute bounding box
-      this.points.forEach((p) => {
-         const absoluteX = this.left + p.x;
-         const absoluteY = this.top + p.y;
-
-         minX = Math.min(absoluteX, minX);
-         minY = Math.min(absoluteY, minY);
-         maxX = Math.max(absoluteX, maxX);
-         maxY = Math.max(absoluteY, maxY);
-      });
-
-      const newLeft = minX;
-      const newTop = minY;
-      const newWidth = maxX - minX;
-      const newHeight = maxY - minY;
-
-      // Step 2: Adjust points to new bounding box (make them relative to newLeft/newTop)
-      const newPoints = this.points.map((p) => ({
-         x: this.left + p.x - newLeft,
-         y: this.top + p.y - newTop,
-      }));
-
-      // Step 3: Set the new bounding box and points
-      this.set({
-         left: newLeft,
-         top: newTop,
-         width: newWidth,
-         height: newHeight,
-         points: newPoints,
-      });
    }
 
    IsDraggable(p: Point): boolean {
