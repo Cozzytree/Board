@@ -1,24 +1,11 @@
-import {
-   ActiveSelection,
-   Board,
-   Rect,
-   Box,
-   type Shape,
-   Pointer,
-   SimplePath,
-} from "../index";
+import { ActiveSelection, Board, Rect, Box, type Shape, Pointer, SimplePath } from "../index";
 import type { ActiveSeletionProps } from "../shapes/active_selection";
 import type { PathProps } from "../shapes/paths/path";
 import type { ActiveSelectionShape } from "../shapes/shape_types";
 import type { BoxInterface, Identity, Point, resizeDirection } from "../types";
 
 function IsIn({ inner, outer }: { inner: Box; outer: Box }): boolean {
-   return (
-      inner.x1 > outer.x1 &&
-      inner.x2 < outer.x2 &&
-      inner.y1 > outer.y1 &&
-      inner.y2 < outer.y2
-   );
+   return inner.x1 > outer.x1 && inner.x2 < outer.x2 && inner.y1 > outer.y1 && inner.y2 < outer.y2;
 }
 
 /**
@@ -29,12 +16,7 @@ function IsIn({ inner, outer }: { inner: Box; outer: Box }): boolean {
  * @param {number} tol - allowed distance in pixels (e.g. 5)
  * @returns {boolean}
  */
-function isPointOnSegment(
-   A: Point,
-   B: Point,
-   P: Point,
-   tol: number = 5,
-): boolean {
+function isPointOnSegment(A: Point, B: Point, P: Point, tol: number = 5): boolean {
    const vx = B.x - A.x;
    const vy = B.y - A.y;
    const l2 = vx * vx + vy * vy;
@@ -217,8 +199,49 @@ function flipXandYByDirection(
    // return wasFlipped ? current > fixed : current < fixed;
 }
 
+function setCoords(points: Point[], left: number, top: number): { box: Box; points: Point[] } {
+   let minX = Infinity;
+   let minY = Infinity;
+   let maxX = -Infinity;
+   let maxY = -Infinity;
+
+   // Step 1: Find absolute bounding box
+   points.forEach((p) => {
+      const absoluteX = left + p.x;
+      const absoluteY = top + p.y;
+
+      minX = Math.min(absoluteX, minX);
+      minY = Math.min(absoluteY, minY);
+      maxX = Math.max(absoluteX, maxX);
+      maxY = Math.max(absoluteY, maxY);
+   });
+
+   const newLeft = minX;
+   const newTop = minY;
+   const newWidth = maxX - minX;
+   const newHeight = maxY - minY;
+
+   // Step 2: Adjust points to new bounding box (make them relative to newLeft/newTop)
+   const newPoints = points.map((p) => ({
+      x: left + p.x - newLeft,
+      y: top + p.y - newTop,
+   }));
+
+   // Step 3: Set the new bounding box and points
+   return {
+      box: new Box({
+         x1: newLeft,
+         y1: newTop,
+         x2: newLeft + newWidth,
+         y2: newTop + newHeight,
+      }),
+      points: newPoints,
+   };
+}
+
 export {
    IsIn,
+   setCoords,
    flipXandYByDirection,
    isNearLineSegment,
    generateShapeByShapeType,

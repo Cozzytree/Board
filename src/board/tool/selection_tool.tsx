@@ -1,12 +1,6 @@
 import Board from "../board";
 import type Shape from "../shapes/shape";
-import type {
-   Identity,
-   Point,
-   resizeDirection,
-   submodes,
-   ToolInterface,
-} from "../types";
+import type { Identity, Point, resizeDirection, submodes, ToolInterface } from "../types";
 import { ActiveSelection, Box, Pointer } from "../index";
 import { generateShapeByShapeType } from "../utils/utilfunc";
 
@@ -142,21 +136,14 @@ class SelectionTool implements ToolInterface {
       const mouse = this._board.getTransFormedCoords(e);
       this._board._lastMousePosition = mouse;
       if (this.draggedShape != null) {
-         this.draggedShape.dragging(
-            new Pointer(this.lastPoint),
-            new Pointer(mouse),
-         );
+         this.draggedShape.dragging(new Pointer(this.lastPoint), new Pointer(mouse));
          this.lastPoint = mouse;
          this.draw(this.draggedShape);
          return;
       }
 
       if (this.resizableShape) {
-         this.resizableShape.s.Resize(
-            mouse,
-            this.resizableShape.oldProps,
-            this.resizableShape.d,
-         );
+         this.resizableShape.s.Resize(mouse, this.resizableShape.oldProps, this.resizableShape.d);
          this.draw(this.resizableShape.s);
          return;
       }
@@ -212,12 +199,7 @@ class SelectionTool implements ToolInterface {
       }
 
       this._board.render();
-      this._board.ctx2.clearRect(
-         0,
-         0,
-         this._board.canvas2.width,
-         this._board.canvas2.height,
-      );
+      this._board.ctx2.clearRect(0, 0, this._board.canvas2.width, this._board.canvas2.height);
    }
 
    cleanUp(): void {
@@ -225,8 +207,7 @@ class SelectionTool implements ToolInterface {
    }
 
    private onkeydown(e: KeyboardEvent) {
-      if (this.resizableShape || this.draggedShape || this.hasSelectionStarted)
-         return;
+      if (this.resizableShape || this.draggedShape || this.hasSelectionStarted) return;
 
       if (e.key === "Delete") {
          const shapes = this._board.getActiveShapes();
@@ -268,24 +249,16 @@ class SelectionTool implements ToolInterface {
       if (!copies.length) return;
 
       if (copies.length == 1) {
-         const cloned = generateShapeByShapeType(
-            copies[0],
-            this._board,
-            this._board.ctx,
-         );
+         const cloned = generateShapeByShapeType(copies[0], this._board, this._board.ctx);
          if (!cloned) return;
 
          if (cloned instanceof ActiveSelection) {
             const s: Shape[] = [];
             cloned.shapes.forEach((sa) => {
                sa.s.left =
-                  this._board._lastMousePosition.x +
-                  (sa?.offset?.x || 0) -
-                  cloned.width * 0.5;
+                  this._board._lastMousePosition.x + (sa?.offset?.x || 0) - cloned.width * 0.5;
                sa.s.top =
-                  this._board._lastMousePosition.y +
-                  (sa?.offset?.y || 0) -
-                  cloned.height * 0.5;
+                  this._board._lastMousePosition.y + (sa?.offset?.y || 0) - cloned.height * 0.5;
                s.push(sa.s);
             });
             this._board.add(...s);
@@ -343,12 +316,7 @@ class SelectionTool implements ToolInterface {
       const ctx = this._board.ctx2;
 
       ctx.setTransform(1, 0, 0, 1, 0, 0);
-      ctx.clearRect(
-         0,
-         0,
-         this._board.canvas2.width,
-         this._board.canvas2.height,
-      );
+      ctx.clearRect(0, 0, this._board.canvas2.width, this._board.canvas2.height);
       ctx.save();
 
       ctx.translate(this._board.offset.x, this._board.offset.y);

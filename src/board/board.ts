@@ -1,4 +1,4 @@
-import type { BoardInterface, modes, Point, submodes, Tool } from "./types";
+import type { BoardInterface, modes, Point, submodes, ToolInterface } from "./types";
 import {
    Rect,
    SelectionTool,
@@ -8,6 +8,7 @@ import {
    ActiveSelection,
    ShapeTool,
    DrawTool,
+   LineTool,
 } from "./index";
 
 type BoardProps = {
@@ -18,7 +19,7 @@ type BoardProps = {
 };
 
 class Board implements BoardInterface {
-   currentTool: Tool;
+   currentTool: ToolInterface;
    _lastMousePosition: Point = { x: 0, y: 0 };
    declare activeShapes: Set<Shape>;
    declare shapeStore: ShapeStore<Shape>;
@@ -43,9 +44,7 @@ class Board implements BoardInterface {
       this.onModeChange = onModeChange;
 
       // Ensure only one secondary canvas
-      let c2 = document.getElementById(
-         "board-overlay-canvas",
-      ) as HTMLCanvasElement | null;
+      let c2 = document.getElementById("board-overlay-canvas") as HTMLCanvasElement | null;
       if (!c2) {
          c2 = document.createElement("canvas");
          c2.id = "board-overlay-canvas";
@@ -94,42 +93,6 @@ class Board implements BoardInterface {
             ry: 10,
             _board: this,
          }),
-         // new Ellipse({
-         //    ctx: this.ctx,
-         //    top: 500,
-         //    left: 500,
-         //    rx: 50,
-         //    ry: 50,
-         //    board: this,
-         // }),
-         // new Triangle({
-         //    board: this,
-         //    ctx: this.ctx,
-         //    left: 500,
-         //    top: 500,
-         // }),
-         // new Parallelogram({
-         //    board: this,
-         //    ctx: this.ctx,
-         //    left: 400,
-         //    top: 300,
-         //    width: 200,
-         // }),
-         // new PlusPath({
-         //    board: this,
-         //    ctx: this.ctx,
-         //    left: 200,
-         //    top: 200,
-         //    width: 120,
-         //    fill: "red",
-         // }),
-         // new PlainLine({
-         //    board: this,
-         //    ctx: this.ctx,
-         //    left: 500,
-         //    top: 300,
-         //    width: 200,
-         // }),
       );
 
       this.currentTool = new SelectionTool(this, "free");
@@ -208,7 +171,7 @@ class Board implements BoardInterface {
       this.setActiveShape(...shapes);
    }
 
-   private setTool(tool: Tool) {
+   private setTool(tool: ToolInterface) {
       if (this.currentTool?.cleanUp) this.currentTool.cleanUp();
       this.currentTool = tool;
    }
@@ -233,12 +196,7 @@ class Board implements BoardInterface {
          const { x, y, width, height } = s.getBounds();
 
          // Check AABB intersection
-         if (
-            x + width < viewLeft ||
-            x > viewRight ||
-            y + height < viewTop ||
-            y > viewBottom
-         ) {
+         if (x + width < viewLeft || x > viewRight || y + height < viewTop || y > viewBottom) {
             return false; // entirely off-screen, skip draw
          }
 
@@ -262,23 +220,18 @@ class Board implements BoardInterface {
       });
    }
 
-   set setMode({
-      m,
-      sm,
-      originUi = false,
-   }: {
-      m: modes;
-      sm: submodes;
-      originUi?: boolean;
-   }) {
+   set setMode({ m, sm, originUi = false }: { m: modes; sm: submodes; originUi?: boolean }) {
       if (m === "cursor") {
          this.setTool(new SelectionTool(this, sm));
       } else if (m === "shape") {
          this.setTool(new ShapeTool(this, sm));
       } else if (m === "draw") {
          this.setTool(new DrawTool(this));
+      } else if (m === "line") {
+         this.setTool(new LineTool(this));
       }
 
+      this.modes = { m, sm };
       if (!originUi) {
          this.onModeChange?.(m, sm);
       }

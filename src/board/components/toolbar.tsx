@@ -17,11 +17,7 @@ import {
    TriangleIcon,
    type LucideIcon,
 } from "lucide-react";
-import {
-   Popover,
-   PopoverContent,
-   PopoverTrigger,
-} from "@/components/ui/popover";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 const tools: {
    mode: modes;
@@ -52,8 +48,8 @@ const tools: {
       mode: "line",
       I: SplinePointer,
       subMode: [
-         { sm: "line:anchor", I: Spline },
          { sm: "line:straight", I: Minus },
+         { sm: "line:anchor", I: Spline },
       ],
    },
    { mode: "draw", I: BrushIcon, subMode: [{ sm: "pencil", I: PencilIcon }] },
@@ -73,9 +69,8 @@ export default function Toolbar() {
                         onClick={() => {
                            if (mode.m === t.mode) return;
                            setMode(t.mode, t.subMode[0].sm);
-                        }}
-                     >
-                        <t.I width={20} />
+                        }}>
+                        <t.I width={16} />
                      </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-fit grid grid-cols-4 p-1 gap-2 flex-wrap">
@@ -87,8 +82,7 @@ export default function Toolbar() {
                                  setMode(t.mode, sm.sm);
                               }}
                               size={"icon"}
-                              variant={sm.sm == mode.sm ? "default" : "outline"}
-                           >
+                              variant={sm.sm == mode.sm ? "default" : "outline"}>
                               <sm.I width={16} />
                            </Button>
                         </div>

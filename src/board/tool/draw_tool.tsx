@@ -1,5 +1,4 @@
 import { SimplePath, type Board } from "@/board/index";
-import type { ToolCallback } from "../types";
 import Tool from "./tool";
 
 class DrawTool extends Tool {

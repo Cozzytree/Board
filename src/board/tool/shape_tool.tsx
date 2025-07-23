@@ -1,13 +1,4 @@
-import {
-   Board,
-   Box,
-   Ellipse,
-   Pentagon,
-   Pointer,
-   Rect,
-   Triangle,
-   type Shape,
-} from "../index";
+import { Board, Box, Ellipse, Path, Pentagon, Pointer, Rect, Triangle, type Shape } from "../index";
 import type { Point, submodes, ToolInterface, ToolCallback } from "../types";
 
 class ShapeTool implements ToolInterface {
@@ -22,6 +13,7 @@ class ShapeTool implements ToolInterface {
    }
 
    cleanUp(): void {}
+
    pointerDown(e: PointerEvent | MouseEvent): void {
       const mouse = this._board.getTransFormedCoords(e);
       this.mouseDownPoint = mouse;
@@ -37,21 +29,27 @@ class ShapeTool implements ToolInterface {
 
       switch (this.submode) {
          case "path:triangle":
-            this.newShape = new Triangle({
+            this.newShape = new Path({
                _board: this._board,
                ctx: this._board.ctx,
-               width: 0,
-               height: 0,
+               width: 4,
+               height: 4,
                left: mouse.x,
                top: mouse.y,
+               points: [
+                  new Pointer({ x: 0 + 4 * 0.5, y: 0 }),
+                  new Pointer({ x: 4, y: 4 }),
+                  new Pointer({ x: 0, y: 4 }),
+                  new Pointer({ x: 4 * 0.5, y: 0 }),
+               ],
             });
             break;
          case "path:pentagon":
             this.newShape = new Pentagon({
                _board: this._board,
                ctx: this._board.ctx,
-               width: 0,
-               height: 0,
+               width: 4,
+               height: 4,
                left: mouse.x,
                top: mouse.y,
             });
@@ -81,7 +79,7 @@ class ShapeTool implements ToolInterface {
       }
 
       if (this.newShape) {
-         this._board.shapeStore.insert(this.newShape);
+         this._board.add(this.newShape);
       }
    }
 
@@ -93,8 +91,8 @@ class ShapeTool implements ToolInterface {
             new Box({
                x1: this.mouseDownPoint.x,
                y1: this.mouseDownPoint.y,
-               x2: this.mouseDownPoint.x + 2,
-               y2: this.mouseDownPoint.y + 22,
+               x2: this.newShape.left + this.newShape.width,
+               y2: this.newShape.top + this.newShape.height,
             }),
             "br",
          );
@@ -103,15 +101,10 @@ class ShapeTool implements ToolInterface {
    }
 
    pointerup(_: PointerEvent | MouseEvent, cb?: ToolCallback): void {
-      this._board.ctx2.clearRect(
-         0,
-         0,
-         this._board.canvas2.width,
-         this._board.canvas2.height,
-      );
+      this._board.ctx2.clearRect(0, 0, this._board.canvas2.width, this._board.canvas2.height);
 
       if (this.newShape) {
-         this._board.setActiveShape(this.newShape);
+         this.newShape.setCoords();
          this.newShape = null;
          cb?.({ mode: "cursor", submode: "free" });
          this._board.render();
@@ -122,12 +115,7 @@ class ShapeTool implements ToolInterface {
       const ctx = this._board.ctx2;
 
       ctx.setTransform(1, 0, 0, 1, 0, 0);
-      ctx.clearRect(
-         0,
-         0,
-         this._board.canvas2.width,
-         this._board.canvas2.height,
-      );
+      ctx.clearRect(0, 0, this._board.canvas2.width, this._board.canvas2.height);
       ctx.save();
 
       ctx.translate(this._board.offset.x, this._board.offset.y);

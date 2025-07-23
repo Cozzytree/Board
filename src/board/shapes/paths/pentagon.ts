@@ -5,6 +5,7 @@ import type { PathProps } from "./path";
 class Pentagon extends Path {
    constructor(props: ShapeProps & PathProps) {
       super(props);
+      this.scaleShape();
    }
 
    clone(): Shape {
@@ -14,7 +15,7 @@ class Pentagon extends Path {
 
    scaleShape(): void {
       const inset = this.width * 0.15;
-      this.points = [
+      super.set("points", [
          new Pointer({ x: 0, y: this.height * 0.45 }), // P0 - top-left
          new Pointer({
             x: this.width / 2,
@@ -32,7 +33,8 @@ class Pentagon extends Path {
             x: inset,
             y: this.height,
          }), // P4 - bottom-left (inward from P0)
-      ];
+      ]);
+      this.lastPoints = this.points.map((p) => p);
    }
 }
 
