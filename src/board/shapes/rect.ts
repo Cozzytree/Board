@@ -74,12 +74,12 @@ class Rect extends Shape {
 
    draw({ active, addStyles = true, ctx, resize = false }: DrawProps): void {
       const context = ctx || this.ctx;
-
-      const r = Math.min(this.rx || 0, this.ry || 0, this.width / 2, this.height / 2);
-
       if (active) {
          this.activeRect();
       }
+
+      const r = Math.min(this.rx || 0, this.ry || 0, this.width / 2, this.height / 2);
+
       context.save();
       context.beginPath();
 
@@ -91,6 +91,7 @@ class Rect extends Shape {
          context.lineWidth = 3 / currentScale;
          context.setLineDash([6 / currentScale, 6 / currentScale]);
       } else {
+         context.setLineDash(this.dash);
          context.lineWidth = this.strokeWidth / currentScale;
          context.strokeStyle = this.stroke;
          context.fillStyle = this.fill;
@@ -105,6 +106,13 @@ class Rect extends Shape {
 
       context.closePath();
       context.restore();
+
+      // text
+      // const mesureText = context.measureText("Hello world");
+      context.fillStyle = "white";
+      context.textAlign = "center";
+      context.font = `${this.fontSize}px Arial`;
+      context.fillText("Hello world", this.left + this.width * 0.5, this.top + this.height * 0.5);
    }
 
    Resize(current: Point, old: BoxInterface, d: resizeDirection): void {

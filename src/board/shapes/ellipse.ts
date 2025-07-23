@@ -1,11 +1,5 @@
 import { Box, Pointer, Shape } from "../index";
-import type {
-   BoxInterface,
-   Point,
-   resizeDirection,
-   ShapeEventData,
-   ShapeProps,
-} from "../types";
+import type { BoxInterface, Point, resizeDirection, ShapeEventData, ShapeProps } from "../types";
 import { resizeRect } from "../utils/resize";
 import type { DrawProps } from "./shape";
 
@@ -156,6 +150,7 @@ class Ellipse extends Shape {
          context.lineWidth = 3 / currentScale;
          context.setLineDash([6 / currentScale, 6 / currentScale]);
       } else {
+         context.setLineDash(this.dash);
          context.lineWidth = this.strokeWidth / currentScale;
          context.strokeStyle = this.stroke;
          context.fillStyle = this.fill;

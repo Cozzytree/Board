@@ -77,6 +77,7 @@ class Path extends Shape {
          context.lineWidth = 3 / currentScale;
          context.setLineDash([6 / currentScale, 6 / currentScale]);
       } else {
+         context.setLineDash(this.dash);
          context.lineWidth = this.strokeWidth / currentScale;
          context.strokeStyle = this.stroke;
          context.fillStyle = this.fill;
@@ -115,6 +116,9 @@ class Path extends Shape {
          context.fill();
       }
 
+      if (!resize) {
+         context.fill();
+      }
       context.closePath();
       context.stroke();
       context.restore();

@@ -1,6 +1,12 @@
-import type { BoardInterface, modes, Point, submodes, ToolInterface } from "./types";
+import type {
+   BoardInterface,
+   modes,
+   Point,
+   ShapeEventData,
+   submodes,
+   ToolInterface,
+} from "./types";
 import {
-   Rect,
    SelectionTool,
    Shape,
    ShapeStore,
@@ -16,6 +22,7 @@ type BoardProps = {
    width: number;
    height: number;
    onModeChange?: (m: modes, sm: submodes) => void;
+   onMouseUp?: (e: ShapeEventData) => void;
 };
 
 class Board implements BoardInterface {
@@ -25,19 +32,21 @@ class Board implements BoardInterface {
    declare shapeStore: ShapeStore<Shape>;
    declare canvas2: HTMLCanvasElement;
    declare ctx2: CanvasRenderingContext2D;
+   private handleDoubleClick: (e: PointerEvent | MouseEvent) => void;
    private handlePointerDown: (e: PointerEvent) => void;
    private handlePointerMove: (e: PointerEvent) => void;
    private handlePointerUp: (e: PointerEvent) => void;
    private handleWheel: (e: WheelEvent) => void;
    declare onModeChange?: (m: modes, sm: submodes) => void;
 
+   onMouseUpCallback?: (e: ShapeEventData) => void;
    scale = 1;
    canvas: HTMLCanvasElement;
    ctx: CanvasRenderingContext2D;
    modes: { m: modes; sm: submodes };
    offset = new Pointer({ x: 0, y: 0 });
 
-   constructor({ canvas, width, height, onModeChange }: BoardProps) {
+   constructor({ canvas, width, height, onModeChange, onMouseUp }: BoardProps) {
       this.canvas = canvas;
       this.canvas.width = width;
       this.canvas.height = height;
@@ -81,30 +90,20 @@ class Board implements BoardInterface {
       this.shapeStore = new ShapeStore();
       this.activeShapes = new Set();
 
-      this.shapeStore.insert(
-         new Rect({
-            ctx: this.ctx,
-            top: 30,
-            left: 10,
-            width: 100,
-            height: 100,
-            fill: "#FF6050",
-            rx: 10,
-            ry: 10,
-            _board: this,
-         }),
-      );
-
       this.currentTool = new SelectionTool(this, "free");
 
       this.handlePointerDown = this.onmousedown.bind(this);
       this.handlePointerMove = this.onmousemove.bind(this);
       this.handlePointerUp = this.onmouseup.bind(this);
       this.handleWheel = this.onWheel.bind(this);
+      this.handleDoubleClick = this.ondoubleclick.bind(this);
+
+      this.onMouseUpCallback = onMouseUp;
 
       this.canvas.addEventListener("pointerdown", this.handlePointerDown);
       this.canvas.addEventListener("pointermove", this.handlePointerMove);
       this.canvas.addEventListener("pointerup", this.handlePointerUp);
+      this.canvas.addEventListener("dblclick", this.handleDoubleClick);
       window.addEventListener("wheel", this.handleWheel, { passive: false });
 
       this.render();
@@ -122,12 +121,15 @@ class Board implements BoardInterface {
 
    getActiveShapes(): Shape[] {
       const s: Shape[] = [];
-      const iter = this.activeShapes.values(); // Get Iterator<Shape>
-      let entry = iter.next();
-      while (!entry.done) {
-         s.push(entry.value);
-         entry = iter.next();
-      }
+      this.activeShapes.forEach((sa) => {
+         s.push(sa);
+      });
+      // const iter = this.activeShapes.values(); // Get Iterator<Shape>
+      // let entry = iter.next();
+      // while (!entry.done) {
+      //    s.push(entry.value);
+      //    entry = iter.next();
+      // }
       return s;
    }
 
@@ -138,6 +140,7 @@ class Board implements BoardInterface {
 
    setActiveShape(...shapes: Shape[]) {
       if (shapes.length == 1) {
+         this.discardActiveShapes();
          this.activeShapes.add(shapes[0]);
       } else {
          //
@@ -218,6 +221,10 @@ class Board implements BoardInterface {
       this.currentTool.pointerup(e, (v) => {
          this.setMode = { m: v.mode, sm: v.submode };
       });
+   }
+
+   private ondoubleclick(e: PointerEvent | MouseEvent) {
+      this.currentTool.dblClick(e);
    }
 
    set setMode({ m, sm, originUi = false }: { m: modes; sm: submodes; originUi?: boolean }) {

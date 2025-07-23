@@ -26,6 +26,8 @@ type ContextProps = {
       subMode: { sm: submodes; I: LucideIcon }[];
    }[];
    activeShape: Shape | null;
+   canvas: Board | null;
+   setActiveShape: (v: Shape | null) => void;
 };
 
 const BoardContext = React.createContext<ContextProps | undefined>(undefined);
@@ -83,8 +85,8 @@ const BoardProvider = ({
       m: "cursor",
       sm: "free",
    });
-   const borderRef = React.useRef<Board>(null);
    const canvasRef = React.useRef<HTMLCanvasElement>(null);
+   const borderRef = React.useRef<Board>(null);
 
    React.useEffect(() => {
       if (!canvasRef.current) return;
@@ -94,6 +96,14 @@ const BoardProvider = ({
          canvas: canvasRef.current,
          onModeChange: (m, sm) => {
             setMode({ m, sm });
+         },
+         onMouseUp: () => {
+            const active = borderRef.current?.getActiveShapes();
+            if (active?.length) {
+               setActiveShape(active[0]);
+            } else {
+               setActiveShape(null);
+            }
          },
       });
       borderRef.current = newBoard;
@@ -112,10 +122,16 @@ const BoardProvider = ({
          const tool = prev.find((t) => t.mode === m);
          if (!tool) return prev;
 
-         const subm = tool.subMode.find((sb) => sb.sm === sm);
-         if (!subm) return prev;
+         const submIndex = tool.subMode.findIndex((sb) => sb.sm === sm);
+         if (submIndex == -1) return prev;
+
+         const subm = tool.subMode[submIndex];
 
          tool.I = subm.I;
+
+         if (submIndex > 0) {
+            [tool.subMode[submIndex], tool.subMode[0]] = [tool.subMode[0], tool.subMode[submIndex]];
+         }
 
          return [...prev];
       });
@@ -124,23 +140,25 @@ const BoardProvider = ({
    return (
       <BoardContext.Provider
          value={{
+            setActiveShape: (s) => {
+               setActiveShape(s);
+            },
+            canvas: borderRef.current,
             activeShape,
             tools,
             mode,
             setMode: handleModeChange,
-         }}
-      >
-         <canvas
-            ref={canvasRef}
-            style={{ width: width + "px", height: height + "px" }}
-         />
+         }}>
+         <canvas ref={canvasRef} style={{ width: width + "px", height: height + "px" }} />
          <div className="pointer-events-auto z-50 right-8 top-1/2 w-fit -translate-y-[50%] fixed flex justify-center">
             <Toolbar />
          </div>
 
-         <div className="fixed top-5 left-1/2">
-            <ShapeOptions />
-         </div>
+         {activeShape && (
+            <div className="z-50 fixed top-5 left-1/2 -translate-x-[50%]">
+               <ShapeOptions />
+            </div>
+         )}
       </BoardContext.Provider>
    );
 };

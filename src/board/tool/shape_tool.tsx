@@ -100,7 +100,8 @@ class ShapeTool implements ToolInterface {
       }
    }
 
-   pointerup(_: PointerEvent | MouseEvent, cb?: ToolCallback): void {
+   pointerup(e: PointerEvent | MouseEvent, cb?: ToolCallback): void {
+      const mouse = this._board.getTransFormedCoords(e);
       this._board.ctx2.clearRect(0, 0, this._board.canvas2.width, this._board.canvas2.height);
 
       if (this.newShape) {
@@ -109,7 +110,11 @@ class ShapeTool implements ToolInterface {
          cb?.({ mode: "cursor", submode: "free" });
          this._board.render();
       }
+
+      this._board.onMouseUpCallback?.({ e: { point: mouse } });
    }
+
+   dblClick(e: PointerEvent | MouseEvent): void {}
 
    private draw(...shapes: Shape[]) {
       const ctx = this._board.ctx2;

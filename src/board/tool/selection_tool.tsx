@@ -48,7 +48,6 @@ class SelectionTool implements ToolInterface {
          return;
       }
 
-      this._board.activeShapes.clear();
       if (this.subMode === "free") {
          const lastInserted = this._board.shapeStore.getLastInsertedShape();
          if (lastInserted?.type === "selection") {
@@ -89,34 +88,41 @@ class SelectionTool implements ToolInterface {
             this._board.render();
          }
 
-         const dragOrResize = this._board.shapeStore.forEach((s) => {
+         const currentActive = this._board.getActiveShapes();
+         if (currentActive.length) {
+            const s = currentActive[0];
             const d = s.IsResizable(mouse);
             if (d) {
                this.resizableShape = {
-                  d,
                   s,
                   oldProps: new Box({
                      x1: s.left,
-                     x2: s.left + s.width,
                      y1: s.top,
+                     x2: s.left + s.width,
                      y2: s.top + s.height,
                   }),
+                  d,
                };
-               return true;
+               return;
             }
-            return s.IsDraggable(mouse);
-         });
 
-         if (dragOrResize) {
-            if (!this.resizableShape) {
-               this.draggedShape = dragOrResize;
-               this._board.activeShapes.add(dragOrResize);
-            } else {
-               this._board.activeShapes.add(this.resizableShape.s);
+            if (s.isTextUpdateable(mouse)) {
+               console.log("update text");
+               return;
             }
          }
 
+         const drag = this._board.shapeStore.forEach((s) => {
+            return s.IsDraggable(mouse);
+         });
+
+         if (drag) {
+            this.draggedShape = drag;
+            this._board.setActiveShape(drag);
+         }
+
          if (!this.draggedShape && !this.resizableShape) {
+            this._board.discardActiveShapes();
             this.hasSelectionStarted = true;
             this.activeShape = new ActiveSelection({
                ctx: this._board.ctx,
@@ -128,7 +134,7 @@ class SelectionTool implements ToolInterface {
             });
          }
       } else if (this.subMode === "grab") {
-         //
+         this._board.discardActiveShapes();
       }
    }
 
@@ -200,7 +206,10 @@ class SelectionTool implements ToolInterface {
 
       this._board.render();
       this._board.ctx2.clearRect(0, 0, this._board.canvas2.width, this._board.canvas2.height);
+      this._board.onMouseUpCallback?.({ e: { point: mouse } });
    }
+
+   dblClick(e: PointerEvent | MouseEvent): void {}
 
    cleanUp(): void {
       document.removeEventListener("keydown", this.handleKeyDown);

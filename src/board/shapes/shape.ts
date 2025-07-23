@@ -27,6 +27,7 @@ const keysNotNeeded = ["ctx", "eventListeners"];
 abstract class Shape implements ShapeProps {
    padding = 4;
 
+   protected isUpdateText: boolean = false;
    protected lastFlippedState: { x: boolean; y: boolean };
    declare type: shapeType;
    declare id: string;
@@ -44,6 +45,9 @@ abstract class Shape implements ShapeProps {
    top: number;
    ctx: CanvasRenderingContext2D;
    scale: number;
+   dash: [number, number];
+   text: string;
+   fontSize: number;
 
    private eventListeners = new Map<ShapeEvent, Set<ShapeEventCallback>>();
 
@@ -68,6 +72,9 @@ abstract class Shape implements ShapeProps {
       scale,
       flipX,
       flipY,
+      dash,
+      text,
+      fontSize,
    }: ShapeProps) {
       this.fill = fill || "#000000";
       this.height = height || 100;
@@ -82,6 +89,9 @@ abstract class Shape implements ShapeProps {
       this.strokeWidth = strokeWidth || 2;
       this.flipX = flipX || false;
       this.flipY = flipY || false;
+      this.dash = dash || [0, 0];
+      this.text = text || "";
+      this.fontSize = fontSize || 20;
       this.id = uuidv4();
 
       this.lastFlippedState = { x: false, y: false };
@@ -115,9 +125,12 @@ abstract class Shape implements ShapeProps {
       const w = this.width + pad * 2;
       const h = this.height + pad * 2;
 
+      const currentScale = context.getTransform().a;
+
       // Draw outer rectangle
       context.beginPath();
       context.strokeStyle = "white";
+      context.lineWidth = this.strokeWidth / currentScale;
       context.rect(x, y, w, h);
       context.stroke();
       context.closePath();
@@ -125,8 +138,9 @@ abstract class Shape implements ShapeProps {
       // Draw corner dots
       const drawDot = (cx: number, cy: number) => {
          context.beginPath();
-         context.fillStyle = "white";
+         context.strokeStyle = "white";
          context.rect(cx - 3, cy - 3, 6, 6);
+         context.stroke();
          context.fill();
          context.closePath();
       };
@@ -159,6 +173,7 @@ abstract class Shape implements ShapeProps {
    mouseup(s: ShapeEventData): void {
       this.emit("mouseup", s);
    }
+
    mouseover(s: ShapeEventData): void {
       const r = resizeRect(
          s.e.point,
@@ -276,6 +291,30 @@ abstract class Shape implements ShapeProps {
    }
 
    setCoords() {}
+
+   isTextUpdateable(p: Point) {
+      const u = this.width * 0.4;
+      const h = this.height * 0.4;
+      if (
+         IsIn({
+            outer: new Box({
+               x1: this.left + u,
+               y1: this.top + h,
+               x2: this.left + this.width - u,
+               y2: this.top + this.height - h,
+            }),
+            inner: new Box({
+               x1: p.x,
+               y1: p.y,
+               x2: p.x + 1,
+               y2: p.y + 1,
+            }),
+         })
+      ) {
+         return true;
+      }
+      return false;
+   }
 }
 
 export default Shape;

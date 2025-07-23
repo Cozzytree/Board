@@ -41,15 +41,12 @@ class DrawTool extends Tool {
       this.shape.setCoords();
       this._board.render();
 
-      this._board.ctx2.clearRect(
-         0,
-         0,
-         this._board.canvas2.width,
-         this._board.canvas2.height,
-      );
+      this._board.ctx2.clearRect(0, 0, this._board.canvas2.width, this._board.canvas2.height);
 
       this.shape = null;
    }
+
+   dblClick(e: PointerEvent | MouseEvent) {}
 }
 
 export default DrawTool;

@@ -26,6 +26,7 @@ export type ShapeEventData = {
 export type ShapeEventCallback = (shape: Shape, data?: ShapeEventData) => void;
 
 export type ShapeProps = {
+   fontSize?: number;
    left?: number;
    top?: number;
    width?: number;
@@ -41,6 +42,8 @@ export type ShapeProps = {
    flipY?: boolean;
    id?: string;
    type?: shapeType;
+   dash?: [number, number];
+   text?: string;
 };
 
 export type ToolCallback = (args: { mode: modes; submode: submodes }) => void;
@@ -49,6 +52,7 @@ export interface ToolInterface {
    pointerDown(e: PointerEvent | MouseEvent): void;
    pointermove(e: PointerEvent | MouseEvent): void;
    pointerup(e: PointerEvent | MouseEvent, cb?: ToolCallback): void;
+   dblClick(e: PointerEvent | MouseEvent): void;
 
    cleanUp(): void;
 }
@@ -59,11 +63,7 @@ export interface Point {
 }
 
 export interface ShapeInterface {
-   draw(options: {
-      active: boolean;
-      ctx?: CanvasRenderingContext2D;
-      addStyles?: boolean;
-   }): void;
+   draw(options: { active: boolean; ctx?: CanvasRenderingContext2D; addStyles?: boolean }): void;
    ID(): string;
    mouseup(s: ShapeEventData): void;
    mouseover(s: ShapeEventData): void;
@@ -87,23 +87,12 @@ export type modes = "cursor" | "shape" | "line" | "draw";
 
 export type submodeline = "line:straight" | "line:anchor";
 export type submodecursor = "grab" | "free";
-export type submodeshape =
-   | "rect"
-   | "circle"
-   | "path:triangle"
-   | "path:pentagon"
-   | "path:plus";
+export type submodeshape = "rect" | "circle" | "path:triangle" | "path:pentagon" | "path:plus";
 export type submodedraw = "pencil";
 
 export type submodes = submodecursor | submodeshape | submodedraw | submodeline;
 
-export type shapeType =
-   | "path"
-   | "rect"
-   | "ellipse"
-   | "text"
-   | "selection"
-   | "line";
+export type shapeType = "path" | "rect" | "ellipse" | "text" | "selection" | "line";
 
 export interface BoxInterface {
    x1: number;

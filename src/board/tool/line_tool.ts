@@ -66,6 +66,8 @@ class LineTool extends Tool {
 
       cb?.({ mode: "cursor", submode: "free" });
    }
+
+   dblClick(e: PointerEvent | MouseEvent) {}
 }
 
 export default LineTool;
