@@ -1,5 +1,5 @@
 import { Line, Shape } from "@/board/index";
-import type { BoxInterface, Point, resizeDirection, ShapeProps } from "@/board/types";
+import type { ShapeProps } from "@/board/types";
 import type { DrawProps } from "../shape";
 import type { LineProps } from "../shape_types";
 
@@ -12,7 +12,7 @@ class PlainLine extends Line {
       return new PlainLine({ ...props, points: this.points });
    }
 
-   draw({ active = true, ctx }: DrawProps): void {
+   draw({ active = true, ctx, resize = false }: DrawProps): void {
       const context = ctx || this.ctx;
       context.save();
       context.translate(this.left, this.top);
@@ -24,6 +24,11 @@ class PlainLine extends Line {
          context.fill();
          context.closePath();
       }
+
+      if (resize) {
+         context.globalAlpha = 0.5;
+      }
+
       context.lineWidth = this.strokeWidth;
       context.strokeStyle = this.stroke;
       context.beginPath();
@@ -31,15 +36,6 @@ class PlainLine extends Line {
       context.lineTo(this.points[1].x, this.points[1].y);
       context.stroke();
       context.restore();
-   }
-
-   Resize(current: Point, b: BoxInterface, resize: resizeDirection): void {
-      const index = resize === "br" ? this.points.length - 1 : this.resizeIndex;
-      if (index === null || index < 0 || index > this.points.length - 1) return;
-      this.points[index] = {
-         x: current.x - this.left,
-         y: current.y - this.top,
-      };
    }
 }
 

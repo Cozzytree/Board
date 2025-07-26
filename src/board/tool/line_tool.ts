@@ -68,6 +68,8 @@ class LineTool extends Tool {
    }
 
    dblClick(e: PointerEvent | MouseEvent) {}
+
+   onClick(e: PointerEvent | MouseEvent): void {}
 }
 
 export default LineTool;

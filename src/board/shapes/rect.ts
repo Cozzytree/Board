@@ -1,3 +1,4 @@
+import Connections from "../connections";
 import { Box, Pointer, Shape } from "../index";
 import type { BoxInterface, Point, resizeDirection, ShapeEventData, ShapeProps } from "../types";
 import { resizeRect } from "../utils/resize";
@@ -47,12 +48,14 @@ class Rect extends Shape {
       return false;
    }
 
-   dragging(prev: Point, current: Point): void {
+   dragging(prev: Point, current: Point) {
       const dx = current.x - prev.x;
       const dy = current.y - prev.y;
 
       this.left += dx;
       this.top += dy;
+
+      return super.dragging(prev, current);
    }
 
    IsResizable(p: Point): resizeDirection | null {
@@ -86,6 +89,7 @@ class Rect extends Shape {
       const currentScale = context.getTransform().a;
 
       if (resize) {
+         context.globalAlpha = 0.5;
          context.strokeStyle = "#808070";
          context.fillStyle = "#606060";
          context.lineWidth = 3 / currentScale;
@@ -109,13 +113,49 @@ class Rect extends Shape {
 
       // text
       // const mesureText = context.measureText("Hello world");
+      const texts = this.text.split("\n");
       context.fillStyle = "white";
-      context.textAlign = "center";
-      context.font = `${this.fontSize}px Arial`;
-      context.fillText("Hello world", this.left + this.width * 0.5, this.top + this.height * 0.5);
+      if (this.textAlign === "center") {
+         context.textAlign = "center";
+      } else if (this.textAlign === "left") {
+         context.textAlign = "left";
+      } else {
+         context.textAlign = "left";
+      }
+
+      context.textBaseline = "middle";
+      context.font = `${this.fontWeight} ${this.fontSize}px sans-serif`;
+
+      // Measure the height of one line (using fontSize * lineHeight ratio, or estimate)
+      const lineHeight = this.fontSize * 1.2; // adjust multiplier as needed
+      const totalHeight = texts.length * lineHeight;
+
+      // Compute starting y-point: center of the shape
+      const centerY = this.top + this.height * 0.5;
+      // First line's baseline
+      let y: number;
+      if (this.verticalAlign === "top") {
+         y = this.top + lineHeight * 0.5;
+      } else {
+         y = centerY - totalHeight / 2 + lineHeight / 2;
+      }
+
+      texts.forEach((t) => {
+         let x: number;
+         if (this.textAlign === "left") {
+            x = this.left + this.padding;
+         } else if (this.textAlign === "center") {
+            x = this.left + this.width * 0.5;
+         } else {
+            const size = context.measureText(t);
+            x = this.left + this.width - size.width - this.padding;
+         }
+         context.fillText(t, x, y);
+         y += lineHeight;
+      });
    }
 
-   Resize(current: Point, old: BoxInterface, d: resizeDirection): void {
+   Resize(current: Point, old: BoxInterface, d: resizeDirection) {
       switch (d) {
          case "tl":
             if (current.x > old.x2) {
@@ -184,6 +224,8 @@ class Rect extends Shape {
                this.height = old.y1 - current.y;
             }
       }
+
+      return super.Resize(current, old, d);
    }
 }
 

@@ -1,4 +1,13 @@
-import { ActiveSelection, Board, Rect, Box, type Shape, Pointer, SimplePath } from "../index";
+import {
+   ActiveSelection,
+   Board,
+   Rect,
+   Box,
+   type Shape,
+   Pointer,
+   SimplePath,
+   Ellipse,
+} from "../index";
 import type { ActiveSeletionProps } from "../shapes/active_selection";
 import type { PathProps } from "../shapes/paths/path";
 import type { ActiveSelectionShape } from "../shapes/shape_types";
@@ -111,19 +120,9 @@ function generateShapeByShapeType(
    if (!val) return null;
    if (val.type === "rect") {
       return new Rect({
+         ...val,
          _board: board,
          ctx,
-         //@ts-expect-error not needed
-         rx: val?.rx || 0,
-         //@ts-expect-error not needed
-         ry: val?.ry || 0,
-         fill: val.fill,
-         strokeWidth: val.strokeWidth,
-         stroke: val.stroke,
-         width: val.width,
-         height: val.height,
-         left: val.left,
-         top: val.top,
       });
    } else if (val.type === "selection") {
       if (!val.shapes || val.shapes.length == 0) return null;
@@ -159,6 +158,14 @@ function generateShapeByShapeType(
             _board: board,
          });
       }
+   } else if (val.type === "ellipse") {
+      return new Ellipse({
+         ...val,
+         _board: board,
+         ctx: ctx,
+      });
+   } else if (val.type === "line") {
+      //
    }
 
    return null;
@@ -239,8 +246,72 @@ function setCoords(points: Point[], left: number, top: number): { box: Box; poin
    };
 }
 
+const intersectLineWithBox = (
+   x1: number,
+   y1: number,
+   x2: number,
+   y2: number,
+   xmin: number,
+   xmax: number,
+   ymin: number,
+   ymax: number,
+) => {
+   const intersections = [];
+
+   // Calculate direction of the line
+   const dx = x2 - x1;
+   const dy = y2 - y1;
+
+   // Check for intersection with the left vertical edge (x = xmin)
+   if (dx !== 0) {
+      const tLeft = (xmin - x1) / dx;
+      if (tLeft >= 0 && tLeft <= 1) {
+         const yIntersection = y1 + tLeft * dy;
+         if (yIntersection >= ymin && yIntersection <= ymax) {
+            intersections.push([xmin, yIntersection]);
+         }
+      }
+   }
+
+   // Check for intersection with the right vertical edge (x = xmax)
+   if (dx !== 0) {
+      const tRight = (xmax - x1) / dx;
+      if (tRight >= 0 && tRight <= 1) {
+         const yIntersection = y1 + tRight * dy;
+         if (yIntersection >= ymin && yIntersection <= ymax) {
+            intersections.push([xmax, yIntersection]);
+         }
+      }
+   }
+
+   // Check for intersection with the bottom horizontal edge (y = ymin)
+   if (dy !== 0) {
+      const tBottom = (ymin - y1) / dy;
+      if (tBottom >= 0 && tBottom <= 1) {
+         const xIntersection = x1 + tBottom * dx;
+         if (xIntersection >= xmin && xIntersection <= xmax) {
+            intersections.push([xIntersection, ymin]);
+         }
+      }
+   }
+
+   // Check for intersection with the top horizontal edge (y = ymax)
+   if (dy !== 0) {
+      const tTop = (ymax - y1) / dy;
+      if (tTop >= 0 && tTop <= 1) {
+         const xIntersection = x1 + tTop * dx;
+         if (xIntersection >= xmin && xIntersection <= xmax) {
+            intersections.push([xIntersection, ymax]);
+         }
+      }
+   }
+
+   return intersections;
+};
+
 export {
    IsIn,
+   intersectLineWithBox,
    setCoords,
    flipXandYByDirection,
    isNearLineSegment,

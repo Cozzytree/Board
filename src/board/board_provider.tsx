@@ -5,6 +5,7 @@ import Toolbar from "./components/toolbar";
 import {
    BoxIcon,
    CircleIcon,
+   DiamondIcon,
    GrabIcon,
    Minus,
    MousePointer,
@@ -64,6 +65,10 @@ const BoardProvider = ({
             { sm: "path:pentagon", I: PentagonIcon },
             { sm: "path:triangle", I: TriangleIcon },
             { sm: "path:plus", I: PlusIcon },
+            {
+               sm: "path:diamond",
+               I: DiamondIcon,
+            },
          ],
       },
 

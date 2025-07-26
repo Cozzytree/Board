@@ -33,6 +33,7 @@ class Board implements BoardInterface {
    declare canvas2: HTMLCanvasElement;
    declare ctx2: CanvasRenderingContext2D;
    private handleDoubleClick: (e: PointerEvent | MouseEvent) => void;
+   private handleClick: (e: PointerEvent | MouseEvent) => void;
    private handlePointerDown: (e: PointerEvent) => void;
    private handlePointerMove: (e: PointerEvent) => void;
    private handlePointerUp: (e: PointerEvent) => void;
@@ -92,6 +93,7 @@ class Board implements BoardInterface {
 
       this.currentTool = new SelectionTool(this, "free");
 
+      this.handleClick = this.onclick.bind(this);
       this.handlePointerDown = this.onmousedown.bind(this);
       this.handlePointerMove = this.onmousemove.bind(this);
       this.handlePointerUp = this.onmouseup.bind(this);
@@ -100,6 +102,7 @@ class Board implements BoardInterface {
 
       this.onMouseUpCallback = onMouseUp;
 
+      this.canvas.addEventListener("click", this.handleClick);
       this.canvas.addEventListener("pointerdown", this.handlePointerDown);
       this.canvas.addEventListener("pointermove", this.handlePointerMove);
       this.canvas.addEventListener("pointerup", this.handlePointerUp);
@@ -227,6 +230,10 @@ class Board implements BoardInterface {
       this.currentTool.dblClick(e);
    }
 
+   private onclick(e: PointerEvent | MouseEvent) {
+      this.currentTool.onClick(e);
+   }
+
    set setMode({ m, sm, originUi = false }: { m: modes; sm: submodes; originUi?: boolean }) {
       if (m === "cursor") {
          this.setTool(new SelectionTool(this, sm));
@@ -264,6 +271,8 @@ class Board implements BoardInterface {
    }
 
    clean() {
+      this.canvas.removeEventListener("dblclick", this.handleDoubleClick);
+      this.canvas.removeEventListener("click", this.handleClick);
       this.canvas.removeEventListener("pointerdown", this.handlePointerDown);
       this.canvas.removeEventListener("pointermove", this.handlePointerMove);
       this.canvas.removeEventListener("pointerup", this.handlePointerUp);

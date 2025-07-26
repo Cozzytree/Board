@@ -28,6 +28,24 @@ class ShapeTool implements ToolInterface {
       }
 
       switch (this.submode) {
+         case "path:diamond":
+            this.newShape = new Path({
+               _board: this._board,
+               ctx: this._board.ctx,
+               width: 4,
+               height: 4,
+               points: [
+                  new Pointer({ x: 0, y: 4 * 0.2 }),
+                  new Pointer({ x: 4 * 0.2, y: 0 }),
+                  new Pointer({ x: 4 - 4 * 0.2, y: 0 }),
+                  new Pointer({ x: 4, y: 4 * 0.2 }),
+                  new Pointer({ x: 4 / 2, y: 4 }),
+                  new Pointer({ x: 0, y: 4 * 0.2 }),
+               ],
+               left: mouse.x,
+               top: mouse.y,
+            });
+            break;
          case "path:triangle":
             this.newShape = new Path({
                _board: this._board,
@@ -115,6 +133,8 @@ class ShapeTool implements ToolInterface {
    }
 
    dblClick(e: PointerEvent | MouseEvent): void {}
+
+   onClick(e: PointerEvent | MouseEvent): void {}
 
    private draw(...shapes: Shape[]) {
       const ctx = this._board.ctx2;

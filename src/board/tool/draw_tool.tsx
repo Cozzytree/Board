@@ -47,6 +47,8 @@ class DrawTool extends Tool {
    }
 
    dblClick(e: PointerEvent | MouseEvent) {}
+
+   onClick(e: PointerEvent | MouseEvent): void {}
 }
 
 export default DrawTool;

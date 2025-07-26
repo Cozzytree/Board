@@ -1,6 +1,9 @@
 export type Identity<T> = { [K in keyof T]: T[K] | any };
 
+export type textAlign = "left" | "center" | "right";
+
 import type { Shape, Board } from "./index";
+import type { ConnectionInterface } from "./shapes/shape_types";
 
 export type ConnectionPoint = {
    s: Shape | null;
@@ -27,6 +30,8 @@ export type ShapeEventCallback = (shape: Shape, data?: ShapeEventData) => void;
 
 export type ShapeProps = {
    fontSize?: number;
+   verticalAlign?: "top" | "center" | "bottom";
+   textAlign?: textAlign;
    left?: number;
    top?: number;
    width?: number;
@@ -44,6 +49,7 @@ export type ShapeProps = {
    type?: shapeType;
    dash?: [number, number];
    text?: string;
+   connections?: ConnectionInterface;
 };
 
 export type ToolCallback = (args: { mode: modes; submode: submodes }) => void;
@@ -53,7 +59,7 @@ export interface ToolInterface {
    pointermove(e: PointerEvent | MouseEvent): void;
    pointerup(e: PointerEvent | MouseEvent, cb?: ToolCallback): void;
    dblClick(e: PointerEvent | MouseEvent): void;
-
+   onClick(e: PointerEvent | MouseEvent): void;
    cleanUp(): void;
 }
 
@@ -87,7 +93,13 @@ export type modes = "cursor" | "shape" | "line" | "draw";
 
 export type submodeline = "line:straight" | "line:anchor";
 export type submodecursor = "grab" | "free";
-export type submodeshape = "rect" | "circle" | "path:triangle" | "path:pentagon" | "path:plus";
+export type submodeshape =
+   | "rect"
+   | "circle"
+   | "path:triangle"
+   | "path:pentagon"
+   | "path:plus"
+   | "path:diamond";
 export type submodedraw = "pencil";
 
 export type submodes = submodecursor | submodeshape | submodedraw | submodeline;

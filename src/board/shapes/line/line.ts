@@ -1,7 +1,7 @@
-import { isPointNearSegment, setCoords } from "@/board/utils/utilfunc";
-import { Pointer, Shape } from "../../index";
-import type { Point, resizeDirection, ShapeEventData, ShapeProps } from "../../types";
-import type { LineProps, LineType } from "../shape_types";
+import { intersectLineWithBox, isPointNearSegment, setCoords } from "@/board/utils/utilfunc";
+import { AnchorLine, Pointer, Shape } from "@/board/index";
+import type { BoxInterface, Point, resizeDirection, ShapeEventData, ShapeProps } from "../../types";
+import type { connectionEventData, LineProps, LineType } from "../shape_types";
 
 type Connection = {
    s: Shape;
@@ -104,6 +104,141 @@ abstract class Line extends Shape {
    mouseup(s: ShapeEventData): void {
       this.setCoords();
       super.emit("mouseup", s);
+
+      if (
+         this.resizeIndex === null ||
+         this.resizeIndex < 0 ||
+         this.resizeIndex > this.points.length - 1
+      )
+         return;
+
+      const foundShape = this._board.shapeStore.forEach((shape) => {
+         if (shape.IsDraggable(s.e.point) && shape.type !== "line" && shape.ID() != this.ID()) {
+            return true;
+         }
+         return false;
+      });
+
+      if (!foundShape) {
+         this.connections.clear(this.resizeIndex === 0 ? "s" : "e", this.ID());
+         return;
+      }
+
+      const coords = {
+         x: ((s.e.point.x - foundShape.left) / foundShape.width) * 100,
+         y: ((s.e.point.y - foundShape.top) / foundShape.height) * 100,
+      };
+
+      if (this.resizeIndex == 0) {
+         this.connections.clear("s", this.ID());
+         // check if already connected to end
+         const alreadyConnected = this.connections.forEach((connect) => {
+            if (connect.s.ID() === foundShape.ID() && connect.connected === "e") return true;
+            return false;
+         });
+
+         if (alreadyConnected !== null) return;
+
+         this.connections.add({ s: foundShape, coords, connected: "s" });
+         foundShape.connections.add({ s: this, coords, connected: "s" });
+      } else {
+         this.connections.clear("e", this.ID());
+         // check if already connected to start
+         const alreadyConnected = this.connections.forEach((connect) => {
+            if (connect.s.ID() === foundShape.ID() && connect.connected === "s") return true;
+            return false;
+         });
+
+         if (alreadyConnected !== null) return;
+
+         this.connections.add({ s: foundShape, coords, connected: "e" });
+         foundShape.connections.add({ s: this, coords, connected: "e" });
+      }
+      this.resizeIndex = null;
+   }
+
+   Resize(current: Point, old: BoxInterface, d: resizeDirection): void {
+      const index = d === "br" ? this.points.length - 1 : this.resizeIndex;
+      if (index === null || index < 0 || index > this.points.length - 1) return;
+
+      if (this.resizeIndex == null) {
+         this.resizeIndex = index;
+      }
+
+      const foundShape = this._board.shapeStore.forEach((s) => {
+         if (s.IsDraggable(current) && s.ID() !== this.ID() && s.type !== "line") {
+            return true;
+         }
+         return false;
+      });
+
+      if (foundShape) {
+         let oppositeP = index;
+         if (index === 0) {
+            oppositeP = 1;
+         } else {
+            oppositeP = this.points.length - 2;
+         }
+
+         const i = intersectLineWithBox(
+            current.x,
+            current.y,
+            this.left + this.points[oppositeP].x,
+            this.top + this.points[oppositeP].y,
+            foundShape.left,
+            foundShape.left + foundShape.width,
+            foundShape.top,
+            foundShape.top + foundShape.height,
+         );
+         if (i.length) {
+            const intersectPoint = new Pointer({ x: i[0][0], y: i[0][1] });
+
+            // Convert intersection point to relative coordinates within this box
+            const relativeX = intersectPoint.x - this.left;
+            const relativeY = intersectPoint.y - this.top;
+
+            this.points[index] = new Pointer({ x: relativeX, y: relativeY });
+         }
+      } else {
+         this.points[index] = { x: current.x - this.left, y: current.y - this.top };
+      }
+   }
+
+   connectionEvent({ c, s, p }: connectionEventData): void {
+      const absPoint = {
+         x: s.left + (c.coords.x / 100) * s.width,
+         y: s.top + (c.coords.y / 100) * s.height,
+      };
+
+      let index = 0;
+      if (c.connected === "s") {
+         index = this.points.length - 1;
+      }
+
+      const intersect = intersectLineWithBox(
+         this.left + this.points[index].x,
+         this.top + this.points[index].y,
+         absPoint.x,
+         absPoint.y,
+         s.left,
+         s.left + s.width,
+         s.top,
+         s.top + s.height,
+      );
+
+      if (intersect.length) {
+         const relativeX = intersect[0][0] - this.left;
+         const relativeY = intersect[0][1] - this.top;
+         if (c.connected == "s") {
+            this.points[0] = { x: relativeX, y: relativeY };
+         } else {
+            this.points[this.points.length - 1] = { x: relativeX, y: relativeY };
+         }
+
+         if (this instanceof AnchorLine) {
+            this.Resize(p, { x1: 0, y1: 0, y2: 0, x2: 0 }, "b");
+         }
+      }
    }
 }
 

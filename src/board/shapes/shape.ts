@@ -10,10 +10,13 @@ import type {
    shapeType,
    ShapeEventData,
    Identity,
+   textAlign,
 } from "../types";
 import { Box, type Board } from "../index";
 import { IsIn } from "../utils/utilfunc";
 import { resizeRect } from "../utils/resize";
+import type { connectionEventData, ConnectionInterface } from "./shape_types";
+import Connections from "../connections";
 
 export type DrawProps = {
    active: boolean;
@@ -27,12 +30,14 @@ const keysNotNeeded = ["ctx", "eventListeners"];
 abstract class Shape implements ShapeProps {
    padding = 4;
 
-   protected isUpdateText: boolean = false;
    protected lastFlippedState: { x: boolean; y: boolean };
    declare type: shapeType;
    declare id: string;
    declare _board: Board;
 
+   fontWeight: number;
+   verticalAlign: "top" | "center" | "bottom";
+   textAlign: textAlign;
    flipX: boolean;
    flipY: boolean;
    strokeWidth: number;
@@ -48,15 +53,15 @@ abstract class Shape implements ShapeProps {
    dash: [number, number];
    text: string;
    fontSize: number;
+   connections: ConnectionInterface;
 
    private eventListeners = new Map<ShapeEvent, Set<ShapeEventCallback>>();
 
    abstract draw(options: DrawProps): void;
    abstract IsResizable(p: Point): resizeDirection | null;
    abstract IsDraggable(p: Point): boolean;
-   abstract Resize(current: Point, old: BoxInterface, d: resizeDirection): void;
    abstract clone(): Shape;
-   abstract dragging(mousedown: Point, move: Point): void;
+   // abstract connectionEvent(e: connectionEventData): void;
 
    constructor({
       fill,
@@ -75,6 +80,9 @@ abstract class Shape implements ShapeProps {
       dash,
       text,
       fontSize,
+      verticalAlign,
+      textAlign,
+      connections,
    }: ShapeProps) {
       this.fill = fill || "#000000";
       this.height = height || 100;
@@ -92,6 +100,10 @@ abstract class Shape implements ShapeProps {
       this.dash = dash || [0, 0];
       this.text = text || "";
       this.fontSize = fontSize || 20;
+      this.verticalAlign = verticalAlign || "top";
+      this.fontWeight = 500;
+      this.textAlign = textAlign || "center";
+      this.connections = connections || new Connections();
       this.id = uuidv4();
 
       this.lastFlippedState = { x: false, y: false };
@@ -115,6 +127,34 @@ abstract class Shape implements ShapeProps {
          id: uuidv4(),
          type: this.type,
       };
+   }
+
+   connectionEvent(_: connectionEventData) {}
+
+   dragging(_: Point, current: Point): Shape[] | void {
+      if (this.connections) {
+         const s: Shape[] = [];
+         this.connections.forEach((c) => {
+            s.push(c.s);
+            c.s.connectionEvent({ s: this, c, p: current });
+            return false;
+         });
+
+         return s;
+      }
+   }
+
+   Resize(current: Point, old: BoxInterface, d: resizeDirection): Shape[] | void {
+      if (this.connections) {
+         const s: Shape[] = [];
+         this.connections.forEach((c) => {
+            s.push(c.s);
+            c.s.connectionEvent({ s: this, c, p: current });
+            return false;
+         });
+
+         return s;
+      }
    }
 
    activeRect(ctx?: CanvasRenderingContext2D) {
@@ -291,30 +331,6 @@ abstract class Shape implements ShapeProps {
    }
 
    setCoords() {}
-
-   isTextUpdateable(p: Point) {
-      const u = this.width * 0.4;
-      const h = this.height * 0.4;
-      if (
-         IsIn({
-            outer: new Box({
-               x1: this.left + u,
-               y1: this.top + h,
-               x2: this.left + this.width - u,
-               y2: this.top + this.height - h,
-            }),
-            inner: new Box({
-               x1: p.x,
-               y1: p.y,
-               x2: p.x + 1,
-               y2: p.y + 1,
-            }),
-         })
-      ) {
-         return true;
-      }
-      return false;
-   }
 }
 
 export default Shape;

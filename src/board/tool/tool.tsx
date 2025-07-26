@@ -7,6 +7,8 @@ abstract class Tool implements ToolInterface {
    abstract pointerDown(e: PointerEvent | MouseEvent): void;
    abstract pointermove(e: PointerEvent | MouseEvent): void;
    abstract pointerup(e: PointerEvent | MouseEvent, cb?: ToolCallback): void;
+   abstract onClick(e: PointerEvent | MouseEvent): void;
+   abstract dblClick(e: PointerEvent | MouseEvent): void;
    abstract cleanUp(): void;
 
    constructor(board: Board) {
@@ -17,12 +19,7 @@ abstract class Tool implements ToolInterface {
       const ctx = this._board.ctx2;
 
       ctx.setTransform(1, 0, 0, 1, 0, 0);
-      ctx.clearRect(
-         0,
-         0,
-         this._board.canvas2.width,
-         this._board.canvas2.height,
-      );
+      ctx.clearRect(0, 0, this._board.canvas2.width, this._board.canvas2.height);
       ctx.save();
 
       ctx.translate(this._board.offset.x, this._board.offset.y);

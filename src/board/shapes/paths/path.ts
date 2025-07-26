@@ -254,12 +254,14 @@ class Path extends Shape {
       });
    }
 
-   dragging(current: Point, prev: Point): void {
+   dragging(prev: Point, current: Point) {
       const dx = current.x - prev.x;
       const dy = current.y - prev.y;
 
-      this.left -= dx;
-      this.top -= dy;
+      this.left += dx;
+      this.top += dy;
+
+      return super.dragging(prev, current);
    }
 }
 

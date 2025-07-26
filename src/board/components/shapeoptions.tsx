@@ -1,4 +1,7 @@
 import {
+   AlignCenterIcon,
+   AlignLeftIcon,
+   AlignRightIcon,
    BoldIcon,
    Circle,
    CircleDashed,
@@ -12,6 +15,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { COLORS, FONT_SIZES } from "../constants";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
+import type { textAlign } from "../types";
 
 function ShapeOptions() {
    const { activeShape, canvas } = useBoard();
@@ -68,47 +72,117 @@ function ShapeOptions() {
 
          <StrokeDash />
 
-         <Popover>
-            <PopoverTrigger asChild>
-               <button
-                  className={"py-[0.25em] text-sm px-[0.6em] rounded-sm hover:bg-foreground/10"}>
-                  {activeShape?.get("fontSize")}
-               </button>
-            </PopoverTrigger>
-            <PopoverContent
-               className="w-fit p-1 flex flex-col"
-               onClick={(e) => {
-                  if (!activeShape) return;
-                  const target = e.target as HTMLElement;
-                  const size = Number(target.getAttribute("data-size"));
-                  if (isNaN(size)) return;
-
-                  activeShape.set("fontSize", size);
-                  canvas?.render();
-               }}>
-               {FONT_SIZES.map((f) => (
-                  <button
-                     data-size={f.size}
-                     key={f.size}
-                     className={cn(
-                        activeShape?.get("fontSize") === f.size ? "bg-foreground/10" : "",
-                        "py-[0.25em] text-sm px-[0.6em] rounded-sm hover:bg-foreground/10",
-                     )}>
-                     {f.label}
-                  </button>
-               ))}
-            </PopoverContent>
-         </Popover>
+         <FontSizes />
 
          <div className="flex items-center">
-            <button className={"py-[0.25em] text-sm px-[0.6em] rounded-sm hover:bg-foreground/10"}>
-               <BoldIcon width={14} />
-            </button>
+            <BoldOption />
             <button className={"py-[0.25em] text-sm px-[0.6em] rounded-sm hover:bg-foreground/10"}>
                <ItalicIcon width={14} />
             </button>
          </div>
+
+         <AlignOptions />
       </div>
+   );
+}
+
+function AlignOptions() {
+   const { activeShape, canvas } = useBoard();
+   const [allign, setAllign] = useState((activeShape?.get("textAlign") as textAlign) || "center");
+
+   const handleAlign = (a: textAlign) => {
+      if (!activeShape || !canvas) return;
+      activeShape.set("textAlign", a);
+      canvas.render();
+      setAllign(a);
+   };
+
+   return (
+      <div
+         className="flex items-center"
+         onClick={(e) => {
+            const target = (e.target as HTMLElement).closest("[data-align]") as HTMLElement;
+            const a = target.getAttribute("data-align") as textAlign;
+            if (!a) return;
+            handleAlign(a);
+         }}>
+         <button
+            data-align="left"
+            className={`${allign === "left" && "bg-muted"} py-[0.25em] text-sm px-[0.6em] rounded-sm hover:bg-foreground/10`}>
+            <AlignLeftIcon width={14} />
+         </button>
+         <button
+            data-align="center"
+            className={`${allign === "center" && "bg-muted"} py-[0.25em] text-sm px-[0.6em] rounded-sm hover:bg-foreground/10`}>
+            <AlignCenterIcon width={14} />
+         </button>
+         <button
+            data-align="right"
+            className={`${allign === "right" && "bg-muted"} py-[0.25em] text-sm px-[0.6em] rounded-sm hover:bg-foreground/10`}>
+            <AlignRightIcon width={14} />
+         </button>
+      </div>
+   );
+}
+
+function BoldOption() {
+   const { activeShape, canvas } = useBoard();
+   const [w, setW] = useState((activeShape?.get("fontWeight") as number) || 500);
+
+   return (
+      <button
+         onClick={() => {
+            if (!activeShape || !canvas) return;
+            activeShape.set("fontWeight", w === 500 ? 800 : 500);
+            canvas.render();
+            setW((p) => (p == 500 ? 800 : 500));
+         }}
+         className={`${w === 500 ? "" : "bg-muted"} py-[0.25em] text-sm px-[0.6em] rounded-sm hover:bg-foreground/10`}>
+         <BoldIcon width={14} />
+      </button>
+   );
+}
+
+function FontSizes() {
+   const { activeShape, canvas } = useBoard();
+   const [size, setSize] = useState(
+      FONT_SIZES.find((f) => f.size === activeShape?.get("fontSize")),
+   );
+
+   return (
+      <Popover>
+         <PopoverTrigger asChild>
+            <button className={"py-[0.25em] text-sm px-[0.6em] rounded-sm hover:bg-foreground/10"}>
+               {size && size.label}
+            </button>
+         </PopoverTrigger>
+         <PopoverContent
+            className="w-fit p-1 flex flex-col"
+            onClick={(e) => {
+               if (!activeShape || !canvas) return;
+               const target = e.target as HTMLElement;
+               const size = Number(target.getAttribute("data-size"));
+               if (isNaN(size)) return;
+
+               activeShape.set("fontSize", size);
+               canvas.render();
+               setSize(() => {
+                  return FONT_SIZES.find((f) => f.size === size);
+               });
+            }}>
+            {FONT_SIZES.map((f) => (
+               <button
+                  data-size={f.size}
+                  key={f.size}
+                  className={cn(
+                     activeShape?.get("fontSize") === f.size ? "bg-foreground/10" : "",
+                     "py-[0.25em] text-sm px-[0.6em] rounded-sm hover:bg-foreground/10",
+                  )}>
+                  {f.label}
+               </button>
+            ))}
+         </PopoverContent>
+      </Popover>
    );
 }
 

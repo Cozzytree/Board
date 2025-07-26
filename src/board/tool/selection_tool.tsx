@@ -4,6 +4,8 @@ import type { Identity, Point, resizeDirection, submodes, ToolInterface } from "
 import { ActiveSelection, Box, Pointer } from "../index";
 import { generateShapeByShapeType } from "../utils/utilfunc";
 
+const textAreaId = "text-update";
+
 type ResizeShapeProps = {
    s: Shape;
    d: resizeDirection;
@@ -12,6 +14,7 @@ type ResizeShapeProps = {
 } | null;
 
 class SelectionTool implements ToolInterface {
+   private isTextEdit: Shape | null = null;
    private handleKeyDown: (e: KeyboardEvent) => void;
    private _board: Board;
    private draggedShape: Shape | null = null;
@@ -34,6 +37,8 @@ class SelectionTool implements ToolInterface {
       const mouse = this._board.getTransFormedCoords(e);
       this.mouseDownPoint = mouse;
       this.lastPoint = new Pointer(mouse);
+
+      if (this.isTextEdit != null) return;
 
       if (e.altKey) {
          const shapeFound = this._board.shapeStore.forEach((s) => {
@@ -105,11 +110,6 @@ class SelectionTool implements ToolInterface {
                };
                return;
             }
-
-            if (s.isTextUpdateable(mouse)) {
-               console.log("update text");
-               return;
-            }
          }
 
          const drag = this._board.shapeStore.forEach((s) => {
@@ -142,15 +142,19 @@ class SelectionTool implements ToolInterface {
       const mouse = this._board.getTransFormedCoords(e);
       this._board._lastMousePosition = mouse;
       if (this.draggedShape != null) {
-         this.draggedShape.dragging(new Pointer(this.lastPoint), new Pointer(mouse));
+         const shapes = this.draggedShape.dragging(new Pointer(this.lastPoint), new Pointer(mouse));
          this.lastPoint = mouse;
-         this.draw(this.draggedShape);
+         this.draw(this.draggedShape, ...(shapes || []));
          return;
       }
 
       if (this.resizableShape) {
-         this.resizableShape.s.Resize(mouse, this.resizableShape.oldProps, this.resizableShape.d);
-         this.draw(this.resizableShape.s);
+         const shapes = this.resizableShape.s.Resize(
+            mouse,
+            this.resizableShape.oldProps,
+            this.resizableShape.d,
+         );
+         this.draw(this.resizableShape.s, ...(shapes || []));
          return;
       }
 
@@ -209,7 +213,57 @@ class SelectionTool implements ToolInterface {
       this._board.onMouseUpCallback?.({ e: { point: mouse } });
    }
 
-   dblClick(e: PointerEvent | MouseEvent): void {}
+   dblClick(e: PointerEvent | MouseEvent): void {
+      const mouse = this._board.getTransFormedCoords(e);
+      const active = this._board.getActiveShapes();
+      if (active.length) {
+         const a = active[0];
+         if (a.IsDraggable(mouse)) {
+            const rect = this._board.canvas.getBoundingClientRect();
+            document.getElementById(textAreaId)?.remove();
+
+            const div = document.createElement("div");
+            div.setAttribute("id", textAreaId);
+
+            const tarea = document.createElement("textarea");
+
+            div.style.position = "absolute";
+            div.style.left = rect.left + a.left + "px";
+            div.style.top = rect.top + a.top + "px";
+            div.style.width = a.width + "px";
+            div.style.height = a.height + "px";
+            div.style.display = "flex";
+            div.style.placeItems = "center";
+            div.style.zIndex = "50";
+            div.style.justifyContent = "center";
+            div.append(tarea);
+
+            tarea.style.outline = "none";
+            tarea.classList.add("var-(bg-background)");
+            tarea.placeholder = "type here";
+            tarea.innerText = a.text;
+            tarea.style.fontSize = "0.9em";
+            tarea.style.resize = "none";
+            tarea.style.width = "auto";
+            document.body.append(div);
+
+            tarea.focus();
+
+            tarea.addEventListener("blur", () => {
+               console.log(tarea);
+               a.set("text", tarea.value);
+               this.isTextEdit = null;
+               a._board.render();
+               div.remove();
+               tarea.remove();
+            });
+
+            this.isTextEdit = a;
+         }
+      }
+   }
+
+   onClick(e: PointerEvent | MouseEvent): void {}
 
    cleanUp(): void {
       document.removeEventListener("keydown", this.handleKeyDown);

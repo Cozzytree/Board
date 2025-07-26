@@ -8,13 +8,7 @@ export default function Toolbar() {
    return (
       <div className="flex flex-col bg-background gap-1 p-1 items-center rounded-sm border border-muted shadow">
          {tools.map((t, i) => (
-            <div
-               onClick={(e) => {
-                  const target = e.target as HTMLElement;
-                  // if (e.target.container)
-               }}
-               key={i}
-               className="flex items-center">
+            <div key={i} className="flex items-center">
                <Popover>
                   <PopoverTrigger asChild>
                      <button
@@ -33,7 +27,7 @@ export default function Toolbar() {
                   </PopoverTrigger>
                   <PopoverContent
                      side="left"
-                     className="w-fit flex flex-col bg-background gap-1 p-1 items-center rounded-xs border border-muted shadow">
+                     className="w-fit flex flex-col bg-background p-1 items-center rounded-xs border border-muted shadow">
                      {t.subMode.map((sm, index) => (
                         <div key={index} className="">
                            <button

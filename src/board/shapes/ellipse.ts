@@ -58,12 +58,14 @@ class Ellipse extends Shape {
       return null;
    }
 
-   dragging(prev: Point, current: Point): void {
+   dragging(prev: Point, current: Point) {
       const dx = current.x - prev.x;
       const dy = current.y - prev.y;
 
       this.left += dx;
       this.top += dy;
+      
+      return super.dragging(prev, current);
    }
 
    activeRect(): void {
