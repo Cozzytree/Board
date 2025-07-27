@@ -243,25 +243,15 @@ class SelectionTool implements ToolInterface {
             div.setAttribute("id", textAreaId);
 
             const tarea = document.createElement("textarea");
-
+            div.classList.add("input-container");
             div.style.position = "absolute";
-            div.style.left = rect.left + a.left + "px";
-            div.style.top = rect.top + a.top + "px";
-            div.style.width = a.width + "px";
-            div.style.height = a.height + "px";
-            div.style.display = "flex";
-            div.style.placeItems = "center";
             div.style.zIndex = "50";
-            div.style.justifyContent = "center";
+            div.style.left = rect.left + p.x + this._board.view.x + "px";
+            div.style.top = rect.top + p.y + this._board.view.y + "px";
             div.append(tarea);
 
-            tarea.style.outline = "none";
-            tarea.classList.add("var-(bg-background)");
             tarea.placeholder = "type here";
             tarea.innerText = a.text;
-            tarea.style.fontSize = "0.9em";
-            tarea.style.resize = "none";
-            tarea.style.width = "auto";
             document.body.append(div);
 
             tarea.focus();

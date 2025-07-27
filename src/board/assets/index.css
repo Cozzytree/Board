@@ -2,6 +2,7 @@ textarea {
    resize: none;
    width: fit-content;
    outline: none;
+   white-space: pre;
 }
 
 .input-container {

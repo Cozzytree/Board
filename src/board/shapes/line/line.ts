@@ -1,7 +1,7 @@
-import { intersectLineWithBox, isPointNearSegment, setCoords } from "@/board/utils/utilfunc";
-import { AnchorLine, Pointer, Shape } from "@/board/index";
 import type { BoxInterface, Point, resizeDirection, ShapeEventData, ShapeProps } from "../../types";
 import type { connectionEventData, LineProps, LineType } from "../shape_types";
+import { intersectLineWithBox, isPointNearSegment, setCoords } from "@/board/utils/utilfunc";
+import { AnchorLine, Pointer, Shape } from "@/board/index";
 
 type Connection = {
    s: Shape;
@@ -18,6 +18,8 @@ abstract class Line extends Shape {
 
    constructor(props: ShapeProps & LineProps) {
       super(props);
+      this.textAlign = "center";
+      this.verticalAlign = "center";
       this.type = "line";
       this.lineType = props.lineType || "straight";
       this.arrowS = true;
@@ -34,7 +36,43 @@ abstract class Line extends Shape {
               ];
    }
 
-   protected renderArrow(ctx: CanvasRenderingContext2D) {}
+   protected renderArrow({
+      ctx,
+      arrowLength,
+      endPoint,
+      startPoint,
+   }: {
+      startPoint: { x: number; y: number };
+      endPoint: { x: number; y: number };
+      arrowLength: number;
+      ctx: CanvasRenderingContext2D;
+   }) {
+      ctx.strokeStyle = this.stroke;
+      ctx.lineWidth = this.strokeWidth;
+      ctx.beginPath();
+
+      // Draw the arrowhead
+      const angle = Math.atan2(endPoint.y - startPoint.y, endPoint.x - startPoint.x);
+
+      // First side of the arrowhead
+      ctx.moveTo(endPoint.x, endPoint.y);
+      ctx.lineTo(
+         endPoint.x - arrowLength * Math.cos(angle - Math.PI / 6),
+         endPoint.y - arrowLength * Math.sin(angle - Math.PI / 6),
+      );
+      ctx.stroke();
+      ctx.closePath();
+
+      // Second side of the arrowhead
+      ctx.beginPath();
+      ctx.moveTo(endPoint.x, endPoint.y);
+      ctx.lineTo(
+         endPoint.x - arrowLength * Math.cos(angle + Math.PI / 6),
+         endPoint.y - arrowLength * Math.sin(angle + Math.PI / 6),
+      );
+      ctx.stroke();
+      ctx.closePath();
+   }
 
    IsResizable(p: Point): resizeDirection | null {
       for (let i = 0; i < this.points.length; i++) {

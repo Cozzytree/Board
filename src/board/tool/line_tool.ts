@@ -1,17 +1,17 @@
 import { AnchorLine, Box, PlainLine, type Board, type Line } from "@/board/index";
+import type { ToolCallback, ToolEventData } from "../types";
 import Tool from "./tool";
-import type { ToolCallback } from "../types";
 
 class LineTool extends Tool {
    private newLine: Line | null = null;
+
    constructor(board: Board) {
       super(board);
    }
 
    cleanUp(): void {}
 
-   pointerDown(e: PointerEvent | MouseEvent): void {
-      const mouse = this._board.getTransFormedCoords(e);
+   pointerDown({ p }: ToolEventData): void {
       if (this._board.modes.sm === "line:straight") {
          this.newLine = new PlainLine({
             _board: this._board,
@@ -20,8 +20,8 @@ class LineTool extends Tool {
                { x: 0, y: 0 },
                { x: 0, y: 0 },
             ],
-            left: mouse.x,
-            top: mouse.y,
+            left: p.x,
+            top: p.y,
          });
       } else {
          this.newLine = new AnchorLine({
@@ -33,17 +33,16 @@ class LineTool extends Tool {
                { x: 1.5, y: 3 },
                { x: 3, y: 3 },
             ],
-            left: mouse.x,
-            top: mouse.y,
+            left: p.x,
+            top: p.y,
          });
       }
    }
 
-   pointermove(e: PointerEvent | MouseEvent): void {
-      const mouse = this._board.getTransFormedCoords(e);
+   pointermove({ p }: ToolEventData): void {
       if (this.newLine) {
          this.newLine.Resize(
-            mouse,
+            p,
             new Box({
                x1: this.newLine.left,
                y1: this.newLine.top,
@@ -56,7 +55,7 @@ class LineTool extends Tool {
       }
    }
 
-   pointerup(e: PointerEvent | MouseEvent, cb?: ToolCallback): void {
+   pointerup(_: ToolEventData, cb?: ToolCallback): void {
       if (this.newLine) {
          this._board.add(this.newLine);
          this._board.render();
@@ -67,9 +66,9 @@ class LineTool extends Tool {
       cb?.({ mode: "cursor", submode: "free" });
    }
 
-   dblClick(e: PointerEvent | MouseEvent) {}
+   dblClick() {}
 
-   onClick(e: PointerEvent | MouseEvent): void {}
+   onClick(): void {}
 }
 
 export default LineTool;

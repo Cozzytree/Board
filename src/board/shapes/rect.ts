@@ -1,6 +1,7 @@
 import { Box, Pointer, Shape } from "../index";
 import type { BoxInterface, Point, resizeDirection, ShapeEventData, ShapeProps } from "../types";
 import { resizeRect } from "../utils/resize";
+import { breakText } from "../utils/utilfunc";
 import type { DrawProps } from "./shape";
 
 type RectProps = {
@@ -77,11 +78,12 @@ class Rect extends Shape {
 
    draw({ active, addStyles = true, ctx, resize = false }: DrawProps): void {
       const context = ctx || this.ctx;
+
+      const r = Math.min(this.rx || 0, this.ry || 0, this.width / 2, this.height / 2);
+
       if (active) {
          this.activeRect();
       }
-
-      const r = Math.min(this.rx || 0, this.ry || 0, this.width / 2, this.height / 2);
 
       context.save();
       context.beginPath();
@@ -111,7 +113,12 @@ class Rect extends Shape {
       context.closePath();
       context.restore();
 
-      super.renderText({ context });
+      if (this.text.length) {
+         super.renderText({
+            context,
+            text: breakText({ ctx: context, text: this.text, width: this.width }).join("\n"),
+         });
+      }
    }
 
    Resize(current: Point, old: BoxInterface, d: resizeDirection) {

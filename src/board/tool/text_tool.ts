@@ -2,7 +2,7 @@ import "../assets/index.css";
 
 import type { Board } from "@/board/index";
 import { Text } from "../../board/index";
-import type { Point, ToolInterface } from "../types";
+import type { Point, ToolEventData, ToolInterface } from "../types";
 
 class TextTool implements ToolInterface {
    private clicked: Point;
@@ -55,9 +55,8 @@ class TextTool implements ToolInterface {
 
    pointerup(): void {}
 
-   onClick(e: PointerEvent | MouseEvent): void {
-      const mouse = this._board.getTransFormedCoords(e);
-      this.clicked = mouse;
+   onClick({ p }: ToolEventData): void {
+      this.clicked = p;
 
       const rect = this._board.canvas.getBoundingClientRect();
 
@@ -67,8 +66,8 @@ class TextTool implements ToolInterface {
       div.setAttribute("id", this.id);
       div.classList.add("input-container");
       div.style.position = "absolute";
-      div.style.left = rect.left + mouse.x + "px";
-      div.style.top = rect.top + mouse.y + "px";
+      div.style.left = rect.left + p.x + this._board.view.x + "px";
+      div.style.top = rect.top + p.y + this._board.view.y + "px";
 
       const text = document.createElement("textarea");
       text.placeholder = "new text";
@@ -92,8 +91,8 @@ class TextTool implements ToolInterface {
          const newText = new Text({
             _board: this._board,
             ctx: this._board.ctx,
-            left: mouse.x,
-            top: mouse.y,
+            left: p.x,
+            top: p.y,
             text: text.value || "",
             fontSize: 15,
             verticalAlign: "top",

@@ -1,14 +1,14 @@
 import type { Board, Shape } from "@/board/index";
-import type { ToolCallback, ToolInterface } from "../types";
+import type { ToolCallback, ToolEventData, ToolInterface } from "../types";
 
 abstract class Tool implements ToolInterface {
    protected _board: Board;
 
-   abstract pointerDown(e: PointerEvent | MouseEvent): void;
-   abstract pointermove(e: PointerEvent | MouseEvent): void;
-   abstract pointerup(e: PointerEvent | MouseEvent, cb?: ToolCallback): void;
-   abstract onClick(e: PointerEvent | MouseEvent): void;
-   abstract dblClick(e: PointerEvent | MouseEvent): void;
+   abstract pointerDown(e: ToolEventData): void;
+   abstract pointermove(e: ToolEventData): void;
+   abstract pointerup(e: ToolEventData, cb?: ToolCallback): void;
+   abstract onClick(e: ToolEventData): void;
+   abstract dblClick(e: ToolEventData): void;
    abstract cleanUp(): void;
 
    constructor(board: Board) {

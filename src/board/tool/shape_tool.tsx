@@ -140,8 +140,8 @@ class ShapeTool implements ToolInterface {
       ctx.clearRect(0, 0, this._board.canvas2.width, this._board.canvas2.height);
       ctx.save();
 
-      ctx.translate(this._board.offset.x, this._board.offset.y);
-      ctx.scale(this._board.scale, this._board.scale);
+      ctx.translate(this._board.view.x, this._board.view.y);
+      ctx.scale(this._board.view.scl, this._board.view.scl);
 
       this._board.canvas2.style.zIndex = "100";
       shapes.forEach((s) => {

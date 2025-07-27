@@ -183,6 +183,7 @@ abstract class Shape implements ShapeProps {
       // Draw corner dots
       const drawDot = (cx: number, cy: number) => {
          context.beginPath();
+         context.fillStyle = "black";
          context.strokeStyle = "white";
          context.rect(cx - 3, cy - 3, 6, 6);
          context.stroke();
