@@ -149,7 +149,7 @@ abstract class Shape implements ShapeProps {
       }
    }
 
-   Resize(current: Point, old: BoxInterface, d: resizeDirection): Shape[] | void {
+   Resize(current: Point, _old: BoxInterface, _: resizeDirection): Shape[] | void {
       if (this.connections) {
          const s: Shape[] = [];
          this.connections.forEach((c) => {

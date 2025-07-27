@@ -171,7 +171,7 @@ class Ellipse extends Shape {
       super.renderText({ context });
    }
 
-   Resize(current: Point, old: BoxInterface, d: resizeDirection): void {
+   Resize(current: Point, old: BoxInterface): void {
       // const oldX1 = old.x1 - this.rx;
       // const oldX2 = old.x1 + this.rx;
       // const oldY1 = old.y1 - this.ry;

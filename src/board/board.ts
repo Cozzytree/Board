@@ -59,7 +59,7 @@ class Board implements BoardInterface {
    declare canvas2: HTMLCanvasElement;
    declare ctx2: CanvasRenderingContext2D;
 
-   private pendingEvent: PointerEvent | null = null;
+   // private pendingEvent: PointerEvent | null = null;
    private pendingEventScheduled: boolean = false;
 
    private handleDoubleClick: (e: PointerEvent | MouseEvent) => void;
@@ -217,12 +217,10 @@ class Board implements BoardInterface {
       this.evt.dx = this.evt.x - this.evt.xi;
       this.evt.dy = this.evt.y - this.evt.yi;
 
-      this.pendingEvent = e;
       if (!this.pendingEventScheduled) {
          this.pendingEventScheduled = true;
          requestAnimationFrame(() => {
             this.currentTool.pointermove({ e: e, p: mouse });
-            this.pendingEvent = null;
             this.pendingEventScheduled = false;
          });
       }

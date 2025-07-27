@@ -195,7 +195,7 @@ abstract class Line extends Shape {
       this.resizeIndex = null;
    }
 
-   Resize(current: Point, old: BoxInterface, d: resizeDirection): void {
+   Resize(current: Point, _: BoxInterface, d: resizeDirection): void {
       const index = d === "br" ? this.points.length - 1 : this.resizeIndex;
       if (index === null || index < 0 || index > this.points.length - 1) return;
 

@@ -3,7 +3,7 @@ import Path, { type PathProps } from "./path";
 import type Shape from "../shape";
 import type { DrawProps } from "../shape";
 import Box from "@/board/utils/box";
-import { IsIn, setCoords } from "@/board/utils/utilfunc";
+import { IsIn } from "@/board/utils/utilfunc";
 
 // flipX formula
 // left + width - this.left + p.x (flipped)

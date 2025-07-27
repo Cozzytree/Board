@@ -1,5 +1,6 @@
 import { SimplePath, type Board } from "@/board/index";
 import Tool from "./tool";
+import type { ToolEventData } from "../types";
 
 class DrawTool extends Tool {
    private shape: SimplePath | null = null;
@@ -9,24 +10,21 @@ class DrawTool extends Tool {
       this._board = board;
    }
 
-   pointerDown(e: PointerEvent | MouseEvent): void {
-      const mouse = this._board.getTransFormedCoords(e);
-
+   pointerDown({ p }: ToolEventData): void {
       this.shape = new SimplePath({
-         left: mouse.x,
-         top: mouse.y,
+         left: p.x,
+         top: p.y,
          _board: this._board,
          ctx: this._board.ctx,
       });
    }
 
-   pointermove(e: PointerEvent | MouseEvent): void {
+   pointermove({ p }: ToolEventData): void {
       if (!this.shape) return;
-      const mouse = this._board.getTransFormedCoords(e);
 
       this.shape.set("points", [
          ...this.shape.get("points"),
-         { x: mouse.x - this.shape.left, y: mouse.y - this.shape.top },
+         { x: p.x - this.shape.left, y: p.y - this.shape.top },
       ]);
       this.draw(this.shape);
    }
@@ -46,9 +44,9 @@ class DrawTool extends Tool {
       this.shape = null;
    }
 
-   dblClick(e: PointerEvent | MouseEvent) {}
+   dblClick() {}
 
-   onClick(e: PointerEvent | MouseEvent): void {}
+   onClick(): void {}
 }
 
 export default DrawTool;

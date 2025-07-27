@@ -144,7 +144,7 @@ class Path extends Shape {
       return null;
    }
 
-   Resize(current: Point, old: BoxInterface, d: resizeDirection): void {
+   Resize(current: Point, old: BoxInterface, d: resizeDirection) {
       let newWidth = this.width;
       let newHeight = this.height;
 
@@ -254,6 +254,8 @@ class Path extends Shape {
          flipX: flip.flipX,
          flipY: flip.flipY,
       });
+
+      return super.Resize(current, old, d);
    }
 
    dragging(prev: Point, current: Point) {

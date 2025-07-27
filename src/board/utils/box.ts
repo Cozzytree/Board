@@ -14,7 +14,7 @@ class Box implements BoxInterface {
    }
 
    compareAndReturnBig(box2: Box): Box {
-      const newBox = new Box({});
+      const newBox = new Box({ x1: 0, y1: 0, x2: 0, y2: 0 });
       newBox.x1 = Math.min(this.x1, box2.x1);
       newBox.x2 = Math.max(this.x2, box2.x2);
       newBox.y1 = Math.min(this.y1, box2.y1);
@@ -24,7 +24,7 @@ class Box implements BoxInterface {
    }
 
    compareAndReturnSmall(box2: Box): Box {
-      const newBox = new Box({});
+      const newBox = new Box({ x1: 0, y1: 0, x2: 0, y2: 0 });
       newBox.x1 = Math.min(this.x1, box2.x1);
       newBox.x2 = Math.max(this.x2, box2.x2);
       newBox.y1 = Math.min(this.y1, box2.y1);
