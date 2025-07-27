@@ -64,7 +64,7 @@ class Ellipse extends Shape {
 
       this.left += dx;
       this.top += dy;
-      
+
       return super.dragging(prev, current);
    }
 
@@ -167,6 +167,8 @@ class Ellipse extends Shape {
       context.stroke();
       context.closePath();
       context.restore();
+
+      super.renderText({ context });
    }
 
    Resize(current: Point, old: BoxInterface, d: resizeDirection): void {

@@ -1,6 +1,7 @@
 import { useBoard } from "../board_provider";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
+import type { LucideIcon } from "lucide-react";
 
 export default function Toolbar() {
    const { mode, setMode, tools } = useBoard();
@@ -14,7 +15,9 @@ export default function Toolbar() {
                      <button
                         onClick={() => {
                            if (mode.m === t.mode) return;
-                           setMode(t.mode, t.subMode[0].sm);
+                           if (!t.subMode.length) {
+                              setMode(t.mode, null);
+                           } else setMode(t.mode, t.subMode[0].sm);
                         }}
                         className={cn(
                            mode.m === t.mode
@@ -22,7 +25,7 @@ export default function Toolbar() {
                               : "hover:bg-foreground/10",
                            "py-[0.25em] px-[0.4em] rounded-sm",
                         )}>
-                        <t.I width={17} />
+                        <ShowIcon I={t.I} />
                      </button>
                   </PopoverTrigger>
                   <PopoverContent
@@ -41,7 +44,7 @@ export default function Toolbar() {
                                  if (mode.sm == sm.sm) return;
                                  setMode(t.mode, sm.sm);
                               }}>
-                              <sm.I width={16} />
+                              <ShowIcon I={sm.I} />
                            </button>
                         </div>
                      ))}
@@ -51,4 +54,12 @@ export default function Toolbar() {
          ))}
       </div>
    );
+}
+
+function ShowIcon({ I }: { I: LucideIcon | string }) {
+   if (typeof I == "string") {
+      return <img src={I} alt={I} loading="lazy" width={20} />;
+   } else {
+      return <I width={17} />;
+   }
 }

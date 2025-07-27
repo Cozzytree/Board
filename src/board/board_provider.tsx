@@ -14,17 +14,18 @@ import {
    PlusIcon,
    Spline,
    TriangleIcon,
+   TypeOutlineIcon,
    type LucideIcon,
 } from "lucide-react";
 import ShapeOptions from "./components/shapeoptions";
 
 type ContextProps = {
-   mode: { m: modes; sm: submodes };
-   setMode: (m: modes, sm: submodes) => void;
+   mode: { m: modes; sm: submodes | null };
+   setMode: (m: modes, sm: submodes | null) => void;
    tools: {
       mode: modes;
-      I: LucideIcon;
-      subMode: { sm: submodes; I: LucideIcon }[];
+      I: LucideIcon | string;
+      subMode: { sm: submodes; I: LucideIcon | string }[];
    }[];
    activeShape: Shape | null;
    canvas: Board | null;
@@ -44,8 +45,8 @@ const BoardProvider = ({
    const [tools, setTools] = React.useState<
       {
          mode: modes;
-         I: LucideIcon;
-         subMode: { sm: submodes; I: LucideIcon }[];
+         I: LucideIcon | string;
+         subMode: { sm: submodes; I: LucideIcon | string }[];
       }[]
    >([
       {
@@ -69,6 +70,10 @@ const BoardProvider = ({
                sm: "path:diamond",
                I: DiamondIcon,
             },
+            {
+               sm: "path:trapezoid",
+               I: "./src/assets/shapes/trapezoid.svg",
+            },
          ],
       },
 
@@ -85,8 +90,13 @@ const BoardProvider = ({
          I: PencilIcon,
          subMode: [{ sm: "pencil", I: PencilIcon }],
       },
+      {
+         mode: "text",
+         I: TypeOutlineIcon,
+         subMode: [],
+      },
    ]);
-   const [mode, setMode] = React.useState<{ m: modes; sm: submodes }>({
+   const [mode, setMode] = React.useState<{ m: modes; sm: submodes | null }>({
       m: "cursor",
       sm: "free",
    });
@@ -118,7 +128,7 @@ const BoardProvider = ({
       };
    }, []);
 
-   const handleModeChange = (m: modes, sm: submodes) => {
+   const handleModeChange = (m: modes, sm: submodes | null) => {
       if (!borderRef.current) return;
       setMode({ m, sm });
       borderRef.current.setMode = { m, sm, originUi: true };
@@ -154,6 +164,8 @@ const BoardProvider = ({
             mode,
             setMode: handleModeChange,
          }}>
+         <div className="w-32 bg-amber-100" />
+
          <canvas ref={canvasRef} style={{ width: width + "px", height: height + "px" }} />
          <div className="pointer-events-auto z-50 right-8 top-1/2 w-fit -translate-y-[50%] fixed flex justify-center">
             <Toolbar />

@@ -126,6 +126,11 @@ abstract class Shape implements ShapeProps {
          strokeWidth: this.strokeWidth,
          id: uuidv4(),
          type: this.type,
+         text: this.text,
+         dash: this.dash,
+         fontSize: this.fontSize,
+         textAlign: this.textAlign,
+         verticalAlign: this.verticalAlign,
       };
    }
 
@@ -331,6 +336,53 @@ abstract class Shape implements ShapeProps {
    }
 
    setCoords() {}
+
+   protected renderText({ context, text }: { text?: string; context: CanvasRenderingContext2D }) {
+      // text
+      // const mesureText = context.measureText("Hello world");
+      const texts = text?.split("\n") || this.text.split("\n");
+      context.fillStyle = "white";
+      if (this.textAlign === "center") {
+         context.textAlign = "center";
+      } else if (this.textAlign === "left") {
+         context.textAlign = "left";
+      } else {
+         context.textAlign = "left";
+      }
+
+      context.textBaseline = "middle";
+      context.font = `${this.fontWeight} ${this.fontSize}px sans-serif`;
+
+      // Measure the height of one line (using fontSize * lineHeight ratio, or estimate)
+      const lineHeight = this.fontSize * 1.2; // adjust multiplier as needed
+      const totalHeight = texts.length * lineHeight;
+
+      // Compute starting y-point: center of the shape
+      const centerY = this.top + this.height * 0.5;
+      // First line's baseline
+      let y: number;
+      if (this.verticalAlign === "top") {
+         y = this.top + lineHeight * 0.8;
+      } else if (this.verticalAlign === "center") {
+         y = centerY - totalHeight / 2 + lineHeight / 2;
+      } else {
+         y = this.top + this.height - totalHeight;
+      }
+
+      texts.forEach((t) => {
+         let x: number;
+         if (this.textAlign === "left") {
+            x = this.left + this.padding;
+         } else if (this.textAlign === "center") {
+            x = this.left + this.width * 0.5;
+         } else {
+            const size = context.measureText(t);
+            x = this.left + this.width - size.width - this.padding;
+         }
+         context.fillText(t, x, y);
+         y += lineHeight;
+      });
+   }
 }
 
 export default Shape;

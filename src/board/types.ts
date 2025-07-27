@@ -54,12 +54,14 @@ export type ShapeProps = {
 
 export type ToolCallback = (args: { mode: modes; submode: submodes }) => void;
 
+export type ToolEventData = { p: Point; e: MouseEvent | PointerEvent | WheelEvent };
+
 export interface ToolInterface {
-   pointerDown(e: PointerEvent | MouseEvent): void;
-   pointermove(e: PointerEvent | MouseEvent): void;
-   pointerup(e: PointerEvent | MouseEvent, cb?: ToolCallback): void;
-   dblClick(e: PointerEvent | MouseEvent): void;
-   onClick(e: PointerEvent | MouseEvent): void;
+   pointerDown(e: ToolEventData): void;
+   pointermove(e: ToolEventData): void;
+   pointerup(e: ToolEventData, cb?: ToolCallback): void;
+   dblClick(e: ToolEventData): void;
+   onClick(e: ToolEventData): void;
    cleanUp(): void;
 }
 
@@ -83,13 +85,13 @@ export interface ShapeInterface {
 export interface BoardInterface {
    canvas: HTMLCanvasElement;
    ctx: CanvasRenderingContext2D;
-   modes: { m: modes; sm: submodes };
+   modes: { m: modes; sm: submodes | null };
    offset: Point;
    onMouseMove?: () => void;
    onMouseUp?: () => void;
 }
 
-export type modes = "cursor" | "shape" | "line" | "draw";
+export type modes = "cursor" | "shape" | "line" | "draw" | "text";
 
 export type submodeline = "line:straight" | "line:anchor";
 export type submodecursor = "grab" | "free";
@@ -99,7 +101,8 @@ export type submodeshape =
    | "path:triangle"
    | "path:pentagon"
    | "path:plus"
-   | "path:diamond";
+   | "path:diamond"
+   | "path:trapezoid";
 export type submodedraw = "pencil";
 
 export type submodes = submodecursor | submodeshape | submodedraw | submodeline;

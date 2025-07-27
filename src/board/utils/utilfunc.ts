@@ -7,6 +7,7 @@ import {
    Pointer,
    SimplePath,
    Ellipse,
+   Text,
 } from "../index";
 import type { ActiveSeletionProps } from "../shapes/active_selection";
 import type { PathProps } from "../shapes/paths/path";
@@ -166,6 +167,12 @@ function generateShapeByShapeType(
       });
    } else if (val.type === "line") {
       //
+   } else if (val.type === "text") {
+      return new Text({
+         ...val,
+         _board: board,
+         ctx: ctx,
+      });
    }
 
    return null;

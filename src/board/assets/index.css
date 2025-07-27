@@ -1,0 +1,12 @@
+textarea {
+   resize: none;
+   width: fit-content;
+   outline: none;
+}
+
+.input-container {
+   background: #505045;
+   color: white;
+   padding: 0.5em;
+   border-radius: 0.5em;
+}

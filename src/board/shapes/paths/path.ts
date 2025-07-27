@@ -122,6 +122,8 @@ class Path extends Shape {
       context.closePath();
       context.stroke();
       context.restore();
+
+      super.renderText({ context });
    }
 
    IsResizable(p: Point) {

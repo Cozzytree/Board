@@ -1,5 +1,5 @@
-import { Board, Box, Ellipse, Path, Pentagon, Pointer, Rect, Triangle, type Shape } from "../index";
-import type { Point, submodes, ToolInterface, ToolCallback } from "../types";
+import { Board, Box, Ellipse, Path, Pentagon, Pointer, Rect, type Shape } from "../index";
+import type { Point, submodes, ToolInterface, ToolCallback, ToolEventData } from "../types";
 
 class ShapeTool implements ToolInterface {
    private _board: Board;
@@ -14,9 +14,8 @@ class ShapeTool implements ToolInterface {
 
    cleanUp(): void {}
 
-   pointerDown(e: PointerEvent | MouseEvent): void {
-      const mouse = this._board.getTransFormedCoords(e);
-      this.mouseDownPoint = mouse;
+   pointerDown({ p }: ToolEventData): void {
+      this.mouseDownPoint = p;
       this._board.activeShapes.clear();
 
       const lastInserted = this._board.shapeStore.getLastInsertedShape();
@@ -42,8 +41,8 @@ class ShapeTool implements ToolInterface {
                   new Pointer({ x: 4 / 2, y: 4 }),
                   new Pointer({ x: 0, y: 4 * 0.2 }),
                ],
-               left: mouse.x,
-               top: mouse.y,
+               left: p.x,
+               top: p.y,
             });
             break;
          case "path:triangle":
@@ -52,8 +51,8 @@ class ShapeTool implements ToolInterface {
                ctx: this._board.ctx,
                width: 4,
                height: 4,
-               left: mouse.x,
-               top: mouse.y,
+               left: p.x,
+               top: p.y,
                points: [
                   new Pointer({ x: 0 + 4 * 0.5, y: 0 }),
                   new Pointer({ x: 4, y: 4 }),
@@ -68,15 +67,15 @@ class ShapeTool implements ToolInterface {
                ctx: this._board.ctx,
                width: 4,
                height: 4,
-               left: mouse.x,
-               top: mouse.y,
+               left: p.x,
+               top: p.y,
             });
             break;
          case "rect":
             this.newShape = new Rect({
                ctx: this._board.ctx,
-               left: mouse.x,
-               top: mouse.y,
+               left: p.x,
+               top: p.y,
                width: 0,
                height: 0,
                _board: this._board,
@@ -85,8 +84,8 @@ class ShapeTool implements ToolInterface {
          case "circle":
             this.newShape = new Ellipse({
                ctx: this._board.ctx,
-               left: mouse.x,
-               top: mouse.y,
+               left: p.x,
+               top: p.y,
                width: 0,
                height: 0,
                rx: 0,
@@ -101,11 +100,10 @@ class ShapeTool implements ToolInterface {
       }
    }
 
-   pointermove(e: PointerEvent | MouseEvent): void {
-      const mouse = this._board.getTransFormedCoords(e);
+   pointermove({ p }: ToolEventData): void {
       if (this.newShape) {
          this.newShape.Resize(
-            mouse,
+            p,
             new Box({
                x1: this.mouseDownPoint.x,
                y1: this.mouseDownPoint.y,
@@ -118,8 +116,7 @@ class ShapeTool implements ToolInterface {
       }
    }
 
-   pointerup(e: PointerEvent | MouseEvent, cb?: ToolCallback): void {
-      const mouse = this._board.getTransFormedCoords(e);
+   pointerup({ p }: ToolEventData, cb?: ToolCallback): void {
       this._board.ctx2.clearRect(0, 0, this._board.canvas2.width, this._board.canvas2.height);
 
       if (this.newShape) {
@@ -129,12 +126,12 @@ class ShapeTool implements ToolInterface {
          this._board.render();
       }
 
-      this._board.onMouseUpCallback?.({ e: { point: mouse } });
+      this._board.onMouseUpCallback?.({ e: { point: p } });
    }
 
-   dblClick(e: PointerEvent | MouseEvent): void {}
+   dblClick(): void {}
 
-   onClick(e: PointerEvent | MouseEvent): void {}
+   onClick(): void {}
 
    private draw(...shapes: Shape[]) {
       const ctx = this._board.ctx2;

@@ -15,6 +15,7 @@ import {
    ShapeTool,
    DrawTool,
    LineTool,
+   TextTool,
 } from "./index";
 
 type BoardProps = {
@@ -23,15 +24,44 @@ type BoardProps = {
    height: number;
    onModeChange?: (m: modes, sm: submodes) => void;
    onMouseUp?: (e: ShapeEventData) => void;
+   scl?: number;
 };
 
 class Board implements BoardInterface {
    currentTool: ToolInterface;
    _lastMousePosition: Point = { x: 0, y: 0 };
+   evt = {
+      type: false,
+      x: -2,
+      y: -2,
+      xi: 0,
+      yi: 0,
+      dx: 0,
+      dy: 0,
+      dbtn: 0,
+      btn: 0,
+      xbtn: 0,
+      ybtn: 0,
+      xusr: -2,
+      yusr: -2,
+      dxusr: 0,
+      dyusr: 0,
+      delta: 0,
+      inside: false,
+      hit: false,
+      dscl: 1,
+      eps: 5,
+   };
+
+   declare view: { x: number; y: number; scl: number; cartesian: boolean };
    declare activeShapes: Set<Shape>;
    declare shapeStore: ShapeStore<Shape>;
    declare canvas2: HTMLCanvasElement;
    declare ctx2: CanvasRenderingContext2D;
+
+   private pendingEvent: PointerEvent | null = null;
+   private pendingEventScheduled: boolean = false;
+
    private handleDoubleClick: (e: PointerEvent | MouseEvent) => void;
    private handleClick: (e: PointerEvent | MouseEvent) => void;
    private handlePointerDown: (e: PointerEvent) => void;
@@ -44,14 +74,15 @@ class Board implements BoardInterface {
    scale = 1;
    canvas: HTMLCanvasElement;
    ctx: CanvasRenderingContext2D;
-   modes: { m: modes; sm: submodes };
+   modes: { m: modes; sm: submodes | null };
    offset = new Pointer({ x: 0, y: 0 });
 
-   constructor({ canvas, width, height, onModeChange, onMouseUp }: BoardProps) {
+   constructor({ canvas, width, scl = 1, height, onModeChange, onMouseUp }: BoardProps) {
       this.canvas = canvas;
       this.canvas.width = width;
       this.canvas.height = height;
       this.onModeChange = onModeChange;
+      this.view = { x: 0, y: 0, scl, cartesian: false };
 
       // Ensure only one secondary canvas
       let c2 = document.getElementById("board-overlay-canvas") as HTMLCanvasElement | null;
@@ -92,7 +123,6 @@ class Board implements BoardInterface {
       this.activeShapes = new Set();
 
       this.currentTool = new SelectionTool(this, "free");
-
       this.handleClick = this.onclick.bind(this);
       this.handlePointerDown = this.onmousedown.bind(this);
       this.handlePointerMove = this.onmousemove.bind(this);
@@ -182,6 +212,22 @@ class Board implements BoardInterface {
       this.currentTool = tool;
    }
 
+   private throttledPointerMove = (e: PointerEvent) => {
+      const mouse = this.getTransFormedCoords(e);
+      this.evt.dx = this.evt.x - this.evt.xi;
+      this.evt.dy = this.evt.y - this.evt.yi;
+
+      this.pendingEvent = e;
+      if (!this.pendingEventScheduled) {
+         this.pendingEventScheduled = true;
+         requestAnimationFrame(() => {
+            this.currentTool.pointermove({ e: e, p: mouse });
+            this.pendingEvent = null;
+            this.pendingEventScheduled = false;
+         });
+      }
+   };
+
    render() {
       const { ctx, canvas, offset, scale, shapeStore, activeShapes } = this;
 
@@ -195,8 +241,10 @@ class Board implements BoardInterface {
       const viewBottom = viewTop + canvas.height / scale;
 
       ctx.save();
-      ctx.translate(offset.x, offset.y);
-      ctx.scale(scale, scale);
+      ctx.translate(this.view.x, this.view.y);
+      ctx.scale(this.view.scl, this.view.scl);
+      // ctx.translate(offset.x, offset.y);
+      // ctx.scale(scale, scale);
 
       shapeStore.forEach((s) => {
          const { x, y, width, height } = s.getBounds();
@@ -213,61 +261,77 @@ class Board implements BoardInterface {
    }
 
    private onmousedown(e: PointerEvent) {
-      this.currentTool.pointerDown(e);
+      const p = this.getTransFormedCoords(e);
+      this.currentTool.pointerDown({ e, p });
    }
 
    private onmousemove(e: PointerEvent) {
-      this.currentTool.pointermove(e);
+      this.throttledPointerMove(e);
    }
 
    private onmouseup(e: PointerEvent) {
-      this.currentTool.pointerup(e, (v) => {
+      const p = this.getTransFormedCoords(e);
+      this.currentTool.pointerup({ e, p }, (v) => {
          this.setMode = { m: v.mode, sm: v.submode };
       });
    }
 
    private ondoubleclick(e: PointerEvent | MouseEvent) {
-      this.currentTool.dblClick(e);
+      const p = this.getTransFormedCoords(e);
+
+      this.currentTool.dblClick({ e, p });
    }
 
    private onclick(e: PointerEvent | MouseEvent) {
-      this.currentTool.onClick(e);
+      const p = this.getTransFormedCoords(e);
+      this.currentTool.onClick({ e, p });
    }
 
-   set setMode({ m, sm, originUi = false }: { m: modes; sm: submodes; originUi?: boolean }) {
+   set setMode({ m, sm, originUi = false }: { m: modes; sm: submodes | null; originUi?: boolean }) {
       if (m === "cursor") {
-         this.setTool(new SelectionTool(this, sm));
+         this.setTool(new SelectionTool(this, sm || "free"));
       } else if (m === "shape") {
-         this.setTool(new ShapeTool(this, sm));
+         this.setTool(new ShapeTool(this, sm || "rect"));
       } else if (m === "draw") {
          this.setTool(new DrawTool(this));
       } else if (m === "line") {
          this.setTool(new LineTool(this));
+      } else if (m === "text") {
+         this.setTool(new TextTool(this));
       }
 
       this.modes = { m, sm };
       if (!originUi) {
-         this.onModeChange?.(m, sm);
+         this.onModeChange?.(m, sm || "free");
       }
    }
 
-   getTransFormedCoords(e: MouseEvent | PointerEvent) {
+   getTransFormedCoords(e: MouseEvent | PointerEvent | WheelEvent) {
       // 1. Grab the canvas's screen-space position.
-      const rect = this.canvas.getBoundingClientRect();
+      const rect = this.canvas.getBoundingClientRect() || { left: 0, top: 0 };
 
       // 2. Adjust for the canvas's position on the screen.
-      const rawX = e.clientX - rect.left;
-      const rawY = e.clientY - rect.top;
+      const rawX = e.clientX - Math.floor(rect.left);
+      const rawY = e.clientY - Math.floor(rect.top);
 
-      // 3. Remove any translation offset applied in your drawing or transform logic.
-      const translatedX = rawX - this.offset.x;
-      const translatedY = rawY - this.offset.y;
+      const btn = e.buttons !== undefined ? e.buttons : e.button;
+      this.evt.xi = this.evt.x;
+      this.evt.yi = this.evt.y;
+      this.evt.dx = this.evt.dy = 0;
+      this.evt.x = rawX;
+      this.evt.y = this.view.cartesian ? this.ctx.canvas.height - rawY : rawY;
+      this.evt.xusr = (this.evt.x - this.view.x) / this.view.scl;
+      this.evt.yusr = (this.evt.y - this.view.y) / this.view.scl;
+      this.evt.dxusr = this.evt.dyusr = 0;
+      this.evt.dbtn = btn - this.evt.btn;
+      this.evt.btn = btn - this.evt.btn;
+      if (e.type === "wheel") {
+         const we = e as WheelEvent;
+         this.evt.delta = Math.max(-1, Math.min(1, we.deltaY)) || 0;
+      }
+      if (this.isDefaultPreventer(e.type as keyof HTMLElementEventMap)) e.preventDefault();
 
-      // 4. Divide by the scale factor to map back to canvas logical pixels.
-      const x = translatedX / this.scale;
-      const y = translatedY / this.scale;
-
-      return { x, y };
+      return { x: (rawX - this.view.x) / this.view.scl, y: (rawY - this.view.y) / this.view.scl };
    }
 
    clean() {
@@ -287,35 +351,48 @@ class Board implements BoardInterface {
       });
    }
 
+   private isDefaultPreventer(type: keyof HTMLElementEventMap): boolean {
+      const preventList: (keyof HTMLElementEventMap)[] = [
+         "pointermove",
+         "pointerdown",
+         "pointerup",
+         "wheel",
+      ];
+      return preventList.includes(type);
+   }
+
    private onWheel(e: WheelEvent) {
-      const box = this.canvas.getBoundingClientRect();
-      const mouseX = e.clientX - box.left;
-      const mouseY = e.clientY - box.top;
+      // const box = this.canvas.getBoundingClientRect();
+      // const mouseX = e.clientX - box.left;
+      // const mouseY = e.clientY - box.top;
       if (!e.ctrlKey) {
-         if (e.deltaY > 0) {
-            this.offset.y -= 80;
-         } else {
-            this.offset.y += 80;
-         }
+         this.view.y = e.deltaY > 0 ? this.view.y - 80 : this.view.y + 80;
       } else {
          e.preventDefault();
 
-         const zoomFactor = e.deltaY > 0 ? 1 / 1.1 : 1.1;
-         const newScale = this.scale * zoomFactor;
+         // updated scale
+         this.evt.dscl = e.deltaY > 0 ? 8 / 10 : 10 / 8;
+         this.evt.eps /= this.evt.dscl;
+         this.view.x = e.x + this.evt.dscl * (this.view.x - e.x);
+         this.view.y = e.y + this.evt.dscl * (this.view.y - e.y);
+         this.view.scl *= this.evt.dscl;
+
+         // const zoomFactor = e.deltaY > 0 ? 1 / 1.1 : 1.1;
+         // const newScale = this.scale * zoomFactor;
 
          // Prevent zooming too far in or out
-         if (newScale < 0.4 || newScale > 10) return;
+         // if (newScale < 0.4 || newScale > 10) return;
 
          // Get world coordinates under the mouse before scaling
-         const worldX = (mouseX - this.offset.x) / this.scale;
-         const worldY = (mouseY - this.offset.y) / this.scale;
+         // const worldX = (mouseX - this.offset.x) / this.scale;
+         // const worldY = (mouseY - this.offset.y) / this.scale;
 
          // Apply new scale
-         this.scale = newScale;
+         // this.scale = newScale;
 
          // Update offset to keep the mouse position stable
-         this.offset.x = mouseX - worldX * this.scale;
-         this.offset.y = mouseY - worldY * this.scale;
+         // this.offset.x = mouseX - worldX * this.scale;
+         // this.offset.y = mouseY - worldY * this.scale;
       }
       this.render();
    }

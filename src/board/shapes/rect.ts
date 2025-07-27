@@ -1,4 +1,3 @@
-import Connections from "../connections";
 import { Box, Pointer, Shape } from "../index";
 import type { BoxInterface, Point, resizeDirection, ShapeEventData, ShapeProps } from "../types";
 import { resizeRect } from "../utils/resize";
@@ -19,6 +18,7 @@ class Rect extends Shape {
       this.ry = props.ry || 0;
 
       this.type = "rect";
+      this.verticalAlign = "center";
    }
 
    clone(): Shape {
@@ -111,48 +111,7 @@ class Rect extends Shape {
       context.closePath();
       context.restore();
 
-      // text
-      // const mesureText = context.measureText("Hello world");
-      const texts = this.text.split("\n");
-      context.fillStyle = "white";
-      if (this.textAlign === "center") {
-         context.textAlign = "center";
-      } else if (this.textAlign === "left") {
-         context.textAlign = "left";
-      } else {
-         context.textAlign = "left";
-      }
-
-      context.textBaseline = "middle";
-      context.font = `${this.fontWeight} ${this.fontSize}px sans-serif`;
-
-      // Measure the height of one line (using fontSize * lineHeight ratio, or estimate)
-      const lineHeight = this.fontSize * 1.2; // adjust multiplier as needed
-      const totalHeight = texts.length * lineHeight;
-
-      // Compute starting y-point: center of the shape
-      const centerY = this.top + this.height * 0.5;
-      // First line's baseline
-      let y: number;
-      if (this.verticalAlign === "top") {
-         y = this.top + lineHeight * 0.5;
-      } else {
-         y = centerY - totalHeight / 2 + lineHeight / 2;
-      }
-
-      texts.forEach((t) => {
-         let x: number;
-         if (this.textAlign === "left") {
-            x = this.left + this.padding;
-         } else if (this.textAlign === "center") {
-            x = this.left + this.width * 0.5;
-         } else {
-            const size = context.measureText(t);
-            x = this.left + this.width - size.width - this.padding;
-         }
-         context.fillText(t, x, y);
-         y += lineHeight;
-      });
+      super.renderText({ context });
    }
 
    Resize(current: Point, old: BoxInterface, d: resizeDirection) {

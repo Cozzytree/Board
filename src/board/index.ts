@@ -19,6 +19,8 @@ import SimplePath from "./shapes/paths/simple_path";
 import Line from "@/board/shapes/line/line";
 import PlainLine from "@/board/shapes/line/line-plain";
 import AnchorLine from "@/board/shapes/line/line-anchor";
+import TextTool from "./tool/text_tool";
+import Text from "./shapes/text";
 
 export {
    Pointer,
@@ -42,4 +44,6 @@ export {
    DrawTool,
    SimplePath,
    AnchorLine,
+   TextTool,
+   Text,
 };
