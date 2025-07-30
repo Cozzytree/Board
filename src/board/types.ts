@@ -54,7 +54,7 @@ export type ShapeProps = {
 
 export type ToolCallback = (args: { mode: modes; submode: submodes }) => void;
 
-export type ToolEventData = { p: Point; e: MouseEvent | PointerEvent | WheelEvent };
+export type ToolEventData = { p: Point; e: MouseEvent | PointerEvent | WheelEvent | TouchEvent };
 
 export interface ToolInterface {
    pointerDown(e: ToolEventData): void;
@@ -71,7 +71,7 @@ export interface Point {
 }
 
 export interface ShapeInterface {
-   draw(options: { active: boolean; ctx?: CanvasRenderingContext2D; addStyles?: boolean }): void;
+   draw(options: { ctx?: CanvasRenderingContext2D; addStyles?: boolean }): void;
    ID(): string;
    mouseup(s: ShapeEventData): void;
    mouseover(s: ShapeEventData): void;

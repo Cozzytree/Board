@@ -13,7 +13,7 @@ class PlainLine extends Line {
       return new PlainLine({ ...props, points: this.points });
    }
 
-   draw({ active = true, ctx, resize = false }: DrawProps): void {
+   draw({ ctx, resize = false }: DrawProps): void {
       const context = ctx || this.ctx;
       context.save();
       context.translate(this.left, this.top);
@@ -31,15 +31,6 @@ class PlainLine extends Line {
                y: this.points[0].y,
             },
          });
-      }
-
-      if (active) {
-         context.beginPath();
-         context.fillStyle = "white";
-         context.arc(this.points[0].x, this.points[0].y, 4, 0, Math.PI * 2);
-         context.arc(this.points[1].x, this.points[1].y, 4, 0, Math.PI * 2);
-         context.fill();
-         context.closePath();
       }
 
       if (resize) {

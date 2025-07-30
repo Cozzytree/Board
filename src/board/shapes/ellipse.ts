@@ -135,10 +135,7 @@ class Ellipse extends Shape {
       this.emit("mouseover", s);
    }
 
-   draw({ active, addStyles = true, ctx, resize }: DrawProps): void {
-      if (active) {
-         this.activeRect();
-      }
+   draw({ addStyles = true, ctx, resize }: DrawProps): void {
       const context = ctx || this.ctx;
 
       context.save();

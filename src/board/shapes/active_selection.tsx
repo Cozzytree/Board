@@ -57,7 +57,11 @@ class ActiveSelection extends Shape {
    }
 
    clone(): Shape {
-      return new ActiveSelection({ ...this.clone(), shapes: this.shapes });
+      const props = super.cloneProps();
+      return new ActiveSelection({
+         ...props,
+         shapes: this.shapes.map((s) => ({ s: s.s.clone() })),
+      });
    }
 
    IsDraggable(p: Point): boolean {
@@ -102,11 +106,7 @@ class ActiveSelection extends Shape {
       this.top += dy;
    }
 
-   draw(options: {
-      active: boolean;
-      ctx?: CanvasRenderingContext2D;
-      addStyles?: boolean;
-   }): void {
+   draw(options: { active: boolean; ctx?: CanvasRenderingContext2D; addStyles?: boolean }): void {
       const context = options.ctx || this.ctx;
 
       this.activeRect(context);

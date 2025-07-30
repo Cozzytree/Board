@@ -61,12 +61,11 @@ class Board implements BoardInterface {
 
    // private pendingEvent: PointerEvent | null = null;
    private pendingEventScheduled: boolean = false;
-
    private handleDoubleClick: (e: PointerEvent | MouseEvent) => void;
-   private handleClick: (e: PointerEvent | MouseEvent) => void;
-   private handlePointerDown: (e: PointerEvent) => void;
-   private handlePointerMove: (e: PointerEvent) => void;
-   private handlePointerUp: (e: PointerEvent) => void;
+   private handleClick: (e: PointerEvent | MouseEvent | TouchEvent) => void;
+   private handlePointerDown: (e: PointerEvent | MouseEvent | TouchEvent) => void;
+   private handlePointerMove: (e: PointerEvent | MouseEvent | TouchEvent) => void;
+   private handlePointerUp: (e: PointerEvent | MouseEvent | TouchEvent) => void;
    private handleWheel: (e: WheelEvent) => void;
    declare onModeChange?: (m: modes, sm: submodes) => void;
 
@@ -131,6 +130,9 @@ class Board implements BoardInterface {
       this.handleDoubleClick = this.ondoubleclick.bind(this);
 
       this.onMouseUpCallback = onMouseUp;
+
+      this.canvas.addEventListener("touchmove", this.handlePointerMove);
+      this.canvas.addEventListener("touchend", this.handlePointerUp);
 
       this.canvas.addEventListener("click", this.handleClick);
       this.canvas.addEventListener("pointerdown", this.handlePointerDown);
@@ -212,7 +214,7 @@ class Board implements BoardInterface {
       this.currentTool = tool;
    }
 
-   private throttledPointerMove = (e: PointerEvent) => {
+   private throttledPointerMove = (e: PointerEvent | MouseEvent | TouchEvent) => {
       const mouse = this.getTransFormedCoords(e);
       this.evt.dx = this.evt.x - this.evt.xi;
       this.evt.dy = this.evt.y - this.evt.yi;
@@ -227,16 +229,16 @@ class Board implements BoardInterface {
    };
 
    render() {
-      const { ctx, canvas, offset, scale, shapeStore, activeShapes } = this;
+      const { ctx, canvas, view, shapeStore, activeShapes } = this;
 
       this.ctx.setTransform(1, 0, 0, 1, 0, 0);
       this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
       // Compute world-space viewport
-      const viewLeft = -offset.x / scale;
-      const viewTop = -offset.y / scale;
-      const viewRight = viewLeft + canvas.width / scale;
-      const viewBottom = viewTop + canvas.height / scale;
+      const viewLeft = -view.x / view.scl;
+      const viewTop = -view.y / view.scl;
+      const viewRight = viewLeft + canvas.width / view.scl;
+      const viewBottom = viewTop + canvas.height / view.scl;
 
       ctx.save();
       ctx.translate(this.view.x, this.view.y);
@@ -252,22 +254,29 @@ class Board implements BoardInterface {
             return false; // entirely off-screen, skip draw
          }
 
-         s.draw({ active: activeShapes.has(s) });
+         s.draw({});
          return false;
       });
+
+      if (activeShapes) {
+         activeShapes.forEach((s) => {
+            s.activeRect(ctx);
+         });
+      }
+
       this.ctx.restore();
    }
 
-   private onmousedown(e: PointerEvent) {
+   private onmousedown(e: PointerEvent | MouseEvent | TouchEvent) {
       const p = this.getTransFormedCoords(e);
       this.currentTool.pointerDown({ e, p });
    }
 
-   private onmousemove(e: PointerEvent) {
+   private onmousemove(e: PointerEvent | MouseEvent | TouchEvent) {
       this.throttledPointerMove(e);
    }
 
-   private onmouseup(e: PointerEvent) {
+   private onmouseup(e: PointerEvent | MouseEvent | TouchEvent) {
       const p = this.getTransFormedCoords(e);
       this.currentTool.pointerup({ e, p }, (v) => {
          this.setMode = { m: v.mode, sm: v.submode };
@@ -280,7 +289,7 @@ class Board implements BoardInterface {
       this.currentTool.dblClick({ e, p });
    }
 
-   private onclick(e: PointerEvent | MouseEvent) {
+   private onclick(e: PointerEvent | MouseEvent | TouchEvent) {
       const p = this.getTransFormedCoords(e);
       this.currentTool.onClick({ e, p });
    }
@@ -304,15 +313,30 @@ class Board implements BoardInterface {
       }
    }
 
-   getTransFormedCoords(e: MouseEvent | PointerEvent | WheelEvent) {
+   getTransFormedCoords(e: MouseEvent | PointerEvent | WheelEvent | TouchEvent) {
       // 1. Grab the canvas's screen-space position.
       const rect = this.canvas.getBoundingClientRect() || { left: 0, top: 0 };
+      let clientX,
+         clientY,
+         btn = 0;
+
+      if ("touches" in e && e.touches.length > 0) {
+         const t = e.touches[0];
+         clientX = t.clientX;
+         clientY = t.clientY;
+      } else {
+         clientX = (e as MouseEvent).clientX;
+         clientY = (e as MouseEvent).clientY;
+         btn =
+            (e as MouseEvent).buttons !== undefined
+               ? (e as MouseEvent).buttons
+               : (e as MouseEvent).button;
+      }
 
       // 2. Adjust for the canvas's position on the screen.
-      const rawX = e.clientX - Math.floor(rect.left);
-      const rawY = e.clientY - Math.floor(rect.top);
+      const rawX = clientX - Math.floor(rect.left);
+      const rawY = clientY - Math.floor(rect.top);
 
-      const btn = e.buttons !== undefined ? e.buttons : e.button;
       this.evt.xi = this.evt.x;
       this.evt.yi = this.evt.y;
       this.evt.dx = this.evt.dy = 0;
@@ -333,6 +357,9 @@ class Board implements BoardInterface {
    }
 
    clean() {
+      this.canvas.removeEventListener("touchmove", this.handlePointerMove);
+      this.canvas.removeEventListener("touchend", this.handlePointerUp);
+
       this.canvas.removeEventListener("dblclick", this.handleDoubleClick);
       this.canvas.removeEventListener("click", this.handleClick);
       this.canvas.removeEventListener("pointerdown", this.handlePointerDown);
@@ -374,23 +401,6 @@ class Board implements BoardInterface {
          this.view.x = e.x + this.evt.dscl * (this.view.x - e.x);
          this.view.y = e.y + this.evt.dscl * (this.view.y - e.y);
          this.view.scl *= this.evt.dscl;
-
-         // const zoomFactor = e.deltaY > 0 ? 1 / 1.1 : 1.1;
-         // const newScale = this.scale * zoomFactor;
-
-         // Prevent zooming too far in or out
-         // if (newScale < 0.4 || newScale > 10) return;
-
-         // Get world coordinates under the mouse before scaling
-         // const worldX = (mouseX - this.offset.x) / this.scale;
-         // const worldY = (mouseY - this.offset.y) / this.scale;
-
-         // Apply new scale
-         // this.scale = newScale;
-
-         // Update offset to keep the mouse position stable
-         // this.offset.x = mouseX - worldX * this.scale;
-         // this.offset.y = mouseY - worldY * this.scale;
       }
       this.render();
    }

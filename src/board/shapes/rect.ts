@@ -1,7 +1,7 @@
 import { Box, Pointer, Shape } from "../index";
 import type { BoxInterface, Point, resizeDirection, ShapeEventData, ShapeProps } from "../types";
 import { resizeRect } from "../utils/resize";
-import { breakText } from "../utils/utilfunc";
+import { breakText, calcPointWithRotation } from "../utils/utilfunc";
 import type { DrawProps } from "./shape";
 
 type RectProps = {
@@ -38,21 +38,52 @@ class Rect extends Shape {
    }
 
    IsDraggable(p: Pointer): boolean {
-      const condition =
-         p.x > this.left &&
-         p.x < this.left + this.width &&
-         p.y > this.top &&
-         p.y < this.top + this.height;
-      if (condition) {
-         return true;
-      }
-      return false;
+      // Get center of the rectangle
+      const centerX = this.left + this.width / 2;
+      const centerY = this.top + this.height / 2;
+
+      const dx = p.x - centerX;
+      const dy = p.y - centerY;
+
+      const cos = Math.cos(-this.rotate);
+      const sin = Math.sin(-this.rotate);
+
+      const localX = dx * cos - dy * sin;
+      const localY = dx * sin + dy * cos;
+
+      // 3. Check against unrotated rect bounds
+      const halfW = this.width / 2;
+      const halfH = this.height / 2;
+
+      return localX > -halfW && localX < halfW && localY > -halfH && localY < halfH;
+
+      // const condition =
+      //    p.x > this.left &&
+      //    p.x < this.left + this.width &&
+      //    p.y > this.top &&
+      //    p.y < this.top + this.height;
+      // if (condition) {
+      //    return true;
+      // }
+      // return false;
    }
 
    dragging(prev: Point, current: Point) {
       const dx = current.x - prev.x;
       const dy = current.y - prev.y;
+      // const dx = current.x - this._startMouse.x;
+      // const dy = current.y - this._startMouse.y;
 
+      // const cos = Math.cos(-this.rotate);
+      // const sin = Math.sin(-this.rotate);
+      // const localDx = dx * cos - dy * sin;
+      // const localDy = dx * sin + dy * cos;
+
+      // const rotatedDx = dx * cos - dy * sin;
+      // const rotatedDy = dx * sin + dy * cos;
+
+      // this.left = this._startPos.x + localDx;
+      // this.top = this._startPos.y + localDy;
       this.left += dx;
       this.top += dy;
 
@@ -60,32 +91,49 @@ class Rect extends Shape {
    }
 
    IsResizable(p: Point): resizeDirection | null {
+      const { height, width, top, left, rotate } = this;
+
+      const halfW = this.width / 2;
+      const halfH = this.height / 2;
+      const localBox = new Box({
+         x1: -halfW,
+         x2: halfW,
+         y1: -halfH,
+         y2: halfH,
+      });
       const d = resizeRect(
-         p,
-         new Box({
-            x1: this.left,
-            x2: this.left + this.width,
-            y1: this.top,
-            y2: this.top + this.height,
-         }),
+         calcPointWithRotation({ height, width, left, point: p, rotate, top }),
+         localBox,
          this.padding,
       );
+      // const d = resizeRect(
+      //    calcPointWithRotation({ height, width, left, point: p, rotate, top }),
+      //    new Box({
+      //       x1: this.left,
+      //       x2: this.left + this.width,
+      //       y1: this.top,
+      //       y2: this.top + this.height,
+      //    }),
+      //    this.padding,
+      // );
       if (d) {
          return d.rd;
       }
       return null;
    }
 
-   draw({ active, addStyles = true, ctx, resize = false }: DrawProps): void {
+   draw({ addStyles = true, ctx, resize = false }: DrawProps): void {
       const context = ctx || this.ctx;
 
       const r = Math.min(this.rx || 0, this.ry || 0, this.width / 2, this.height / 2);
 
-      if (active) {
-         this.activeRect();
-      }
-
       context.save();
+
+      const centerX = this.left + this.width * 0.5;
+      const centerY = this.top + this.height * 0.5;
+      context.translate(centerX, centerY);
+      context.rotate(this.rotate);
+      context.translate(-centerX, -centerY);
       context.beginPath();
 
       const currentScale = context.getTransform().a;

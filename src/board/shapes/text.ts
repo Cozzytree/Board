@@ -13,12 +13,8 @@ class Text extends Shape {
       return new Text(props);
    }
 
-   draw({ ctx, active, resize = false }: DrawProps): void {
+   draw({ ctx, resize = false }: DrawProps): void {
       const context = ctx || this.ctx;
-
-      if (active) {
-         super.activeRect(context);
-      }
 
       if (resize) {
          context.globalAlpha = 0.5;

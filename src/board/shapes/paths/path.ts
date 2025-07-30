@@ -34,7 +34,7 @@ class Path extends Shape {
 
    clone(): Shape {
       const props = super.cloneProps();
-      return new Path({ ...props, _board: this._board, ctx: this.ctx });
+      return new Path({ ...props, points: this.points });
    }
 
    mouseup(s: ShapeEventData): void {
@@ -59,14 +59,11 @@ class Path extends Shape {
       });
    }
 
-   draw({ ctx, active, addStyles = true, resize }: DrawProps): void {
+   draw({ ctx, addStyles = true, resize }: DrawProps): void {
       if (this.points.length < 2) return;
       const context = ctx || this.ctx;
 
       context.save();
-      if (active) {
-         this.activeRect();
-      }
       context.translate(this.left, this.top);
 
       const currentScale = context.getTransform().a;

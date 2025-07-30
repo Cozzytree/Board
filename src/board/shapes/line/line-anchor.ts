@@ -15,24 +15,10 @@ class LineAnchor extends Line {
       return new LineAnchor({ ...props, points: this.points });
    }
 
-   draw({ active, ctx, resize }: DrawProps): void {
+   draw({ ctx, resize }: DrawProps): void {
       const context = ctx || this.ctx;
       context.save();
       context.translate(this.left, this.top);
-      if (active) {
-         context.beginPath();
-         context.fillStyle = "white";
-         context.arc(this.points[0].x, this.points[0].y, 4, 0, Math.PI * 2);
-         context.arc(
-            this.points[this.points.length - 1].x,
-            this.points[this.points.length - 1].y,
-            4,
-            0,
-            Math.PI * 2,
-         );
-         context.fill();
-         context.closePath();
-      }
 
       if (resize) {
          context.globalAlpha = 0.5;

@@ -19,7 +19,6 @@ import type { connectionEventData, ConnectionInterface } from "./shape_types";
 import Connections from "../connections";
 
 export type DrawProps = {
-   active: boolean;
    ctx?: CanvasRenderingContext2D;
    addStyles?: boolean;
    resize?: boolean;
@@ -172,6 +171,14 @@ abstract class Shape implements ShapeProps {
 
       const currentScale = context.getTransform().a;
 
+      context.save();
+
+      const centerX = this.left + this.width * 0.5;
+      const centerY = this.top + this.height * 0.5;
+      context.translate(centerX, centerY);
+      context.rotate(this.rotate);
+      context.translate(-centerX, -centerY);
+
       // Draw outer rectangle
       context.beginPath();
       context.strokeStyle = "white";
@@ -195,6 +202,7 @@ abstract class Shape implements ShapeProps {
       drawDot(x + w, y); // top-right
       drawDot(x, y + h); // bottom-left
       drawDot(x + w, y + h); // bottom-right
+      context.restore();
    }
 
    // Subscribe

@@ -284,20 +284,47 @@ class SelectionTool implements ToolInterface {
          const c = this._board.removeShape(...shapes);
          console.log(c);
       } else if (e.ctrlKey) {
+         const lastInserted = this._board.shapeStore.getLastInsertedShape();
          switch (e.key) {
             case "d":
                e.preventDefault();
                [...this._board.activeShapes].forEach((s) => {
                   this._board.activeShapes.delete(s);
-                  const ns = s.clone();
-                  ns.left += 10;
-                  ns.top += 10;
-                  this._board.add(ns);
+                  const newShapes: Shape[] = [];
+                  if (s instanceof ActiveSelection) {
+                     const clone = s.clone() as ActiveSelection;
+                     clone.shapes.forEach((shape) => {
+                        shape.s.set({ left: shape.s.left + 10, top: shape.s.top + 10 });
+                        newShapes.push(shape.s);
+                     });
+                     if (lastInserted?.type === "selection") {
+                        this._board.removeShape(lastInserted);
+                     }
+
+                     this._board.discardActiveShapes();
+                     this._board.setActiveShape(clone);
+                     newShapes.push(clone);
+                  } else {
+                     const c = s.clone();
+                     c.left += 10;
+                     c.top += 10;
+                     newShapes.push(c);
+                  }
+                  this._board.add(...newShapes);
                });
                this._board.render();
                break;
             case "a":
                e.preventDefault();
+               if (lastInserted?.type === "selection") {
+                  this._board.removeShape(lastInserted);
+                  this._board.ctx2.clearRect(
+                     0,
+                     0,
+                     this._board.canvas2.width,
+                     this._board.canvas2.height,
+                  );
+               }
                this.selectAll();
                this._board.render();
                break;
@@ -396,7 +423,6 @@ class SelectionTool implements ToolInterface {
       this._board.canvas2.style.zIndex = "100";
       shapes.forEach((s) => {
          s.draw({
-            active: false,
             addStyles: false,
             ctx: ctx,
             resize: this.draggedShape || this.resizableShape ? true : false,

@@ -36,6 +36,22 @@ abstract class Line extends Shape {
               ];
    }
 
+   activeRect(ctx?: CanvasRenderingContext2D): void {
+      const context = ctx || this.ctx;
+      context.beginPath();
+      context.fillStyle = "white";
+      context.arc(this.left + this.points[0].x, this.top + this.points[0].y, 4, 0, Math.PI * 2);
+      context.arc(
+         this.left + this.points[this.points.length - 1].x,
+         this.top + this.points[this.points.length - 1].y,
+         4,
+         0,
+         Math.PI * 2,
+      );
+      context.fill();
+      context.closePath();
+   }
+
    protected renderArrow({
       ctx,
       arrowLength,

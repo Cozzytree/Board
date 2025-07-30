@@ -388,7 +388,38 @@ function breakText({
    return lines;
 }
 
+function calcPointWithRotation({
+   left,
+   top,
+   width,
+   height,
+   point,
+   rotate,
+}: {
+   point: Point;
+   left: number;
+   top: number;
+   width: number;
+   height: number;
+   rotate: number;
+}) {
+   const centerX = left + width / 2;
+   const centerY = top + height / 2;
+
+   const dx = point.x - centerX;
+   const dy = point.y - centerY;
+
+   const cos = Math.cos(-rotate);
+   const sin = Math.sin(-rotate);
+
+   const localX = dx * cos - dy * sin;
+   const localY = dx * sin + dy * cos;
+
+   return new Pointer({ x: localX, y: localY });
+}
+
 export {
+   calcPointWithRotation,
    IsIn,
    intersectLineWithBox,
    setCoords,
