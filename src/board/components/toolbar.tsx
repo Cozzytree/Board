@@ -60,6 +60,6 @@ function ShowIcon({ I }: { I: LucideIcon | string }) {
    if (typeof I == "string") {
       return <img src={I} alt={I} loading="lazy" width={20} />;
    } else {
-      return <I width={17} />;
+      return <I className="w-3 md:w-4" />;
    }
 }

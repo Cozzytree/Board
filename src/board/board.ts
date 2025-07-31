@@ -273,6 +273,7 @@ class Board implements BoardInterface {
    }
 
    private onmousemove(e: PointerEvent | MouseEvent | TouchEvent) {
+      e.preventDefault();
       this.throttledPointerMove(e);
    }
 

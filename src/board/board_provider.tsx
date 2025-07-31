@@ -167,12 +167,12 @@ const BoardProvider = ({
          <div className="w-32 bg-amber-100" />
 
          <canvas ref={canvasRef} style={{ width: width + "px", height: height + "px" }} />
-         <div className="pointer-events-auto z-50 right-8 top-1/2 w-fit -translate-y-[50%] fixed flex justify-center">
+         <div className="pointer-events-auto z-50 right-3 md:right-8 top-1/2 w-fit -translate-y-[50%] fixed flex justify-center">
             <Toolbar />
          </div>
 
          {activeShape && (
-            <div className="z-50 fixed top-5 left-1/2 -translate-x-[50%]">
+            <div className="z-50 fixed top-3 md:top-5 left-1/2 -translate-x-[50%]">
                <ShapeOptions />
             </div>
          )}

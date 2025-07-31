@@ -6,8 +6,8 @@ textarea {
 }
 
 .input-container {
-   background: #505045;
    color: white;
+   font-size: 0.8em;
    padding: 0.5em;
    border-radius: 0.5em;
 }

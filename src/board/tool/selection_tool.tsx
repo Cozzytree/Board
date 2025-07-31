@@ -21,6 +21,9 @@ type ResizeShapeProps = {
 } | null;
 
 class SelectionTool implements ToolInterface {
+   private isDragging: boolean = false;
+   private dragThreshold = 2;
+
    private isGrabbing: boolean = false;
    private isTextEdit: Shape | null = null;
    private handleKeyDown: (e: KeyboardEvent) => void;
@@ -44,6 +47,8 @@ class SelectionTool implements ToolInterface {
    pointerDown({ e, p }: ToolEventData): void {
       this.mouseDownPoint = p;
       this.lastPoint = new Pointer(p);
+      this.isDragging = false;
+      this.isGrabbing = false;
 
       if (this.isTextEdit != null) return;
 
@@ -157,6 +162,15 @@ class SelectionTool implements ToolInterface {
       }
       this._board._lastMousePosition = p;
 
+      //
+      const distance = Math.sqrt(
+         this._board.evt.dx * this._board.evt.dx + this._board.evt.dy * this._board.evt.dy,
+      );
+      if (distance > this.dragThreshold) {
+         this.isDragging = true;
+      }
+      if (!this.isDragging) return;
+
       if (this.draggedShape != null) {
          const shapes = this.draggedShape.dragging(new Pointer(this.lastPoint), new Pointer(p));
          this.lastPoint = p;
@@ -206,8 +220,13 @@ class SelectionTool implements ToolInterface {
    }
 
    pointerup({ p }: ToolEventData): void {
-      if (this.isGrabbing) {
-         this.isGrabbing = false;
+      if (!this.isDragging && this.subMode === "free") {
+         const ac = this._board.getActiveShapes();
+         if (!ac.length) return;
+         if (ac[0].IsDraggable(p)) {
+            this.createText({ s: ac[0], p, start: { x: ac[0].left, y: ac[0].top } });
+            return;
+         }
       }
 
       this.hasSelectionStarted = false;
@@ -231,41 +250,48 @@ class SelectionTool implements ToolInterface {
       this._board.onMouseUpCallback?.({ e: { point: p } });
    }
 
+   private createText({ s, start }: { start: Point; s: Shape; p: Point }) {
+      let div = document.getElementById(textAreaId);
+      if (div) {
+         div.remove();
+      }
+
+      div = document.createElement("div");
+      div.setAttribute("id", textAreaId);
+
+      const tarea = document.createElement("textarea");
+      div.classList.add("input-container");
+      div.style.position = "absolute";
+      div.style.zIndex = "50";
+      div.style.left = start.x + this._board.view.x + "px";
+      div.style.top = start.y + this._board.view.y + "px";
+      div.style.width = s.width + "px";
+      div.style.height = s.height + "px";
+      div.append(tarea);
+
+      tarea.placeholder = "type here";
+      tarea.innerText = s.text;
+      document.body.append(div);
+
+      tarea.focus();
+
+      tarea.addEventListener("blur", () => {
+         s.set("text", tarea.value);
+         this.isTextEdit = null;
+         s._board.render();
+         div.remove();
+         tarea.remove();
+      });
+
+      this.isTextEdit = s;
+   }
+
    dblClick({ p }: ToolEventData): void {
       const active = this._board.getActiveShapes();
       if (active.length) {
          const a = active[0];
          if (a.IsDraggable(p)) {
-            const rect = this._board.canvas.getBoundingClientRect();
-            document.getElementById(textAreaId)?.remove();
-
-            const div = document.createElement("div");
-            div.setAttribute("id", textAreaId);
-
-            const tarea = document.createElement("textarea");
-            div.classList.add("input-container");
-            div.style.position = "absolute";
-            div.style.zIndex = "50";
-            div.style.left = rect.left + p.x + this._board.view.x + "px";
-            div.style.top = rect.top + p.y + this._board.view.y + "px";
-            div.append(tarea);
-
-            tarea.placeholder = "type here";
-            tarea.innerText = a.text;
-            document.body.append(div);
-
-            tarea.focus();
-
-            tarea.addEventListener("blur", () => {
-               console.log(tarea);
-               a.set("text", tarea.value);
-               this.isTextEdit = null;
-               a._board.render();
-               div.remove();
-               tarea.remove();
-            });
-
-            this.isTextEdit = a;
+            this.createText({ p, s: a, start: { x: a.left, y: a.top } });
          }
       }
    }

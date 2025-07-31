@@ -26,7 +26,7 @@ function ShapeOptions() {
             <PopoverTrigger asChild>
                <button
                   className={"py-[0.25em] text-sm px-[0.6em] rounded-sm hover:bg-foreground/10"}>
-                  <ShapesIcon width={14} />
+                  <ShapesIcon className="w-3 md:w-4" />
                </button>
             </PopoverTrigger>
             <PopoverContent className="w-fit p-1"></PopoverContent>
@@ -36,7 +36,7 @@ function ShapeOptions() {
             <PopoverTrigger asChild>
                <button
                   className={"py-[0.25em] text-sm px-[0.6em] rounded-sm hover:bg-foreground/10"}>
-                  <PaintBucket width={14} />
+                  <PaintBucket className="w-3 md:w-4" />
                </button>
             </PopoverTrigger>
             <PopoverContent
@@ -67,7 +67,7 @@ function ShapeOptions() {
          </Popover>
 
          <button className={"py-[0.25em] text-sm px-[0.6em] rounded-sm hover:bg-foreground/10"}>
-            <TrashIcon width={14} />
+            <TrashIcon className="w-3 md:w-4" />
          </button>
 
          <StrokeDash />
@@ -77,7 +77,7 @@ function ShapeOptions() {
          <div className="flex items-center">
             <BoldOption />
             <button className={"py-[0.25em] text-sm px-[0.6em] rounded-sm hover:bg-foreground/10"}>
-               <ItalicIcon width={14} />
+               <ItalicIcon className="w-3 md:w-4" />
             </button>
          </div>
 
@@ -109,17 +109,17 @@ function AlignOptions() {
          <button
             data-align="left"
             className={`${allign === "left" && "bg-muted"} py-[0.25em] text-sm px-[0.6em] rounded-sm hover:bg-foreground/10`}>
-            <AlignLeftIcon width={14} />
+            <AlignLeftIcon className="w-3 md:w-4" />
          </button>
          <button
             data-align="center"
             className={`${allign === "center" && "bg-muted"} py-[0.25em] text-sm px-[0.6em] rounded-sm hover:bg-foreground/10`}>
-            <AlignCenterIcon width={14} />
+            <AlignCenterIcon className="w-3 md:w-4" />
          </button>
          <button
             data-align="right"
             className={`${allign === "right" && "bg-muted"} py-[0.25em] text-sm px-[0.6em] rounded-sm hover:bg-foreground/10`}>
-            <AlignRightIcon width={14} />
+            <AlignRightIcon className="w-3 md:w-4" />
          </button>
       </div>
    );
@@ -138,7 +138,7 @@ function BoldOption() {
             setW((p) => (p == 500 ? 800 : 500));
          }}
          className={`${w === 500 ? "" : "bg-muted"} py-[0.25em] text-sm px-[0.6em] rounded-sm hover:bg-foreground/10`}>
-         <BoldIcon width={14} />
+         <BoldIcon className="w-3 md:w-4" />
       </button>
    );
 }
@@ -207,7 +207,7 @@ function StrokeDash() {
                s === "0,0" ? "text-foreground" : "text-muted",
                "py-[0.25em] text-sm px-[0.6em] rounded-sm hover:bg-foreground/10",
             )}>
-            <Circle width={14} />
+            <Circle className="w-3 md:w-4" />
          </button>
          <button
             onClick={() => {
@@ -217,7 +217,7 @@ function StrokeDash() {
                s === "5,5" ? "text-foreground" : "text-muted",
                "py-[0.25em] text-sm px-[0.6em] rounded-sm hover:bg-foreground/10",
             )}>
-            <CircleDashed width={14} />
+            <CircleDashed className="w-3 md:w-4" />
          </button>
       </div>
    );
