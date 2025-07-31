@@ -146,7 +146,6 @@ class ShapeTool implements ToolInterface {
       this._board.canvas2.style.zIndex = "100";
       shapes.forEach((s) => {
          s.draw({
-            active: false,
             addStyles: false,
             ctx: ctx,
             resize: true,

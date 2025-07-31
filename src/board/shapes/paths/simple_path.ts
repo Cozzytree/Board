@@ -21,16 +21,12 @@ class SimplePath extends Path {
 
    scaleShape(): void {}
 
-   draw({ ctx, active, resize }: DrawProps): void {
+   draw({ ctx, resize }: DrawProps): void {
       const context = ctx || this.ctx;
 
       if (this.points.length < 2) return;
 
       context.save();
-
-      if (active) {
-         this.activeRect(context);
-      }
 
       context.translate(this.left, this.top);
       context.beginPath();
