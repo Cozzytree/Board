@@ -38,10 +38,6 @@ abstract class Line extends Shape {
 
    activeRect(ctx?: CanvasRenderingContext2D) {
       const context = ctx || this.ctx;
-      const pad = this.padding;
-
-      const currentScale = context.getTransform().a;
-
       context.save();
 
       const centerX = this.left + this.width * 0.5;
