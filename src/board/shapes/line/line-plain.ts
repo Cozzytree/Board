@@ -20,7 +20,7 @@ class PlainLine extends Line {
 
       if (this.arrowS) {
          this.renderArrow({
-            arrowLength: 20,
+            arrowLength: 10,
             ctx: context,
             endPoint: {
                x: this.points[this.points.length - 1].x,

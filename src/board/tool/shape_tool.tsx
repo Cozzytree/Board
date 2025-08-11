@@ -121,6 +121,12 @@ class ShapeTool implements ToolInterface {
 
       if (this.newShape) {
          this.newShape.setCoords();
+         /**/
+         this._board.shapeStore.pushUndo({
+            undoType: "create",
+            objects: [this.newShape.toObject()],
+         });
+
          this.newShape = null;
          cb?.({ mode: "cursor", submode: "free" });
          this._board.render();

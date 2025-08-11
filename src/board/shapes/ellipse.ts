@@ -1,6 +1,7 @@
 import { Box, Pointer, Shape } from "../index";
 import type { BoxInterface, Point, resizeDirection, ShapeEventData, ShapeProps } from "../types";
 import { resizeRect } from "../utils/resize";
+import { breakText } from "../utils/utilfunc";
 import type { DrawProps } from "./shape";
 
 type EllipseProps = {
@@ -29,25 +30,43 @@ class Ellipse extends Shape {
    }
 
    IsDraggable(p: Pointer): boolean {
-      const condition =
-         p.x > this.left - this.rx &&
-         p.x < this.left - this.rx + this.width &&
-         p.y > this.top - this.ry - this.ry &&
-         p.y < this.top - this.ry + this.height;
-      if (condition) {
-         return true;
-      }
-      return false;
+      // const condition =
+      //    p.x > this.left &&
+      //    p.x < this.left - this.width &&
+      //    p.y > this.top &&
+      //    p.y < this.top - this.height;
+      // if (condition) {
+      //    return true;
+      // }
+      // return false;
+      // Get center of the rectangle
+      const centerX = this.left + this.width / 2;
+      const centerY = this.top + this.height / 2;
+
+      const dx = p.x - centerX;
+      const dy = p.y - centerY;
+
+      const cos = Math.cos(-this.rotate);
+      const sin = Math.sin(-this.rotate);
+
+      const localX = dx * cos - dy * sin;
+      const localY = dx * sin + dy * cos;
+
+      // 3. Check against unrotated rect bounds
+      const halfW = this.width / 2;
+      const halfH = this.height / 2;
+
+      return localX > -halfW && localX < halfW && localY > -halfH && localY < halfH;
    }
 
    IsResizable(p: Point): resizeDirection | null {
       const d = resizeRect(
          p,
          new Box({
-            x1: this.left - this.rx,
-            x2: this.left + this.rx,
-            y1: this.top - this.ry,
-            y2: this.top + this.ry,
+            x1: this.left,
+            x2: this.left + this.width,
+            y1: this.top,
+            y2: this.top + this.height,
          }),
          this.padding,
       );
@@ -68,43 +87,22 @@ class Ellipse extends Shape {
       return super.dragging(prev, current);
    }
 
-   activeRect(): void {
-      const pad = this.padding;
-      const x = this.left - (pad + this.rx);
-      const y = this.top - (pad + this.ry);
-      const w = this.width + pad * 2;
-      const h = this.height + pad * 2;
-
-      // Draw outer rectangle
-      this.ctx.beginPath();
-      this.ctx.strokeStyle = "white";
-      this.ctx.rect(x, y, w, h);
-      this.ctx.stroke();
-      this.ctx.closePath();
-
-      // Draw corner dots
-      const drawDot = (cx: number, cy: number) => {
-         this.ctx.beginPath();
-         this.ctx.fillStyle = "white";
-         this.ctx.rect(cx - 3, cy - 3, 6, 6);
-         this.ctx.fill();
-         this.ctx.closePath();
-      };
-
-      drawDot(x, y); // top-left
-      drawDot(x + w, y); // top-right
-      drawDot(x, y + h); // bottom-left
-      drawDot(x + w, y + h); // bottom-right
+   mouseup(s: ShapeEventData): void {
+      super.set({
+         width: this.rx * 2,
+         height: this.ry * 2,
+      });
+      super.mouseup(s);
    }
 
    mouseover(s: ShapeEventData): void {
       const r = resizeRect(
          s.e.point,
          new Box({
-            x1: this.left - this.rx,
-            y1: this.top - this.ry,
-            x2: this.left + this.rx,
-            y2: this.top + this.ry,
+            x1: this.left,
+            y1: this.top,
+            x2: this.left + this.width,
+            y2: this.top + this.height,
          }),
          this.padding,
       );
@@ -155,7 +153,7 @@ class Ellipse extends Shape {
          context.fillStyle = this.fill;
       }
 
-      context.ellipse(this.left, this.top, this.rx, this.ry, 0, 0, Math.PI * 2);
+      context.ellipse(this.left + this.rx, this.top + this.ry, this.rx, this.ry, 0, 0, Math.PI * 2);
 
       if (addStyles) {
          context.fill();
@@ -165,93 +163,95 @@ class Ellipse extends Shape {
       context.closePath();
       context.restore();
 
-      super.renderText({ context });
+      if (this.text.length) {
+         super.renderText({
+            context,
+            text: breakText({ ctx: context, text: this.text, width: this.width }).join("\n"),
+         });
+      }
    }
 
-   Resize(current: Point, old: BoxInterface): void {
+   Resize(current: Point, old: BoxInterface, d: resizeDirection): void {
       // const oldX1 = old.x1 - this.rx;
       // const oldX2 = old.x1 + this.rx;
       // const oldY1 = old.y1 - this.ry;
       // const oldY2 = old.y2 + this.ry;
 
       // centered resize
-      this.rx = Math.max(Math.abs(current.x - old.x1), 5);
-      this.ry = Math.max(Math.abs(current.y - old.y1), 5);
-      this.width = this.rx * 2;
-      this.height = this.ry * 2;
+      // this.rx = Math.max(Math.abs(Math.abs(current.x - old.x1) / 2), 5);
+      // this.ry = Math.max(Math.abs(Math.abs(current.y - old.y1) / 2), 5);
 
-      // switch (d) {
-      //    case "tl":
-      //       if (current.x > oldX2) {
-      //          this.rx = (current.x - oldX2) / 2;
-      //          this.left = oldX2 + this.rx;
-      //       } else {
-      //          this.rx = (oldX2 - current.x) / 2;
-      //          this.left = current.x + this.rx;
-      //       }
+      switch (d) {
+         case "tl":
+            if (current.x > old.x2) {
+               this.left = old.x2;
+               this.width = current.x - old.x2;
+            } else {
+               this.left = current.x;
+               this.width = old.x2 - current.x;
+            }
 
-      //       if (current.y > oldY2) {
-      //          this.ry = (current.y - oldY2) / 2;
-      //          this.top = oldY2 + this.ry;
-      //       } else {
-      //          this.ry = (oldY2 - current.y) / 2;
-      //          this.top = current.y + this.ry;
-      //       }
+            if (current.y > old.y2) {
+               this.top = old.y2;
+               this.height = current.y - old.y2;
+            } else {
+               this.top = current.y;
+               this.height = old.y2 - current.y;
+            }
+            break;
+         case "tr":
+            if (current.x < old.x1) {
+               this.left = current.x;
+               this.width = old.x1 - current.x;
+            } else {
+               this.left = old.x1;
+               this.width = current.x - old.x1;
+            }
 
-      //       this.width = this.rx * 2;
-      //       this.height = this.ry * 2;
+            if (current.y > old.y2) {
+               this.top = old.y2;
+               this.height = current.y - old.y2;
+            } else {
+               this.top = current.y;
+               this.height = old.y2 - current.y;
+            }
+            break;
+         case "br":
+            if (current.x < old.x1) {
+               this.left = current.x;
+               this.width = old.x1 - current.x;
+            } else {
+               this.left = old.x1;
+               this.width = current.x - old.x1;
+            }
 
-      //       break;
-      //    case "tr":
-      //       if (current.x < old.x1) {
-      //          this.left = current.x;
-      //          this.width = old.x1 - current.x;
-      //       } else {
-      //          this.left = old.x1;
-      //          this.width = current.x - old.x1;
-      //       }
+            if (current.y > old.y1) {
+               this.top = old.y1;
+               this.height = current.y - old.y1;
+            } else {
+               this.top = current.y;
+               this.height = old.y1 - current.y;
+            }
+            break;
+         case "bl":
+            if (current.x > old.x2) {
+               this.left = old.x2;
+               this.width = current.x - old.x2;
+            } else {
+               this.left = current.x;
+               this.width = old.x2 - current.x;
+            }
+            if (current.y > old.y1) {
+               this.top = old.y1;
+               this.height = current.y - old.y1;
+            } else {
+               this.top = current.y;
+               this.height = old.y1 - current.y;
+            }
+      }
 
-      //       if (current.y > old.y2) {
-      //          this.top = old.y2;
-      //          this.height = current.y - old.y2;
-      //       } else {
-      //          this.top = current.y;
-      //          this.height = old.y2 - current.y;
-      //       }
-      //       break;
-      //    case "br":
-      //       if (current.x < old.x1) {
-      //          this.left = current.x;
-      //          this.width = old.x1 - current.x;
-      //       } else {
-      //          this.left = old.x1;
-      //          this.width = current.x - old.x1;
-      //       }
-
-      //       if (current.y > old.y1) {
-      //          this.top = old.y1;
-      //          this.height = current.y - old.y1;
-      //       } else {
-      //          this.top = current.y;
-      //          this.height = old.y1 - current.y;
-      //       }
-      //       break;
-      //    case "bl":
-      //       if (current.x > old.x2) {
-      //          this.left = old.x2;
-      //          this.width = current.x - old.x2;
-      //       } else {
-      //          this.left = current.x;
-      //          this.width = old.x2 - current.x;
-      //       }
-      //       if (current.y > old.y1) {
-      //          this.top = old.y1;
-      //          this.height = current.y - old.y1;
-      //       } else {
-      //          this.top = current.y;
-      //          this.height = old.y1 - current.y;
-      //       }
-      // }
+      this.rx = this.width / 2;
+      this.ry = this.height / 2;
    }
 
    _set(key: string, value: any) {

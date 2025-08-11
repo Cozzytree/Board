@@ -36,20 +36,38 @@ abstract class Line extends Shape {
               ];
    }
 
-   activeRect(ctx?: CanvasRenderingContext2D): void {
+   activeRect(ctx?: CanvasRenderingContext2D) {
       const context = ctx || this.ctx;
-      context.beginPath();
-      context.fillStyle = "white";
-      context.arc(this.left + this.points[0].x, this.top + this.points[0].y, 4, 0, Math.PI * 2);
-      context.arc(
+      const pad = this.padding;
+
+      const currentScale = context.getTransform().a;
+
+      context.save();
+
+      const centerX = this.left + this.width * 0.5;
+      const centerY = this.top + this.height * 0.5;
+      context.translate(centerX, centerY);
+      context.rotate(this.rotate);
+      context.translate(-centerX, -centerY);
+
+      // Draw corner dots
+      const drawDot = (cx: number, cy: number) => {
+         context.beginPath();
+         context.fillStyle = "black";
+         context.strokeStyle = "white";
+         context.lineWidth = 3;
+         context.rect(cx - 3, cy - 3, 6, 6);
+         context.stroke();
+         context.fill();
+         context.closePath();
+      };
+
+      drawDot(this.left + this.points[0].x, this.top + this.points[0].y); // top-left
+      drawDot(
          this.left + this.points[this.points.length - 1].x,
          this.top + this.points[this.points.length - 1].y,
-         4,
-         0,
-         Math.PI * 2,
-      );
-      context.fill();
-      context.closePath();
+      ); // top-left
+      context.restore();
    }
 
    protected renderArrow({

@@ -27,7 +27,7 @@ export type DrawProps = {
 const keysNotNeeded = ["ctx", "eventListeners"];
 
 abstract class Shape implements ShapeProps {
-   padding = 4;
+   padding = 5;
 
    protected lastFlippedState: { x: boolean; y: boolean };
    declare type: shapeType;
@@ -169,30 +169,36 @@ abstract class Shape implements ShapeProps {
       const w = this.width + pad * 2;
       const h = this.height + pad * 2;
 
-      const currentScale = context.getTransform().a;
+      // Compute actual uniform scale
+      const transform = context.getTransform();
+      const currentScale = Math.sqrt(transform.a ** 2 + transform.b ** 2);
 
       context.save();
 
+      // Apply rotation around center
       const centerX = this.left + this.width * 0.5;
       const centerY = this.top + this.height * 0.5;
       context.translate(centerX, centerY);
       context.rotate(this.rotate);
       context.translate(-centerX, -centerY);
 
-      // Draw outer rectangle
+      // Draw outer rectangle with constant visual width
       context.beginPath();
       context.strokeStyle = "white";
-      context.lineWidth = this.strokeWidth / currentScale;
+      context.lineWidth = this.strokeWidth / currentScale; // Adjust for scale
       context.rect(x, y, w, h);
       context.stroke();
       context.closePath();
 
-      // Draw corner dots
+      // Corner dot size in screen pixels
+      const screenDotSize = 10;
       const drawDot = (cx: number, cy: number) => {
+         const wh = screenDotSize / currentScale; // Inverse scale for visual consistency
          context.beginPath();
          context.fillStyle = "black";
          context.strokeStyle = "white";
-         context.rect(cx - 3, cy - 3, 6, 6);
+         context.lineWidth = 1 / currentScale; // Keep dot border consistent too
+         context.rect(cx - wh / 2, cy - wh / 2, wh, wh);
          context.stroke();
          context.fill();
          context.closePath();
@@ -202,6 +208,7 @@ abstract class Shape implements ShapeProps {
       drawDot(x + w, y); // top-right
       drawDot(x, y + h); // bottom-left
       drawDot(x + w, y + h); // bottom-right
+
       context.restore();
    }
 

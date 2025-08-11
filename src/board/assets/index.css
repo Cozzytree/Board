@@ -1,11 +1,16 @@
 textarea {
+   white-space: pre-wrap;
+   overflow-wrap: break-word;
    resize: none;
    width: fit-content;
    outline: none;
-   white-space: pre;
+   white-space: pre-wrap;
 }
 
 .input-container {
+   display: flex;
+   justify-content: center;
+   align-items: center;
    color: white;
    font-size: 0.8em;
    padding: 0.5em;

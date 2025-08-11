@@ -222,7 +222,7 @@ class Board implements BoardInterface {
       if (!this.pendingEventScheduled) {
          this.pendingEventScheduled = true;
          requestAnimationFrame(() => {
-            this.currentTool.pointermove({ e: e, p: mouse });
+            this.currentTool.pointermove({ e, p: mouse });
             this.pendingEventScheduled = false;
          });
       }
@@ -263,7 +263,6 @@ class Board implements BoardInterface {
             s.activeRect(ctx);
          });
       }
-
       this.ctx.restore();
    }
 
