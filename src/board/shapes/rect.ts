@@ -31,6 +31,10 @@ class Rect extends Shape {
       super.mousedown(s);
    }
 
+   mouseover(s: ShapeEventData): void {
+      super.mouseover(s)
+   }
+
    mouseup(s: ShapeEventData): void {
       super.set({
          width: Math.max(this.width, 20),

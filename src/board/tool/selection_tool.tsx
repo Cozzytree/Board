@@ -8,9 +8,10 @@ import type {
    ToolEventData,
    ToolInterface,
 } from "../types";
-import { ActiveSelection, Box, Pointer } from "../index";
+import { ActiveSelection, Box, Pointer, Rect } from "../index";
 import { generateShapeByShapeType } from "../utils/utilfunc";
 import type { HistoryType } from "../shapes/shape_store";
+import { HoveredColor } from "../constants";
 
 const textAreaId = "text-update";
 
@@ -22,6 +23,7 @@ type ResizeShapeProps = {
 } | null;
 
 class SelectionTool implements ToolInterface {
+   private hoveredShape: Shape | null = null;
    private isDragging: boolean = false;
    private isTextEditale: boolean = false;
    private dragThreshold = 2;
@@ -84,7 +86,8 @@ class SelectionTool implements ToolInterface {
          if (lastInserted?.type === "selection" && lastInserted instanceof ActiveSelection) {
             if (lastInserted.IsDraggable(p)) {
                this.draggedShape = lastInserted;
-
+               this.activeShape = lastInserted
+               this._board.setActiveShape(lastInserted)
                // insert into undo temp state
                lastInserted.shapes.forEach((as) => {
                   this.mouseDowmShapeState.push(as.s.toObject());
@@ -193,6 +196,8 @@ class SelectionTool implements ToolInterface {
    }
 
    pointermove({ p }: ToolEventData): void {
+      this.hoveredShape = null
+
       if (this.subMode === "grab" && this.isGrabbing) {
          console.log(p);
          setTimeout(() => {
@@ -208,9 +213,8 @@ class SelectionTool implements ToolInterface {
 
       //
       this.shouldDrag();
-      if (!this.isDragging && !this.activeShape) return;
 
-      if (this.draggedShape != null) {
+      if (this.draggedShape != null && this.isDragging) {
          const shapes = this.draggedShape.dragging(new Pointer(this.lastPoint), new Pointer(p));
          this.lastPoint = p;
          this.draw(this.draggedShape, ...(shapes || []));
@@ -248,14 +252,41 @@ class SelectionTool implements ToolInterface {
       }
 
       this._board.shapeStore.forEach((s) => {
-         if (s.isWithin(p) && this._board.activeShapes.has(s)) {
+         if (s.isWithin(p)) {
+            if (this.draggedShape == null &&
+               this.resizableShape == null
+            ) {
+               if (!this._board.activeShapes.has(s) &&
+                  this._board.shapeStore.getLastInsertedShape()?.type !== "selection") {
+                  this.hoveredShape = new Rect({
+                     _board: this._board,
+                     ctx: this._board.ctx,
+                     left: s.left - 4,
+                     top: s.top - 4,
+                     width: s.width + 8,
+                     height: s.height + 8,
+                     stroke: HoveredColor,
+                     strokeWidth: 3
+                  })
+               }
+            }
             s.mouseover({ e: { point: p } });
             return true;
+         } else {
+            this.hoveredShape = null
          }
 
          document.body.style.cursor = "default";
          return false;
       });
+
+      if (this.hoveredShape) {
+         this.draw(this.hoveredShape)
+      } else {
+         this._board.ctx2.setTransform(1, 0, 0, 1, 0, 0);
+         this._board.ctx2.clearRect(0, 0, this._board.canvas2.width, this._board.canvas2.height);
+         this._board.ctx2.save();
+      }
    }
 
    pointerup({ p }: ToolEventData): void {
@@ -282,6 +313,7 @@ class SelectionTool implements ToolInterface {
       this.hasSelectionStarted = false;
       if (this.activeShape) {
          this.activeShape.mouseup({ e: { point: p } });
+         this.activeShape = null;
       }
 
       // const mouse = this._board.getTransFormedCoords(e);
@@ -370,7 +402,7 @@ class SelectionTool implements ToolInterface {
       }
    }
 
-   onClick(): void {}
+   onClick(): void { }
 
    cleanUp(): void {
       document.removeEventListener("keydown", this.handleKeyDown);

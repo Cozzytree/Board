@@ -133,7 +133,7 @@ abstract class Shape implements ShapeProps {
       };
    }
 
-   connectionEvent(_: connectionEventData) {}
+   connectionEvent(_: connectionEventData) { }
 
    dragging(_: Point, current: Point): Shape[] | void {
       if (this.connections) {
@@ -246,7 +246,7 @@ abstract class Shape implements ShapeProps {
          }),
          this.padding,
       );
-      if (r) {
+      if (r && this._board.activeShapes.has(this)) {
          switch (r.rd) {
             case "tl":
             case "br":
@@ -268,6 +268,8 @@ abstract class Shape implements ShapeProps {
                document.body.style.cursor = "ew-resize";
                break;
          }
+      } else {
+         document.body.style.cursor = "default"
       }
 
       this.emit("mouseover", s);
@@ -351,7 +353,7 @@ abstract class Shape implements ShapeProps {
       return this[property as keyof this];
    }
 
-   setCoords() {}
+   setCoords() { }
 
    protected renderText({ context, text }: { text?: string; context: CanvasRenderingContext2D }) {
       // text

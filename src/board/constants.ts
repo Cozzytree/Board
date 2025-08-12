@@ -1,5 +1,6 @@
 const SCALE_RATE = 0.15;
 const keysNotNeeded = ["ctx", "eventListeners"];
+const HoveredColor = "#7090EF"
 
 const COLORS = ["#606090", "#487F88", "#92CEAC", "#EFD36C", "#F3AEAF", "#6B7280"];
 const FONT_SIZES = [
@@ -9,4 +10,4 @@ const FONT_SIZES = [
    { label: "Small", size: 15 },
 ];
 
-export { SCALE_RATE, keysNotNeeded, COLORS, FONT_SIZES };
+export { SCALE_RATE, keysNotNeeded, HoveredColor, COLORS, FONT_SIZES };
