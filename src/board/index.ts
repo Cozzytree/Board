@@ -18,6 +18,7 @@ import PlusPath from "@/board/shapes/paths/plus";
 import SimplePath from "./shapes/paths/simple_path";
 import Line from "@/board/shapes/line/line";
 import PlainLine from "@/board/shapes/line/line-plain";
+import LineCurve from "./shapes/line/line-curve";
 import AnchorLine from "@/board/shapes/line/line-anchor";
 import TextTool from "./tool/text_tool";
 import Text from "./shapes/text";
@@ -45,5 +46,6 @@ export {
    SimplePath,
    AnchorLine,
    TextTool,
+   LineCurve,
    Text,
 };

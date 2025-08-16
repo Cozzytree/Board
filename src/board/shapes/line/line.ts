@@ -24,16 +24,7 @@ abstract class Line extends Shape {
       this.lineType = props.lineType || "straight";
       this.arrowS = true;
       this.arrowE = false;
-      this.points =
-         this.points && this.points.length < 2
-            ? [
-                 { x: 0, y: 0 },
-                 { x: this.width, y: this.height },
-              ]
-            : [
-                 { x: 0, y: 0 },
-                 { x: this.width, y: this.height },
-              ];
+      this.points = props.points || []
    }
 
    activeRect(ctx?: CanvasRenderingContext2D) {
@@ -58,11 +49,11 @@ abstract class Line extends Shape {
          context.closePath();
       };
 
-      drawDot(this.left + this.points[0].x, this.top + this.points[0].y); // top-left
+      drawDot(this.left + this.points[0].x, this.top + this.points[0].y)
       drawDot(
          this.left + this.points[this.points.length - 1].x,
-         this.top + this.points[this.points.length - 1].y,
-      ); // top-left
+         this.top + this.points[this.points.length - 1].y
+      )
       context.restore();
    }
 
@@ -247,8 +238,8 @@ abstract class Line extends Shape {
          } else {
             oppositeP = this.points.length - 2;
          }
-
          const i = intersectLineWithBox(
+
             current.x,
             current.y,
             this.left + this.points[oppositeP].x,
@@ -272,7 +263,7 @@ abstract class Line extends Shape {
       }
    }
 
-   connectionEvent({ c, s, p }: connectionEventData): void {
+   connectionEvent({ c, s, p }: connectionEventData): boolean {
       const absPoint = {
          x: s.left + (c.coords.x / 100) * s.width,
          y: s.top + (c.coords.y / 100) * s.height,
@@ -297,6 +288,7 @@ abstract class Line extends Shape {
       if (intersect.length) {
          const relativeX = intersect[0][0] - this.left;
          const relativeY = intersect[0][1] - this.top;
+
          if (c.connected == "s") {
             this.points[0] = { x: relativeX, y: relativeY };
          } else {
@@ -306,7 +298,10 @@ abstract class Line extends Shape {
          if (this instanceof AnchorLine) {
             this.Resize(p, { x1: 0, y1: 0, y2: 0, x2: 0 }, "b");
          }
+         this.setCoords()
+         return true
       }
+      return false
    }
 }
 

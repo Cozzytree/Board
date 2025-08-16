@@ -199,7 +199,6 @@ class SelectionTool implements ToolInterface {
       this.hoveredShape = null
 
       if (this.subMode === "grab" && this.isGrabbing) {
-         console.log(p);
          setTimeout(() => {
             this._board.view.x += this._board.evt.dx;
             this._board.view.y += this._board.evt.dy;
@@ -414,7 +413,7 @@ class SelectionTool implements ToolInterface {
       if (e.key === "Delete") {
          const shapes = this._board.getActiveShapes();
          const c = this._board.removeShape(...shapes);
-         console.log(c);
+         console.info("deleted count", c)
       } else if (e.ctrlKey) {
          const lastInserted = this._board.shapeStore.getLastInsertedShape();
          switch (e.key) {

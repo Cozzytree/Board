@@ -13,6 +13,7 @@ import {
    PentagonIcon,
    PlusIcon,
    Spline,
+   SplineIcon,
    TriangleIcon,
    TypeOutlineIcon,
    type LucideIcon,
@@ -83,6 +84,7 @@ const BoardProvider = ({
          subMode: [
             { sm: "line:anchor", I: Spline },
             { sm: "line:straight", I: Minus },
+            { sm: "line:curve", I: SplineIcon }
          ],
       },
       {

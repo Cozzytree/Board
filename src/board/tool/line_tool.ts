@@ -1,4 +1,4 @@
-import { AnchorLine, Box, PlainLine, type Board, type Line } from "@/board/index";
+import { AnchorLine, Box, LineCurve, PlainLine, type Board, type Line } from "@/board/index";
 import type { ToolCallback, ToolEventData } from "../types";
 import Tool from "./tool";
 
@@ -9,7 +9,7 @@ class LineTool extends Tool {
       super(board);
    }
 
-   cleanUp(): void {}
+   cleanUp(): void { }
 
    pointerDown({ p }: ToolEventData): void {
       if (this._board.modes.sm === "line:straight") {
@@ -19,10 +19,28 @@ class LineTool extends Tool {
             points: [
                { x: 0, y: 0 },
                { x: 0, y: 0 },
+               { x: 0, y: 0 },
+               { x: 0, y: 0 },
             ],
             left: p.x,
             top: p.y,
+            lineType: "curve",
+            fill: "white"
          });
+      } else if (this._board.modes.sm === "line:curve") {
+         this.newLine = new LineCurve({
+            _board: this._board,
+            ctx: this._board.ctx,
+            points: [
+               { x: 0, y: 0 },
+               { x: 0, y: 0 },
+               { x: 0, y: 0 },
+            ],
+            left: p.x,
+            top: p.y,
+            lineType: "curve",
+            fill: "white"
+         })
       } else {
          this.newLine = new AnchorLine({
             _board: this._board,
@@ -66,9 +84,9 @@ class LineTool extends Tool {
       cb?.({ mode: "cursor", submode: "free" });
    }
 
-   dblClick() {}
+   dblClick() { }
 
-   onClick(): void {}
+   onClick(): void { }
 }
 
 export default LineTool;

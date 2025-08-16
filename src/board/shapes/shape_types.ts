@@ -9,6 +9,8 @@ export type connectionEventData = { s: Shape; p: Point; c: connection };
 export interface ConnectionInterface {
    shapes: connection[];
 
+   size(): number;
+
    add(c: connection): boolean;
 
    forEach(callback: (c: connection) => boolean): connection | null;

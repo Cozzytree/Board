@@ -6,6 +6,10 @@ class Connections implements ConnectionInterface {
       this.shapes = c || [];
    }
 
+   size() {
+      return this.shapes.length
+   }
+
    add(s: connection): boolean {
       for (let i = 0; i < this.shapes.length; i++) {
          if (s.s.ID() == this.shapes[i].s.ID()) return false;

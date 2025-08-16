@@ -93,7 +93,7 @@ export interface BoardInterface {
 
 export type modes = "cursor" | "shape" | "line" | "draw" | "text";
 
-export type submodeline = "line:straight" | "line:anchor";
+export type submodeline = "line:straight" | "line:anchor" | "line:curve";
 export type submodecursor = "grab" | "free";
 export type submodeshape =
    | "rect"
