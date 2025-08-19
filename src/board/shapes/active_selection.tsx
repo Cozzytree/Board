@@ -93,7 +93,7 @@ class ActiveSelection extends Shape {
       return null;
    }
 
-   dragging(prev: Point, current: Point): void {
+   dragging(prev: Point, current: Point) {
       const dx = current.x - prev.x;
       const dy = current.y - prev.y;
 
@@ -104,6 +104,13 @@ class ActiveSelection extends Shape {
 
       this.left += dx;
       this.top += dy;
+
+
+      const drg = super.dragging(prev, current)
+      if (!drg) {
+         return;
+      }
+      return [...drg, ...this.shapes.map((s) => s.s)]
    }
 
    draw(options: { active: boolean; ctx?: CanvasRenderingContext2D; addStyles?: boolean }): void {

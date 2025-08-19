@@ -44,6 +44,7 @@ class TextTool implements ToolInterface {
             });
             this._board.add(newText);
             this._board.render();
+            this._board.setMode = { m: "cursor", sm: "free" };
          }
          document.getElementById(this.id)?.remove();
       }

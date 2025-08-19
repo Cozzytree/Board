@@ -191,7 +191,7 @@ abstract class Shape implements ShapeProps {
       context.closePath();
 
       // Corner dot size in screen pixels
-      const screenDotSize = 10;
+      const screenDotSize = 8;
       const drawDot = (cx: number, cy: number) => {
          const wh = screenDotSize / currentScale; // Inverse scale for visual consistency
          context.beginPath();

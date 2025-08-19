@@ -10,7 +10,6 @@ import {
    SelectionTool,
    Shape,
    ShapeStore,
-   Pointer,
    ActiveSelection,
    ShapeTool,
    DrawTool,
@@ -69,12 +68,10 @@ class Board implements BoardInterface {
    private handleWheel: (e: WheelEvent) => void;
    declare onModeChange?: (m: modes, sm: submodes) => void;
 
-   onMouseUpCallback?: (e: ShapeEventData) => void;
-   scale = 1;
    canvas: HTMLCanvasElement;
    ctx: CanvasRenderingContext2D;
    modes: { m: modes; sm: submodes | null };
-   offset = new Pointer({ x: 0, y: 0 });
+   onMouseUpCallback?: (e: ShapeEventData) => void;
 
    constructor({ canvas, width, scl = 1, height, onModeChange, onMouseUp }: BoardProps) {
       this.canvas = canvas;
@@ -387,9 +384,6 @@ class Board implements BoardInterface {
    }
 
    private onWheel(e: WheelEvent) {
-      // const box = this.canvas.getBoundingClientRect();
-      // const mouseX = e.clientX - box.left;
-      // const mouseY = e.clientY - box.top;
       if (!e.ctrlKey) {
          this.view.y = e.deltaY > 0 ? this.view.y - 80 : this.view.y + 80;
       } else {

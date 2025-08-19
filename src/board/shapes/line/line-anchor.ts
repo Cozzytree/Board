@@ -113,7 +113,7 @@ class LineAnchor extends Line {
                if (end.x < start.x) {
                   this.points[0] = { x: left - this.left, y: top + (height / 2) - this.top }
                } else {
-                  this.points[0] = { x: left + (s.width / 2) - this.left, y: top + (height / 2) - this.top }
+                  this.points[0] = { x: left + s.width - this.left, y: top + (height / 2) - this.top }
                }
             }
             this.points[1] = { x: midX, y: this.points[0].y};

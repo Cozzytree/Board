@@ -183,9 +183,13 @@ abstract class Line extends Shape {
          return;
       }
 
+      // const coords = {
+      //    x: ((s.e.point.x - foundShape.left) / foundShape.width) * 100,
+      //    y: ((s.e.point.y - foundShape.top) / foundShape.height) * 100,
+      // };
       const coords = {
-         x: ((s.e.point.x - foundShape.left) / foundShape.width) * 100,
-         y: ((s.e.point.y - foundShape.top) / foundShape.height) * 100,
+         x: s.e.point.x - (foundShape.left + foundShape.width / 2),
+         y: s.e.point.y - (foundShape.top + foundShape.height / 2)
       };
 
       if (this.resizeIndex == 0) {

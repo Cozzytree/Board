@@ -25,12 +25,12 @@ type ResizeShapeProps = {
 class SelectionTool implements ToolInterface {
    private hoveredShape: Shape | null = null;
    private isDragging: boolean = false;
+   private textEdit: Shape | null = null;
    private isTextEditale: boolean = false;
    private dragThreshold = 2;
    private mouseDowmShapeState: Record<string, any>[] = [];
 
    private isGrabbing: boolean = false;
-   private isTextEdit: Shape | null = null;
    private handleKeyDown: (e: KeyboardEvent) => void;
    private _board: Board;
    private draggedShape: Shape | null = null;
@@ -59,13 +59,11 @@ class SelectionTool implements ToolInterface {
       this.isTextEditale = false;
 
       //  get the text document
-      const doc = document.getElementById(textAreaId);
-      if (doc !== null) {
-         doc.remove();
-         this.isTextEdit = null;
+      if (this.textEdit) {
+         const content = this.getTextContentFromElement();
+         this.textEdit.set("text", content);
+         this.textEdit = null;
       }
-
-      if (this.isTextEdit != null) return;
 
       if (this.subMode === "free") {
          // altkey for duplicate
@@ -86,8 +84,8 @@ class SelectionTool implements ToolInterface {
          if (lastInserted?.type === "selection" && lastInserted instanceof ActiveSelection) {
             if (lastInserted.IsDraggable(p)) {
                this.draggedShape = lastInserted;
-               this.activeShape = lastInserted
-               this._board.setActiveShape(lastInserted)
+               this.activeShape = lastInserted;
+               this._board.setActiveShape(lastInserted);
                // insert into undo temp state
                lastInserted.shapes.forEach((as) => {
                   this.mouseDowmShapeState.push(as.s.toObject());
@@ -196,7 +194,7 @@ class SelectionTool implements ToolInterface {
    }
 
    pointermove({ p }: ToolEventData): void {
-      this.hoveredShape = null
+      this.hoveredShape = null;
 
       if (this.subMode === "grab" && this.isGrabbing) {
          setTimeout(() => {
@@ -210,7 +208,6 @@ class SelectionTool implements ToolInterface {
       }
       this._board._lastMousePosition = p;
 
-      //
       this.shouldDrag();
 
       if (this.draggedShape != null && this.isDragging) {
@@ -246,17 +243,17 @@ class SelectionTool implements ToolInterface {
             }),
             "br",
          );
-         this.draw(this.activeShape);
+         this.draw(...this.activeShape.shapes.map((s) => s.s), this.activeShape);
          return;
       }
 
       this._board.shapeStore.forEach((s) => {
          if (s.isWithin(p)) {
-            if (this.draggedShape == null &&
-               this.resizableShape == null
-            ) {
-               if (!this._board.activeShapes.has(s) &&
-                  this._board.shapeStore.getLastInsertedShape()?.type !== "selection") {
+            if (this.draggedShape == null && this.resizableShape == null) {
+               if (
+                  !this._board.activeShapes.has(s) &&
+                  this._board.shapeStore.getLastInsertedShape()?.type !== "selection"
+               ) {
                   this.hoveredShape = new Rect({
                      _board: this._board,
                      ctx: this._board.ctx,
@@ -265,14 +262,14 @@ class SelectionTool implements ToolInterface {
                      width: s.width + 8,
                      height: s.height + 8,
                      stroke: HoveredColor,
-                     strokeWidth: 3
-                  })
+                     strokeWidth: 3,
+                  });
                }
             }
             s.mouseover({ e: { point: p } });
             return true;
          } else {
-            this.hoveredShape = null
+            this.hoveredShape = null;
          }
 
          document.body.style.cursor = "default";
@@ -280,7 +277,7 @@ class SelectionTool implements ToolInterface {
       });
 
       if (this.hoveredShape) {
-         this.draw(this.hoveredShape)
+         this.draw(this.hoveredShape);
       } else {
          this._board.ctx2.setTransform(1, 0, 0, 1, 0, 0);
          this._board.ctx2.clearRect(0, 0, this._board.canvas2.width, this._board.canvas2.height);
@@ -299,6 +296,7 @@ class SelectionTool implements ToolInterface {
          if (!ac.length) return;
          if (ac[0].IsDraggable(p)) {
             this.createText({ s: ac[0], p, start: { x: ac[0].left, y: ac[0].top } });
+            this.textEdit = ac[0];
             this.activeShape = null;
             this._board.ctx2.clearRect(0, 0, this._board.canvas2.width, this._board.canvas2.height);
             return;
@@ -382,13 +380,11 @@ class SelectionTool implements ToolInterface {
 
       tarea.addEventListener("blur", () => {
          s.set("text", tarea.value);
-         this.isTextEdit = null;
+         this.textEdit = null;
          s._board.render();
          div.remove();
          tarea.remove();
       });
-
-      this.isTextEdit = s;
    }
 
    dblClick({ p }: ToolEventData): void {
@@ -408,12 +404,23 @@ class SelectionTool implements ToolInterface {
    }
 
    private onkeydown(e: KeyboardEvent) {
-      if (this.resizableShape || this.draggedShape || this.hasSelectionStarted) return;
+      if (e.key === "Escape") {
+         if (this.textEdit) {
+            this.textEdit.set("text", this.getTextContentFromElement());
+            this.textEdit = null;
 
+            // TODO
+            // maybe can be optimized more
+            this._board.render();
+         }
+      }
+
+      if (this.resizableShape || this.draggedShape || this.hasSelectionStarted) return;
       if (e.key === "Delete") {
          const shapes = this._board.getActiveShapes();
+
          const c = this._board.removeShape(...shapes);
-         console.info("deleted count", c)
+         console.info("deleted count", c);
       } else if (e.ctrlKey) {
          const lastInserted = this._board.shapeStore.getLastInsertedShape();
          switch (e.key) {
@@ -479,6 +486,18 @@ class SelectionTool implements ToolInterface {
                this.redo();
          }
       }
+   }
+
+   private getTextContentFromElement() {
+      const div = document.getElementById(textAreaId);
+      const t = div?.children.item(0) as HTMLTextAreaElement | null;
+      if (t !== null) {
+         div?.remove();
+         // TODO not sure how will i remove the listener
+         // t.removeEventListener("blur", )
+         return t.value;
+      }
+      return "";
    }
 
    private redo() {

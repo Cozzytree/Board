@@ -86,7 +86,6 @@ export interface BoardInterface {
    canvas: HTMLCanvasElement;
    ctx: CanvasRenderingContext2D;
    modes: { m: modes; sm: submodes | null };
-   offset: Point;
    onMouseMove?: () => void;
    onMouseUp?: () => void;
 }
