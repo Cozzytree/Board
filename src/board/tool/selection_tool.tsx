@@ -8,7 +8,7 @@ import type {
    ToolEventData,
    ToolInterface,
 } from "../types";
-import { ActiveSelection, Box, Pointer, Rect } from "../index";
+import { ActiveSelection, Box, Path, Pointer, Rect } from "../index";
 import { generateShapeByShapeType } from "../utils/utilfunc";
 import type { HistoryType } from "../shapes/shape_store";
 import { HoveredColor } from "../constants";
@@ -28,6 +28,8 @@ class SelectionTool implements ToolInterface {
    private textEdit: Shape | null = null;
    private isTextEditale: boolean = false;
    private dragThreshold = 2;
+
+   // to store the changed shape to before storing into undo redo store
    private mouseDowmShapeState: Record<string, any>[] = [];
 
    private isGrabbing: boolean = false;
@@ -105,10 +107,16 @@ class SelectionTool implements ToolInterface {
                      y2: lastInserted.top + lastInserted.height,
                   }),
                };
+
                if (lastInserted instanceof ActiveSelection) {
                   lastInserted.shapes.forEach((s) => {
+                     // insert this to undo
+                     if (s.s instanceof Path) {
+                        s.s.lastPoints = s.s.points.map((p) => {
+                           return { x: p.x, y: p.y }
+                        })
+                     }
                      this.mouseDowmShapeState.push(s.s.toObject());
-
                      s.oldProps = new Box({
                         x1: s.s.left,
                         y1: s.s.top,
@@ -117,6 +125,8 @@ class SelectionTool implements ToolInterface {
                      });
                   });
                }
+               // fire mouse down for the shape
+               lastInserted.mousedown({ e: { point: p } })
                return;
             }
 
@@ -581,10 +591,18 @@ class SelectionTool implements ToolInterface {
             });
             break;
          case "create":
-            redoUndo === 1 ? create() : del();
+            if (redoUndo === 1) {
+               create();
+            } else {
+               del();
+            }
             break;
          case "delete":
-            redoUndo === 1 ? del() : create();
+            if (redoUndo === 1) {
+               del();
+            } else {
+               create();
+            }
       }
       this._board.render();
       return currState;

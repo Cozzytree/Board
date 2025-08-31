@@ -1,5 +1,5 @@
 import { keysNotNeeded } from "../constants";
-import { Box, Ellipse, Shape } from "../index";
+import { Box, Ellipse, Path, Shape } from "../index";
 import type {
    BoxInterface,
    Identity,
@@ -23,8 +23,8 @@ class ActiveSelection extends Shape {
       super(props);
       this.shapes = props.shapes || [];
       this.type = "selection";
-      this.fill = "#505045";
-      this.stroke = "#606055";
+      this.fill = "#404040";
+      this.stroke = "#404040";
 
       if (this.shapes.length) {
          let newBox = new Box({
@@ -105,21 +105,19 @@ class ActiveSelection extends Shape {
       this.left += dx;
       this.top += dy;
 
-
-      const drg = super.dragging(prev, current)
+      const drg = super.dragging(prev, current);
       if (!drg) {
          return;
       }
-      return [...drg, ...this.shapes.map((s) => s.s)]
+      return [...drg, ...this.shapes.map((s) => s.s)];
    }
 
    draw(options: { active: boolean; ctx?: CanvasRenderingContext2D; addStyles?: boolean }): void {
       const context = options.ctx || this.ctx;
-
       this.activeRect(context);
    }
 
-   Resize(current: Point, old: BoxInterface, d: resizeDirection): void {
+   Resize(current: Point, old: BoxInterface, d: resizeDirection): Shape[] | void {
       switch (d) {
          case "tl":
             if (current.x > old.x2) {
@@ -137,33 +135,8 @@ class ActiveSelection extends Shape {
                this.top = current.y;
                this.height = old.y2 - current.y;
             }
-
-            this.shapes.forEach((s) => {
-               if (s.oldProps)
-                  s.s.Resize(
-                     {
-                        x: current.x + (s.oldProps.x1 - current.x),
-                        y: current.y + (s.oldProps.y1 - current.y),
-                     },
-                     s.oldProps,
-                     d,
-                  );
-            });
-
             break;
          case "tr":
-            this.shapes.forEach((s) => {
-               if (s.oldProps)
-                  s.s.Resize(
-                     {
-                        x: current.x - (current.x - s.oldProps.x2),
-                        y: current.y - (current.y - s.oldProps.y2),
-                     },
-                     s.oldProps,
-                     d,
-                  );
-            });
-
             if (current.x < old.x1) {
                this.left = current.x;
                this.width = old.x1 - current.x;
@@ -213,6 +186,53 @@ class ActiveSelection extends Shape {
                this.height = old.y1 - current.y;
             }
       }
+
+      // Compute ratio of how much the parent (activeSelection) has resized
+      const oldWidth = old.x2 - old.x1;
+      const oldHeight = old.y2 - old.y1;
+      const newWidth = this.width;
+      const newHeight = this.height;
+
+      this.shapes.forEach((s) => {
+         if (!s.s || !s.oldProps) return;
+
+         const relativeLeft = s.oldProps.x1 - old.x1;
+         const relativeTop = s.oldProps.y1 - old.y1;
+
+         const scaleX = newWidth / oldWidth;
+         const scaleY = newHeight / oldHeight;
+
+         const newLeft = this.left + relativeLeft * scaleX;
+         const newTop = this.top + relativeTop * scaleY;
+
+         const newWidthS = (s.oldProps.x2 - s.oldProps.x1) * scaleX;
+         const newHeightS = (s.oldProps.y2 - s.oldProps.y1) * scaleY;
+
+         if (s.s.type === "ellipse") {
+            s.s.set({
+               rx: newWidthS / 2,
+               ry: newHeightS / 2,
+            });
+         }
+
+         if (s.s instanceof Path) {
+            const lastPoints = s.s.lastPoints;
+            s.s.points.forEach((p, i) => {
+               const original = lastPoints[i];
+               const scaledX = (original.x / oldWidth) * newWidth;
+               const scaledY = (original.y / oldHeight) * newHeight;
+               p.x = scaledX;
+               p.y = scaledY;
+            });
+         }
+         s.s.set({
+            left: newLeft,
+            top: newTop,
+            width: newWidthS,
+            height: newHeightS,
+         });
+      });
+      return this.shapes.map((s) => s.s);
    }
 
    mouseup(s: ShapeEventData): void {
@@ -239,12 +259,6 @@ class ActiveSelection extends Shape {
                y1: s.top,
                y2: s.top + s.height,
             });
-            if (s instanceof Ellipse) {
-               inner.x1 = inner.x1 - s.rx;
-               inner.y1 = inner.y1 - s.ry;
-               inner.x2 = inner.x1 + s.width;
-               inner.y2 = inner.y1 + s.height;
-            }
             if (IsIn({ inner, outer })) {
                this.shapes.push({ s });
                updateBox = updateBox.compareAndReturnSmall(inner);

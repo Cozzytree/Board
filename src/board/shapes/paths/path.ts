@@ -11,13 +11,15 @@ export type PathProps = {
 
 class Path extends Shape {
    declare points: Point[];
-   protected lastPoints: Point[];
+   lastPoints: Point[];
    declare pathType: string;
 
    constructor(props: ShapeProps & PathProps) {
       super(props);
       this.points = props.points || [];
-      this.lastPoints = this.points.map((p) => p);
+      this.lastPoints = this.points.map((p) => {
+         return { x: p.x, y: p.y };
+      });
       this.type = "path";
    }
 

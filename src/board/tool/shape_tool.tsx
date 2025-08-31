@@ -1,21 +1,21 @@
-import { Board, Box, Ellipse, Path, Pentagon, Pointer, Rect, type Shape } from "../index";
-import type { Point, submodes, ToolInterface, ToolCallback, ToolEventData } from "../types";
+import { Board, Box, Ellipse, Path, Pointer, Rect, type Shape } from "../index";
+import type { submodes, ToolInterface, ToolCallback, ToolEventData } from "../types";
 
 class ShapeTool implements ToolInterface {
    private _board: Board;
    private submode: submodes;
    private newShape: Shape | null = null;
-   private mouseDownPoint: Point = new Pointer({ x: 0, y: 0 });
+   private oldShapeProps: Box
 
    constructor(board: Board, submode?: submodes) {
       this._board = board;
       this.submode = submode || "rect";
+      this.oldShapeProps = new Box({ x1: 0, y1: 0, y2: 0, x2: 0 })
    }
 
-   cleanUp(): void {}
+   cleanUp(): void { }
 
    pointerDown({ p }: ToolEventData): void {
-      this.mouseDownPoint = p;
       this._board.activeShapes.clear();
 
       const lastInserted = this._board.shapeStore.getLastInsertedShape();
@@ -26,50 +26,98 @@ class ShapeTool implements ToolInterface {
          this._board.render();
       }
 
+      const w = 4;
       switch (this.submode) {
          case "path:diamond":
             this.newShape = new Path({
                _board: this._board,
                ctx: this._board.ctx,
-               width: 4,
-               height: 4,
+               width: w,
+               height: w,
                points: [
-                  new Pointer({ x: 0, y: 4 * 0.2 }),
-                  new Pointer({ x: 4 * 0.2, y: 0 }),
-                  new Pointer({ x: 4 - 4 * 0.2, y: 0 }),
-                  new Pointer({ x: 4, y: 4 * 0.2 }),
-                  new Pointer({ x: 4 / 2, y: 4 }),
-                  new Pointer({ x: 0, y: 4 * 0.2 }),
+                  new Pointer({ x: 0, y: w * 0.2 }),
+                  new Pointer({ x: w * 0.2, y: 0 }),
+                  new Pointer({ x: w - w * 0.2, y: 0 }),
+                  new Pointer({ x: w, y: w * 0.2 }),
+                  new Pointer({ x: w / 2, y: w }),
+                  new Pointer({ x: 0, y: w * 0.2 }),
                ],
                left: p.x,
                top: p.y,
             });
             break;
+         case "path:plus":
+            this.newShape = new Path({
+               _board: this._board,
+               ctx: this._board.ctx,
+               width: w,
+               height: w,
+               left: p.x,
+               top: p.y,
+               points: [
+                  new Pointer({ x: 0, y: w * 0.4 }),
+                  new Pointer({ x: w * 0.4, y: w * 0.4 }),
+                  new Pointer({ x: w * 0.4, y: 0 }),
+                  new Pointer({ x: w - (w * 0.4), y: 0 }),
+                  new Pointer({ x: w - (w * 0.4), y: w * 0.4 }),
+                  new Pointer({ x: w, y: w * 0.4 }),
+                  new Pointer({ x: w, y: w - (w * 0.4) }),
+                  new Pointer({ x: w - (w * 0.4), y: w - (w * 0.4) }),
+                  new Pointer({ x: w - (w * 0.4), y: w }),
+                  new Pointer({ x: (w * 0.4), y: w }),
+                  new Pointer({ x: (w * 0.4), y: w - (w * 0.4) }),
+                  new Pointer({ x: 0, y: w - (w * 0.4) }),
+               ],
+            });
+            break
          case "path:triangle":
             this.newShape = new Path({
                _board: this._board,
                ctx: this._board.ctx,
-               width: 4,
-               height: 4,
+               width: w,
+               height: w,
                left: p.x,
                top: p.y,
                points: [
-                  new Pointer({ x: 0 + 4 * 0.5, y: 0 }),
-                  new Pointer({ x: 4, y: 4 }),
-                  new Pointer({ x: 0, y: 4 }),
-                  new Pointer({ x: 4 * 0.5, y: 0 }),
+                  new Pointer({ x: w * 0.5, y: 0 }),
+                  new Pointer({ x: w, y: w }),
+                  new Pointer({ x: 0, y: w }),
+                  new Pointer({ x: w * 0.5, y: 0 }),
                ],
             });
             break;
-         case "path:pentagon":
-            this.newShape = new Pentagon({
+         case "path:trapezoid":
+            this.newShape = new Path({
                _board: this._board,
                ctx: this._board.ctx,
-               width: 4,
-               height: 4,
+               width: w,
+               height: w,
                left: p.x,
                top: p.y,
-            });
+               points: [
+                  new Pointer({ x: w * 0.2, y: 0 }),
+                  new Pointer({ x: w - (w * 0.2), y: 0 }),
+                  new Pointer({ x: w, y: w }),
+                  new Pointer({ x: 0, y: w }),
+               ]
+            })
+            break
+         case "path:pentagon":
+            this.newShape = new Path({
+               _board: this._board,
+               ctx: this._board.ctx,
+               width: w,
+               height: w,
+               left: p.x,
+               top: p.y,
+               points: [
+                  new Pointer({ x: w / 2, y: 0 }),
+                  new Pointer({ x: w, y: w * 0.4 }),
+                  new Pointer({ x: w - (w * 0.2), y: w }),
+                  new Pointer({ x: w * 0.2, y: w }),
+                  new Pointer({ x: 0, y: w * 0.4 }),
+               ]
+            })
             break;
          case "rect":
             this.newShape = new Rect({
@@ -97,20 +145,19 @@ class ShapeTool implements ToolInterface {
 
       if (this.newShape) {
          this._board.add(this.newShape);
+         this.oldShapeProps = new Box({
+            x1: this.newShape.left,
+            y1: this.newShape.top,
+            x2: this.newShape.left + this.newShape.width,
+            y2: this.newShape.top + this.newShape.height
+         })
       }
    }
 
    pointermove({ p }: ToolEventData): void {
       if (this.newShape) {
          this.newShape.Resize(
-            p,
-            new Box({
-               x1: this.mouseDownPoint.x,
-               y1: this.mouseDownPoint.y,
-               x2: this.newShape.left + this.newShape.width,
-               y2: this.newShape.top + this.newShape.height,
-            }),
-            "br",
+            p, this.oldShapeProps, "br",
          );
          this.draw(this.newShape);
       }
@@ -135,9 +182,9 @@ class ShapeTool implements ToolInterface {
       this._board.onMouseUpCallback?.({ e: { point: p } });
    }
 
-   dblClick(): void {}
+   dblClick(): void { }
 
-   onClick(): void {}
+   onClick(): void { }
 
    private draw(...shapes: Shape[]) {
       const ctx = this._board.ctx2;

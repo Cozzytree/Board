@@ -184,8 +184,8 @@ abstract class Shape implements ShapeProps {
 
       // Draw outer rectangle with constant visual width
       context.beginPath();
-      context.strokeStyle = "white";
-      context.lineWidth = this.strokeWidth / currentScale; // Adjust for scale
+      context.strokeStyle = "#5e79e6";
+      context.lineWidth = this.strokeWidth / currentScale // Adjust for scale
       context.rect(x, y, w, h);
       context.stroke();
       context.closePath();
@@ -198,7 +198,7 @@ abstract class Shape implements ShapeProps {
          context.fillStyle = "black";
          context.strokeStyle = "white";
          context.lineWidth = 1 / currentScale; // Keep dot border consistent too
-         context.rect(cx - wh / 2, cy - wh / 2, wh, wh);
+         context.roundRect(cx - wh / 2, cy - wh / 2, wh, wh, 2);
          context.stroke();
          context.fill();
          context.closePath();
@@ -269,7 +269,7 @@ abstract class Shape implements ShapeProps {
                break;
          }
       } else {
-         document.body.style.cursor = "default"
+         document.body.style.cursor = "default";
       }
 
       this.emit("mouseover", s);
