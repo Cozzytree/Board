@@ -33,6 +33,8 @@ abstract class Shape implements ShapeProps {
    declare type: shapeType;
    declare id: string;
    declare _board: Board;
+   declare selectionColor: string;
+   declare selectionStrokeWidth: number;
 
    fontWeight: number;
    verticalAlign: "top" | "center" | "bottom";
@@ -82,6 +84,7 @@ abstract class Shape implements ShapeProps {
       verticalAlign,
       textAlign,
       connections,
+      selectionColor,
    }: ShapeProps) {
       this.fill = fill || "#000000";
       this.height = height || 100;
@@ -99,11 +102,13 @@ abstract class Shape implements ShapeProps {
       this.dash = dash || [0, 0];
       this.text = text || "";
       this.fontSize = fontSize || 20;
-      this.verticalAlign = verticalAlign || "top";
+      this.verticalAlign = verticalAlign || "center";
       this.fontWeight = 500;
       this.textAlign = textAlign || "center";
       this.connections = connections || new Connections();
       this.id = uuidv4();
+      this.selectionColor = selectionColor || "#5e79e6";
+      this.selectionStrokeWidth = 2;
 
       this.lastFlippedState = { x: false, y: false };
    }
@@ -133,7 +138,7 @@ abstract class Shape implements ShapeProps {
       };
    }
 
-   connectionEvent(_: connectionEventData) { }
+   connectionEvent(_: connectionEventData) {}
 
    dragging(_: Point, current: Point): Shape[] | void {
       if (this.connections) {
@@ -185,7 +190,7 @@ abstract class Shape implements ShapeProps {
       // Draw outer rectangle with constant visual width
       context.beginPath();
       context.strokeStyle = "#5e79e6";
-      context.lineWidth = this.strokeWidth / currentScale // Adjust for scale
+      context.lineWidth = this.strokeWidth / currentScale; // Adjust for scale
       context.rect(x, y, w, h);
       context.stroke();
       context.closePath();
@@ -353,7 +358,7 @@ abstract class Shape implements ShapeProps {
       return this[property as keyof this];
    }
 
-   setCoords() { }
+   setCoords() {}
 
    protected renderText({ context, text }: { text?: string; context: CanvasRenderingContext2D }) {
       // text
@@ -369,7 +374,7 @@ abstract class Shape implements ShapeProps {
       }
 
       context.textBaseline = "middle";
-      context.font = `${this.fontWeight} ${this.fontSize}px sans-serif`;
+      context.font = `${this.fontWeight} ${this.fontSize}px system-ui`;
 
       // Measure the height of one line (using fontSize * lineHeight ratio, or estimate)
       const lineHeight = this.fontSize * 1.2; // adjust multiplier as needed

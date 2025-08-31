@@ -16,9 +16,20 @@ class Text extends Shape {
    draw({ ctx, resize = false }: DrawProps): void {
       const context = ctx || this.ctx;
 
+      const currentScale = context.getTransform().a;
       if (resize) {
          context.globalAlpha = 0.5;
-         super.activeRect(context);
+
+         context.beginPath();
+         context.lineWidth = this.selectionStrokeWidth;
+         context.strokeStyle = this.selectionColor;
+         context.rect(this.left, this.top, this.width, this.height);
+         context.setLineDash([
+            this.selectionStrokeWidth / currentScale,
+            this.selectionStrokeWidth / currentScale,
+         ]);
+         context.stroke();
+         context.closePath();
       }
 
       context.save();
@@ -90,76 +101,80 @@ class Text extends Shape {
    }
 
    Resize(current: Point, old: BoxInterface, d: resizeDirection): Shape[] | void {
+      let newHeight = 0,
+         newWidth = 0;
       switch (d) {
          case "tl":
             if (current.x > old.x2) {
                this.left = old.x2;
-               this.width = current.x - old.x2;
+               newWidth = current.x - old.x2;
             } else {
                this.left = current.x;
-               this.width = old.x2 - current.x;
+               newWidth = old.x2 - current.x;
             }
 
             if (current.y > old.y2) {
                this.top = old.y2;
-               this.height = current.y - old.y2;
+               newHeight = current.y - old.y2;
             } else {
                this.top = current.y;
-               this.height = old.y2 - current.y;
+               newHeight = old.y2 - current.y;
             }
             break;
          case "tr":
             if (current.x < old.x1) {
                this.left = current.x;
-               this.width = old.x1 - current.x;
+               newWidth = old.x1 - current.x;
             } else {
                this.left = old.x1;
-               this.width = current.x - old.x1;
+               newWidth = current.x - old.x1;
             }
 
             if (current.y > old.y2) {
                this.top = old.y2;
-               this.height = current.y - old.y2;
+               newHeight = current.y - old.y2;
             } else {
                this.top = current.y;
-               this.height = old.y2 - current.y;
+               newHeight = old.y2 - current.y;
             }
             break;
          case "br":
             if (current.x - old.x1 <= this.fontSize || current.y - old.y1 <= this.fontSize) return;
             if (current.x < old.x1) {
                this.left = current.x;
-               this.width = old.x1 - current.x;
+               newWidth = old.x1 - current.x;
             } else {
                this.left = old.x1;
-               this.width = current.x - old.x1;
+               newWidth = current.x - old.x1;
             }
 
             if (current.y > old.y1) {
                this.top = old.y1;
-               this.height = current.y - old.y1;
+               newHeight = current.y - old.y1;
             } else {
                this.top = current.y;
-               this.height = old.y1 - current.y;
+               newHeight = old.y1 - current.y;
             }
             break;
          case "bl":
             if (current.x > old.x2) {
                this.left = old.x2;
-               this.width = current.x - old.x2;
+               newWidth = current.x - old.x2;
             } else {
                this.left = current.x;
-               this.width = old.x2 - current.x;
+               newWidth = old.x2 - current.x;
             }
             if (current.y > old.y1) {
                this.top = old.y1;
-               this.height = current.y - old.y1;
+               newHeight = current.y - old.y1;
             } else {
                this.top = current.y;
-               this.height = old.y1 - current.y;
+               newHeight = old.y1 - current.y;
             }
       }
 
+      const currHeight = this.text.split("\n").length * this.fontSize;
+      this.set({ width: newWidth, height: Math.max(newHeight, currHeight) });
       return super.Resize(current, old, d);
    }
 

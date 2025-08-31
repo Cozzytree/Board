@@ -1,5 +1,5 @@
 import { keysNotNeeded } from "../constants";
-import { Box, Ellipse, Path, Shape } from "../index";
+import { Box, Ellipse, Line, Path, Shape } from "../index";
 import type {
    BoxInterface,
    Identity,
@@ -187,7 +187,6 @@ class ActiveSelection extends Shape {
             }
       }
 
-      // Compute ratio of how much the parent (activeSelection) has resized
       const oldWidth = old.x2 - old.x1;
       const oldHeight = old.y2 - old.y1;
       const newWidth = this.width;
@@ -215,7 +214,7 @@ class ActiveSelection extends Shape {
             });
          }
 
-         if (s.s instanceof Path) {
+         if (s.s instanceof Path || s.s instanceof Line) {
             const lastPoints = s.s.lastPoints;
             s.s.points.forEach((p, i) => {
                const original = lastPoints[i];

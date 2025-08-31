@@ -145,11 +145,14 @@ class Rect extends Shape {
       const currentScale = context.getTransform().a;
 
       if (resize) {
-         context.globalAlpha = 0.5;
-         context.strokeStyle = "#808070";
+         context.globalAlpha = 0.4;
+         context.strokeStyle = this.selectionColor;
          context.fillStyle = "#606060";
-         context.lineWidth = 3 / currentScale;
-         context.setLineDash([6 / currentScale, 6 / currentScale]);
+         context.lineWidth = this.selectionStrokeWidth / currentScale;
+         context.setLineDash([
+            this.selectionStrokeWidth / currentScale,
+            this.selectionStrokeWidth / currentScale,
+         ]);
       } else {
          context.setLineDash(this.dash);
          context.lineWidth = this.strokeWidth / currentScale;

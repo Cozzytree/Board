@@ -29,6 +29,8 @@ export type ShapeEventData = {
 export type ShapeEventCallback = (shape: Shape, data?: ShapeEventData) => void;
 
 export type ShapeProps = {
+   selectionColor?: string;
+   selectionStrokeWidth?: number;
    fontSize?: number;
    verticalAlign?: "top" | "center" | "bottom";
    textAlign?: textAlign;

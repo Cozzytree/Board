@@ -8,6 +8,7 @@ type Connection = {
 };
 
 abstract class Line extends Shape {
+   declare lastPoints: Point[];
    protected resizeIndex: number | null = null;
    declare points: Point[];
    declare lineType: LineType;
@@ -24,7 +25,7 @@ abstract class Line extends Shape {
       this.lineType = props.lineType || "straight";
       this.arrowS = true;
       this.arrowE = false;
-      this.points = props.points || []
+      this.points = props.points || [];
    }
 
    activeRect(ctx?: CanvasRenderingContext2D) {
@@ -49,11 +50,11 @@ abstract class Line extends Shape {
          context.closePath();
       };
 
-      drawDot(this.left + this.points[0].x, this.top + this.points[0].y)
+      drawDot(this.left + this.points[0].x, this.top + this.points[0].y);
       drawDot(
          this.left + this.points[this.points.length - 1].x,
-         this.top + this.points[this.points.length - 1].y
-      )
+         this.top + this.points[this.points.length - 1].y,
+      );
       context.restore();
    }
 
@@ -189,7 +190,7 @@ abstract class Line extends Shape {
       // };
       const coords = {
          x: s.e.point.x - (foundShape.left + foundShape.width / 2),
-         y: s.e.point.y - (foundShape.top + foundShape.height / 2)
+         y: s.e.point.y - (foundShape.top + foundShape.height / 2),
       };
 
       if (this.resizeIndex == 0) {
@@ -243,7 +244,6 @@ abstract class Line extends Shape {
             oppositeP = this.points.length - 2;
          }
          const i = intersectLineWithBox(
-
             current.x,
             current.y,
             this.left + this.points[oppositeP].x,
@@ -302,10 +302,10 @@ abstract class Line extends Shape {
          if (this instanceof AnchorLine) {
             this.Resize(p, { x1: 0, y1: 0, y2: 0, x2: 0 }, "b");
          }
-         this.setCoords()
-         return true
+         this.setCoords();
+         return true;
       }
-      return false
+      return false;
    }
 }
 

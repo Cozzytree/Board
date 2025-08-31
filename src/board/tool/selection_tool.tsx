@@ -8,7 +8,7 @@ import type {
    ToolEventData,
    ToolInterface,
 } from "../types";
-import { ActiveSelection, Box, Path, Pointer, Rect } from "../index";
+import { ActiveSelection, Box, Line, Path, Pointer, Rect } from "../index";
 import { generateShapeByShapeType } from "../utils/utilfunc";
 import type { HistoryType } from "../shapes/shape_store";
 import { HoveredColor } from "../constants";
@@ -111,11 +111,12 @@ class SelectionTool implements ToolInterface {
                if (lastInserted instanceof ActiveSelection) {
                   lastInserted.shapes.forEach((s) => {
                      // insert this to undo
-                     if (s.s instanceof Path) {
+                     if (s.s instanceof Path || s.s instanceof Line) {
                         s.s.lastPoints = s.s.points.map((p) => {
                            return { x: p.x, y: p.y }
                         })
                      }
+
                      this.mouseDowmShapeState.push(s.s.toObject());
                      s.oldProps = new Box({
                         x1: s.s.left,
@@ -364,7 +365,7 @@ class SelectionTool implements ToolInterface {
       div = document.createElement("div");
       div.setAttribute("id", textAreaId);
 
-      const tarea = document.createElement("textarea");
+      const tarea = document.createElement("div");
       div.classList.add("input-container");
       div.style.position = "absolute";
       div.style.zIndex = "50";
@@ -373,23 +374,33 @@ class SelectionTool implements ToolInterface {
       div.style.width = s.width + "px";
       div.style.height = s.height + "px";
 
+      tarea.style.background = "#1e1e1eff"
+      tarea.style.border = "1px solid #505050"
+      tarea.style.outline = "none"
+      tarea.contentEditable = "true";
       tarea.style.whiteSpace = "pre";
       tarea.style.overflowWrap = "break-word";
       div.append(tarea);
 
-      tarea.placeholder = "type here";
       tarea.innerText = s.text;
       document.body.append(div);
 
       setTimeout(() => {
          tarea.focus();
-         // Move caret to the very end
-         const len = tarea.value.length;
-         tarea.setSelectionRange(len, len);
+         // Create a new range
+         const range = document.createRange();
+         range.selectNodeContents(tarea);
+         range.collapse(false); // collapse to end
+
+         // Apply the range to the selection
+         const sel = window.getSelection();
+         if (!sel) return
+         sel.removeAllRanges();
+         sel.addRange(range);
       }, 0);
 
       tarea.addEventListener("blur", () => {
-         s.set("text", tarea.value);
+         s.set("text", tarea.innerText);
          this.textEdit = null;
          s._board.render();
          div.remove();

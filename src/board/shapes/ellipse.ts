@@ -142,10 +142,12 @@ class Ellipse extends Shape {
       const currentScale = context.getTransform().a;
 
       if (resize) {
-         context.strokeStyle = "#808070";
-         context.fillStyle = "#606060";
-         context.lineWidth = 3 / currentScale;
-         context.setLineDash([6 / currentScale, 6 / currentScale]);
+         context.strokeStyle = this.selectionColor;
+         context.lineWidth = this.selectionStrokeWidth / currentScale;
+         context.setLineDash([
+            this.selectionStrokeWidth / currentScale,
+            this.selectionStrokeWidth / currentScale,
+         ]);
       } else {
          context.setLineDash(this.dash);
          context.lineWidth = this.strokeWidth / currentScale;
