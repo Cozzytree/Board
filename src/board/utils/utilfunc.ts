@@ -418,8 +418,802 @@ function calcPointWithRotation({
    return new Pointer({ x: localX, y: localY });
 }
 
+type rect = { left: number; top: number; right: number; bottom: number };
+type Side = "left" | "right" | "top" | "bottom";
+
+// @ts-ignore
+function center(r: rect): Point {
+   return { x: (r.left + r.right) / 2, y: (r.top + r.bottom) / 2 };
+}
+
+function anchor(r: rect, side: Side): Point {
+   switch (side) {
+      case "left":
+         return { x: r.left, y: (r.top + r.bottom) / 2 };
+      case "right":
+         return { x: r.right, y: (r.top + r.bottom) / 2 };
+      case "top":
+         return { x: (r.left + r.right) / 2, y: r.top };
+      case "bottom":
+         return { x: (r.left + r.right) / 2, y: r.bottom };
+   }
+}
+
+// @ts-ignore
+function intersectsX(r: rect, x: number, margin: number) {
+   return x >= r.left - margin && x <= r.right + margin;
+}
+
+// @ts-ignore
+function intersectsY(r: rect, y: number, margin: number) {
+   return y >= r.top - margin && y <= r.bottom + margin;
+}
+
+function manhattanLength(path: Point[]): number {
+   let sum = 0;
+   for (let i = 0; i < path.length - 1; i++)
+      sum += Math.abs(path[i + 1].x - path[i].x) + Math.abs(path[i + 1].y - path[i].y);
+   return sum;
+}
+
+function intersectsBox(p1: Point, p2: Point, box: Box): boolean {
+   const minX = Math.min(p1.x, p2.x);
+   const maxX = Math.max(p1.x, p2.x);
+   const minY = Math.min(p1.y, p2.y);
+   const maxY = Math.max(p1.y, p2.y);
+
+   return !(maxX < box.x1 || minX > box.x1 + box.x2 || maxY < box.y1 || minY > box.y1 + box.y2);
+}
+
+function pathIsValid(path: Point[], obstacles: rect[]): boolean {
+   for (let i = 0; i < path.length - 1; i++) {
+      for (const r of obstacles) {
+         if (segmentHitsBox(path[i], path[i + 1], r)) return false;
+      }
+   }
+   return true;
+}
+
+function getAnchor(box: Box, side: "left" | "right" | "top" | "bottom"): Point {
+   switch (side) {
+      case "left":
+         return { x: box.x1, y: box.y1 + box.y2 / 2 };
+      case "right":
+         return { x: box.x1 + box.x2, y: box.y1 + box.y2 / 2 };
+      case "top":
+         return { x: box.x1 + box.x2 / 2, y: box.y1 };
+      case "bottom":
+         return { x: box.x1 + box.x2 / 2, y: box.y1 + box.y2 };
+   }
+}
+
+function pickSafeAnchor(
+   box: Box,
+   preferred: "left" | "right" | "top" | "bottom",
+   otherBox: Box,
+): Point {
+   const order = [preferred, "top", "bottom", "left", "right"]; // fallback order
+   for (const side of order) {
+      const anchor = getAnchor(box, side as any);
+      if (!intersectsBox(anchor, getAnchor(otherBox, preferred), otherBox)) {
+         return anchor;
+      }
+   }
+   return getAnchor(box, preferred); // fallback to original
+}
+
+function routeOrthogonalDynamic(
+   boxA: Box,
+   boxB: Box,
+   sideA: "left" | "right" | "top" | "bottom",
+   sideB: "left" | "right" | "top" | "bottom",
+): Point[] {
+   const anchorA = pickSafeAnchor(boxA, sideA, boxB);
+   const anchorB = pickSafeAnchor(boxB, sideB, boxA);
+
+   const points: Point[] = [anchorA];
+
+   // simple L/Z routing with midpoints
+   if (anchorA.x === anchorB.x || anchorA.y === anchorB.y) {
+      points.push(anchorB);
+      return points;
+   }
+
+   // Try Z-shape
+   const midX = (anchorA.x + anchorB.x) / 2;
+   points.push({ x: midX, y: anchorA.y });
+   points.push({ x: midX, y: anchorB.y });
+   points.push(anchorB);
+
+   return points;
+}
+
+// function routeOrthogonal(boxA: Box, boxB: Box): Point[] {
+//    const anchorA = { x: boxA.x1 + boxA.x2, y: boxA.y1 + boxA.y2 / 2 }; // right side
+//    const anchorB = { x: boxB.x1, y: boxB.y1 + boxB.y2 / 2 }; // left side
+
+//    const points: Point[] = [anchorA];
+
+//    // Case 1: anchorA and anchorB horizontally aligned
+//    if (anchorA.y === anchorB.y) {
+//       points.push(anchorB);
+//       return points;
+//    }
+
+//    // Case 2: Simple Z shape
+//    const midX = (anchorA.x + anchorB.x) / 2;
+//    points.push({ x: midX, y: anchorA.y });
+//    points.push({ x: midX, y: anchorB.y });
+//    points.push(anchorB);
+
+//    return points;
+// }
+
+// function routeOrthogonal(a: rect, b: rect, margin = 8): Point[] {
+//    console.log(a, b);
+//    const ca = center(a);
+//    const cb = center(b);
+
+//    // Decide orientation + facing sides
+//    const horizGap = a.right + margin <= b.left - margin || b.right + margin <= a.left - margin;
+//    const vertGap = a.bottom + margin <= b.top - margin || b.bottom + margin <= a.top - margin;
+
+//    let aSide: "left" | "right" | "top" | "bottom";
+//    let bSide: "left" | "right" | "top" | "bottom";
+//    let orientation: "h" | "v";
+
+//    if (horizGap) {
+//       orientation = "h";
+//       if (ca.x <= cb.x) {
+//          aSide = "right";
+//          bSide = "left";
+//       } else {
+//          aSide = "left";
+//          bSide = "right";
+//       }
+//    } else if (vertGap) {
+//       orientation = "v";
+//       if (ca.y <= cb.y) {
+//          aSide = "bottom";
+//          bSide = "top";
+//       } else {
+//          aSide = "top";
+//          bSide = "bottom";
+//       }
+//    } else {
+//       // Overlap in projections: choose the shorter of horizontal vs vertical approach
+//       const dx = Math.abs(ca.x - cb.x);
+//       const dy = Math.abs(ca.y - cb.y);
+//       if (dx >= dy) {
+//          orientation = "h";
+//          if (ca.x <= cb.x) {
+//             aSide = "right";
+//             bSide = "left";
+//          } else {
+//             aSide = "left";
+//             bSide = "right";
+//          }
+//       } else {
+//          orientation = "v";
+//          if (ca.y <= cb.y) {
+//             aSide = "bottom";
+//             bSide = "top";
+//          } else {
+//             aSide = "top";
+//             bSide = "bottom";
+//          }
+//       }
+//    }
+
+//    const A = anchor(a, aSide);
+//    const B = anchor(b, bSide);
+
+//    // Dock out of each box by margin so we’re clear
+//    const Aout: Point = { ...A };
+//    const Bin: Point = { ...B };
+//    if (aSide === "right") Aout.x += margin;
+//    if (aSide === "left") Aout.x -= margin;
+//    if (aSide === "top") Aout.y -= margin;
+//    if (aSide === "bottom") Aout.y += margin;
+
+//    if (bSide === "right") Bin.x += margin;
+//    if (bSide === "left") Bin.x -= margin;
+//    if (bSide === "top") Bin.y -= margin;
+//    if (bSide === "bottom") Bin.y += margin;
+
+//    const pts: Point[] = [A, Aout];
+
+//    if (orientation === "h") {
+//       // Try a mid X that’s outside both boxes
+//       let midX = (Aout.x + Bin.x) / 2;
+//       if (intersectsX(a, midX, margin) || intersectsX(b, midX, margin)) {
+//          const laneLeft = Math.min(a.left, b.left) - margin;
+//          const laneRight = Math.max(a.right, b.right) + margin;
+//          // choose shorter lane
+//          const costLeft = Math.abs(Aout.x - laneLeft) + Math.abs(Bin.x - laneLeft);
+//          const costRight = Math.abs(Aout.x - laneRight) + Math.abs(Bin.x - laneRight);
+//          midX = costLeft <= costRight ? laneLeft : laneRight;
+//       }
+//       pts.push({ x: midX, y: Aout.y });
+//       pts.push({ x: midX, y: Bin.y });
+//       pts.push(Bin);
+//       pts.push(B);
+//    } else {
+//       // 'v'
+//       let midY = (Aout.y + Bin.y) / 2;
+//       if (intersectsY(a, midY, margin) || intersectsY(b, midY, margin)) {
+//          const laneUp = Math.min(a.top, b.top) - margin;
+//          const laneDown = Math.max(a.bottom, b.bottom) + margin;
+//          const costUp = Math.abs(Aout.y - laneUp) + Math.abs(Bin.y - laneUp);
+//          const costDown = Math.abs(Aout.y - laneDown) + Math.abs(Bin.y - laneDown);
+//          midY = costUp <= costDown ? laneUp : laneDown;
+//       }
+//       pts.push({ x: Aout.x, y: midY });
+//       pts.push({ x: Bin.x, y: midY });
+//       pts.push(Bin);
+//       pts.push(B);
+//    }
+
+//    // de-duplicate consecutive points
+//    const out: Point[] = [];
+//    for (const p of pts) {
+//       const last = out[out.length - 1];
+//       if (!last || last.x !== p.x || last.y !== p.y) out.push(p);
+//    }
+//    return out;
+// }
+
+// function routeOrthogonal(a: rect, b: rect, margin = 8, aSide?: Side, bSide?: Side): Point[] {
+//    // ✅ If sides are given, use them. Otherwise, pick automatically.
+//    const autoPickSides = !aSide || !bSide;
+
+//    if (autoPickSides) {
+//       // Pick automatically based on relative position
+//       const ca = { x: (a.left + a.right) / 2, y: (a.top + a.bottom) / 2 };
+//       const cb = { x: (b.left + b.right) / 2, y: (b.top + b.bottom) / 2 };
+//       const dx = Math.abs(ca.x - cb.x);
+//       const dy = Math.abs(ca.y - cb.y);
+
+//       if (dx >= dy) {
+//          aSide = ca.x <= cb.x ? "right" : "left";
+//          bSide = ca.x <= cb.x ? "left" : "right";
+//       } else {
+//          aSide = ca.y <= cb.y ? "bottom" : "top";
+//          bSide = ca.y <= cb.y ? "top" : "bottom";
+//       }
+//    }
+
+//    const A = anchor(a, aSide!);
+//    const B = anchor(b, bSide!);
+
+//    // Dock out of each box by margin
+//    const Aout: Point = { ...A };
+//    const Bin: Point = { ...B };
+//    if (aSide === "right") Aout.x += margin;
+//    if (aSide === "left") Aout.x -= margin;
+//    if (aSide === "top") Aout.y -= margin;
+//    if (aSide === "bottom") Aout.y += margin;
+
+//    if (bSide === "right") Bin.x += margin;
+//    if (bSide === "left") Bin.x -= margin;
+//    if (bSide === "top") Bin.y -= margin;
+//    if (bSide === "bottom") Bin.y += margin;
+
+//    const pts: Point[] = [A, Aout];
+
+//    // Determine orientation
+//    if (aSide === "left" || aSide === "right") {
+//       // Horizontal routing
+//       let midX = (Aout.x + Bin.x) / 2;
+//       if (intersectsX(a, midX, margin) || intersectsX(b, midX, margin)) {
+//          midX = Math.max(a.right, b.right) + margin; // pick a safe lane
+//       }
+//       pts.push({ x: midX, y: Aout.y });
+//       pts.push({ x: midX, y: Bin.y });
+//    } else {
+//       // Vertical routing
+//       let midY = (Aout.y + Bin.y) / 2;
+//       if (intersectsY(a, midY, margin) || intersectsY(b, midY, margin)) {
+//          midY = Math.max(a.bottom, b.bottom) + margin; // pick a safe lane
+//       }
+//       pts.push({ x: Aout.x, y: midY });
+//       pts.push({ x: Bin.x, y: midY });
+//    }
+
+//    pts.push(Bin, B);
+
+//    // Deduplicate
+//    const out: Point[] = [];
+//    for (const p of pts) {
+//       const last = out[out.length - 1];
+//       if (!last || last.x !== p.x || last.y !== p.y) out.push(p);
+//    }
+//    return out;
+// }
+
+// helper: does a straight horizontal/vertical segment cross a rect?
+// function segmentHitsBox(a: Point, b: Point, r: rect): boolean {
+//    if (a.x === b.x) {
+//       const x = a.x;
+//       const y1 = Math.min(a.y, b.y),
+//          y2 = Math.max(a.y, b.y);
+//       return x >= r.left && x <= r.right && y1 < r.bottom && y2 > r.top;
+//    }
+//    if (a.y === b.y) {
+//       const y = a.y;
+//       const x1 = Math.min(a.x, b.x),
+//          x2 = Math.max(a.x, b.x);
+//       return y >= r.top && y <= r.bottom && x1 < r.right && x2 > r.left;
+//    }
+//    return false;
+// }
+function segmentHitsBox(a: Point, b: Point, r: rect): boolean {
+   if (a.x === b.x) {
+      // vertical
+      const y1 = Math.min(a.y, b.y),
+         y2 = Math.max(a.y, b.y);
+      return a.x >= r.left && a.x <= r.right && y1 < r.bottom && y2 > r.top;
+   }
+   if (a.y === b.y) {
+      // horizontal
+      const x1 = Math.min(a.x, b.x),
+         x2 = Math.max(a.x, b.x);
+      return a.y >= r.top && a.y <= r.bottom && x1 < r.right && x2 > r.left;
+   }
+   return false;
+}
+
+function routeOrthogonal(
+   a: rect,
+   b: rect,
+   margin = 12,
+   aSide: Side = "right",
+   bSide: Side = "left",
+): Point[] {
+   const A = anchor(a, aSide);
+   const B = anchor(b, bSide);
+
+   // Step out of each box by margin
+   const Aout = { ...A };
+   const Bout = { ...B };
+   if (aSide === "right") Aout.x += margin;
+   if (aSide === "left") Aout.x -= margin;
+   if (aSide === "top") Aout.y -= margin;
+   if (aSide === "bottom") Aout.y += margin;
+
+   if (bSide === "right") Bout.x += margin;
+   if (bSide === "left") Bout.x -= margin;
+   if (bSide === "top") Bout.y -= margin;
+   if (bSide === "bottom") Bout.y += margin;
+
+   const pts: Point[] = [A, Aout];
+
+   // try a simple rectilinear L-shape
+   let candidate: Point[] = [];
+   if (Math.random() > 0.5) {
+      candidate = [{ x: Bout.x, y: Aout.y }]; // horizontal then vertical
+   } else {
+      candidate = [{ x: Aout.x, y: Bout.y }]; // vertical then horizontal
+   }
+   candidate.push(Bout);
+
+   // check if any of those segments cross A or B
+   let intersects = false;
+   const allBoxes = [a, b];
+   const testPath = [Aout, ...candidate];
+   for (let i = 0; i < testPath.length - 1; i++) {
+      for (const r of allBoxes) {
+         if (segmentHitsBox(testPath[i], testPath[i + 1], r)) {
+            intersects = true;
+         }
+      }
+   }
+
+   if (!intersects) {
+      pts.push(...candidate);
+   } else {
+      // fallback: route *around* the boxes completely
+      if (a.right <= b.left) {
+         // b is to the right of a → route above or below
+         const laneY = Aout.y < a.top ? a.top - margin : a.bottom + margin;
+         pts.push({ x: Aout.x, y: laneY });
+         pts.push({ x: Bout.x, y: laneY });
+         pts.push(Bout);
+      } else if (a.bottom <= b.top) {
+         // b is below a
+         const laneX = Aout.x < a.left ? a.left - margin : a.right + margin;
+         pts.push({ x: laneX, y: Aout.y });
+         pts.push({ x: laneX, y: Bout.y });
+         pts.push(Bout);
+      } else {
+         // fallback big dog-leg: go around both boxes’ bounding box
+         const outerX = Math.max(a.right, b.right) + margin;
+         pts.push({ x: outerX, y: Aout.y });
+         pts.push({ x: outerX, y: Bout.y });
+         pts.push(Bout);
+      }
+   }
+
+   pts.push(B);
+
+   // dedup
+   const out: Point[] = [];
+   for (const p of pts) {
+      const last = out[out.length - 1];
+      if (!last || last.x !== p.x || last.y !== p.y) out.push(p);
+   }
+   return out;
+}
+
+function routeOrthogonalStrict(
+   a: rect,
+   b: rect,
+   margin = 16,
+   aSide: Side = "right",
+   bSide: Side = "left",
+): Point[] {
+   const A = anchor(a, aSide);
+   const B = anchor(b, bSide);
+
+   // Step outside the boxes by margin
+   const Aout = { ...A };
+   const Bout = { ...B };
+   if (aSide === "right") Aout.x += margin;
+   if (aSide === "left") Aout.x -= margin;
+   if (aSide === "top") Aout.y -= margin;
+   if (aSide === "bottom") Aout.y += margin;
+
+   if (bSide === "right") Bout.x += margin;
+   if (bSide === "left") Bout.x -= margin;
+   if (bSide === "top") Bout.y -= margin;
+   if (bSide === "bottom") Bout.y += margin;
+
+   const pts: Point[] = [A, Aout];
+
+   // --- Connect Aout → Bout safely ---
+   if (aSide === "left" || aSide === "right") {
+      // Horizontal case
+      if (
+         // If straight horizontal + vertical bend would cut through boxes
+         (Aout.y >= a.top && Aout.y <= a.bottom) ||
+         (Bout.y >= b.top && Bout.y <= b.bottom)
+      ) {
+         // Route around vertically
+         const laneY =
+            Aout.y < Math.min(a.top, b.top)
+               ? Math.min(a.top, b.top) - margin
+               : Math.max(a.bottom, b.bottom) + margin;
+
+         pts.push({ x: Aout.x, y: laneY });
+         pts.push({ x: Bout.x, y: laneY });
+      } else {
+         // Safe Z shape
+         const midX = (Aout.x + Bout.x) / 2;
+         pts.push({ x: midX, y: Aout.y });
+         pts.push({ x: midX, y: Bout.y });
+      }
+   } else {
+      // Vertical case
+      if ((Aout.x >= a.left && Aout.x <= a.right) || (Bout.x >= b.left && Bout.x <= b.right)) {
+         // Route around horizontally
+         const laneX =
+            Aout.x < Math.min(a.left, b.left)
+               ? Math.min(a.left, b.left) - margin
+               : Math.max(a.right, b.right) + margin;
+
+         pts.push({ x: laneX, y: Aout.y });
+         pts.push({ x: laneX, y: Bout.y });
+      } else {
+         // Safe Z shape
+         const midY = (Aout.y + Bout.y) / 2;
+         pts.push({ x: Aout.x, y: midY });
+         pts.push({ x: Bout.x, y: midY });
+      }
+   }
+
+   pts.push(Bout, B);
+
+   // Deduplicate consecutive identical points
+   const out: Point[] = [];
+   for (const p of pts) {
+      const last = out[out.length - 1];
+      if (!last || last.x !== p.x || last.y !== p.y) out.push(p);
+   }
+   return out;
+}
+
+function routeOrthogonalClean(
+   a: rect,
+   b: rect,
+   margin = 12,
+   aSide: Side = "right",
+   bSide: Side = "left",
+): Point[] {
+   const A = anchor(a, aSide);
+   const B = anchor(b, bSide);
+
+   // Step out of the boxes
+   const Aout: Point = { ...A };
+   const Bout: Point = { ...B };
+   if (aSide === "right") Aout.x += margin;
+   if (aSide === "left") Aout.x -= margin;
+   if (aSide === "top") Aout.y -= margin;
+   if (aSide === "bottom") Aout.y += margin;
+
+   if (bSide === "right") Bout.x += margin;
+   if (bSide === "left") Bout.x -= margin;
+   if (bSide === "top") Bout.y -= margin;
+   if (bSide === "bottom") Bout.y += margin;
+
+   const pts: Point[] = [A, Aout];
+
+   // Try the simplest rectilinear (Z-shape)
+   let candidate: Point[];
+   if (aSide === "left" || aSide === "right") {
+      // horizontal then vertical
+      candidate = [{ x: Bout.x, y: Aout.y }, Bout];
+   } else {
+      // vertical then horizontal
+      candidate = [{ x: Aout.x, y: Bout.y }, Bout];
+   }
+
+   // Check if candidate crosses either box
+   let intersects = false;
+   const test = [Aout, ...candidate];
+   for (let i = 0; i < test.length - 1; i++) {
+      if (segmentHitsBox(test[i], test[i + 1], a) || segmentHitsBox(test[i], test[i + 1], b)) {
+         intersects = true;
+         break;
+      }
+   }
+
+   if (!intersects) {
+      pts.push(...candidate);
+   } else {
+      // fallback: detour around
+      if (aSide === "left" || aSide === "right") {
+         const laneY =
+            Aout.y < Math.min(a.top, b.top)
+               ? Math.min(a.top, b.top) - margin
+               : Math.max(a.bottom, b.bottom) + margin;
+         pts.push({ x: Aout.x, y: laneY });
+         pts.push({ x: Bout.x, y: laneY });
+         pts.push(Bout);
+      } else {
+         const laneX =
+            Aout.x < Math.min(a.left, b.left)
+               ? Math.min(a.left, b.left) - margin
+               : Math.max(a.right, b.right) + margin;
+         pts.push({ x: laneX, y: Aout.y });
+         pts.push({ x: laneX, y: Bout.y });
+         pts.push(Bout);
+      }
+   }
+
+   pts.push(B);
+
+   // Deduplicate
+   const out: Point[] = [];
+   for (const p of pts) {
+      const last = out[out.length - 1];
+      if (!last || last.x !== p.x || last.y !== p.y) out.push(p);
+   }
+   return out;
+}
+
+const sides: Side[] = ["left", "right", "top", "bottom"];
+// Main robust router
+function routeOrthogonalRobust(
+   a: rect,
+   b: rect,
+   margin = 12,
+   aSide: Side = "right",
+   bSide: Side = "left",
+   otherObstacles: rect[] = [], // pass other boxes to avoid as well
+): Point[] {
+   const A = anchor(a, aSide);
+   const B = anchor(b, bSide);
+
+   // step out
+   const Aout = { ...A };
+   const Bout = { ...B };
+   if (aSide === "right") Aout.x += margin;
+   if (aSide === "left") Aout.x -= margin;
+   if (aSide === "top") Aout.y -= margin;
+   if (aSide === "bottom") Aout.y += margin;
+
+   if (bSide === "right") Bout.x += margin;
+   if (bSide === "left") Bout.x -= margin;
+   if (bSide === "top") Bout.y -= margin;
+   if (bSide === "bottom") Bout.y += margin;
+
+   const obstacles = [a, b, ...otherObstacles];
+
+   const candidates: Point[][] = [];
+
+   // 1) Direct L-shapes (two L orders)
+   if (aSide === "left" || aSide === "right") {
+      candidates.push([A, Aout, { x: Bout.x, y: Aout.y }, Bout, B]); // horiz then vert
+      candidates.push([A, Aout, { x: Aout.x, y: Bout.y }, Bout, B]); // vert then horiz
+   } else {
+      candidates.push([A, Aout, { x: Aout.x, y: Bout.y }, Bout, B]); // vert then horiz
+      candidates.push([A, Aout, { x: Bout.x, y: Aout.y }, Bout, B]); // horiz then vert
+   }
+
+   // 2) Z-shapes / mid lanes using candidate X/Y coordinates derived from box edges
+   const xs = new Set<number>([
+      Aout.x,
+      Bout.x,
+      a.left - margin,
+      a.right + margin,
+      b.left - margin,
+      b.right + margin,
+   ]);
+   const ys = new Set<number>([
+      Aout.y,
+      Bout.y,
+      a.top - margin,
+      a.bottom + margin,
+      b.top - margin,
+      b.bottom + margin,
+   ]);
+
+   const xsList = Array.from(xs).sort((u, v) => u - v);
+   const ysList = Array.from(ys).sort((u, v) => u - v);
+
+   for (const mx of xsList) {
+      candidates.push([A, Aout, { x: mx, y: Aout.y }, { x: mx, y: Bout.y }, Bout, B]);
+   }
+   for (const my of ysList) {
+      candidates.push([A, Aout, { x: Aout.x, y: my }, { x: Bout.x, y: my }, Bout, B]);
+   }
+
+   // 3) Outer fallback lanes (go completely around bounding box)
+   const outerLeft = Math.min(a.left, b.left) - margin * 2;
+   const outerRight = Math.max(a.right, b.right) + margin * 2;
+   const outerTop = Math.min(a.top, b.top) - margin * 2;
+   const outerBottom = Math.max(a.bottom, b.bottom) + margin * 2;
+
+   // horizontal outer (above or below)
+   candidates.push([A, Aout, { x: Aout.x, y: outerTop }, { x: Bout.x, y: outerTop }, Bout, B]);
+   candidates.push([
+      A,
+      Aout,
+      { x: Aout.x, y: outerBottom },
+      { x: Bout.x, y: outerBottom },
+      Bout,
+      B,
+   ]);
+
+   // vertical outer (left or right)
+   candidates.push([A, Aout, { x: outerLeft, y: Aout.y }, { x: outerLeft, y: Bout.y }, Bout, B]);
+   candidates.push([A, Aout, { x: outerRight, y: Aout.y }, { x: outerRight, y: Bout.y }, Bout, B]);
+
+   // Normalize candidates (remove consecutive duplicate points)
+   const normalize = (p: Point[]) => {
+      const out: Point[] = [];
+      for (const q of p) {
+         const last = out[out.length - 1];
+         if (!last || last.x !== q.x || last.y !== q.y) out.push(q);
+      }
+      return out;
+   };
+
+   const validCandidates: { path: Point[]; bends: number; len: number }[] = [];
+   for (const cand of candidates) {
+      const path = normalize(cand);
+      if (pathIsValid(path, obstacles)) {
+         validCandidates.push({ path, bends: path.length - 2, len: manhattanLength(path) });
+      }
+   }
+
+   // pick best: fewest bends, then shortest length, deterministic tie-break by coordinates
+   if (validCandidates.length > 0) {
+      validCandidates.sort((p, q) => {
+         if (p.bends !== q.bends) return p.bends - q.bends;
+         if (p.len !== q.len) return p.len - q.len;
+         // deterministic tie-break
+         const psum = p.path.reduce((s, pt) => s + pt.x + pt.y, 0);
+         const qsum = q.path.reduce((s, pt) => s + pt.x + pt.y, 0);
+         return psum - qsum;
+      });
+      return validCandidates[0].path;
+   }
+
+   // If nothing valid (very unlikely), fallback to a big outer dog-leg:
+   const fallback = normalize([
+      A,
+      Aout,
+      { x: outerRight, y: Aout.y },
+      { x: outerRight, y: Bout.y },
+      Bout,
+      B,
+   ]);
+   return fallback;
+}
+
+function normalizePath(points: Point[]): Point[] {
+   const out: Point[] = [];
+   for (const p of points) {
+      const last = out[out.length - 1];
+      if (!last || last.x !== p.x || last.y !== p.y) {
+         out.push(p);
+      }
+   }
+   // Remove collinear midpoints
+   const clean: Point[] = [];
+   for (let i = 0; i < out.length; i++) {
+      if (
+         i > 0 &&
+         i < out.length - 1 &&
+         ((out[i - 1].x === out[i].x && out[i].x === out[i + 1].x) ||
+            (out[i - 1].y === out[i].y && out[i].y === out[i + 1].y))
+      ) {
+         continue; // skip collinear
+      }
+      clean.push(out[i]);
+   }
+   return clean;
+}
+
+function routeOrthogonalRobustDynamic(
+   a: rect,
+   b: rect,
+   margin = 12,
+   aSide: Side = "right",
+   bSide: Side = "left",
+   otherObstacles: rect[] = [],
+): Point[] {
+   const obstacles = [a, b, ...otherObstacles];
+
+   function tryRoute(
+      sideA: Side,
+      sideB: Side,
+   ): { path: Point[]; bends: number; len: number } | null {
+      const path = routeOrthogonalRobust(a, b, margin, sideA, sideB, otherObstacles);
+      if (path && pathIsValid(path, obstacles)) {
+         return { path, bends: path.length - 2, len: manhattanLength(path) };
+      }
+      return null;
+   }
+
+   // 1) First try with given anchors
+   const firstTry = tryRoute(aSide, bSide);
+   if (firstTry) return normalizePath(firstTry.path);
+
+   // 2) Try alternatives for aSide
+   let best: { path: Point[]; bends: number; len: number } | null = null;
+   for (const sa of sides) {
+      for (const sb of sides) {
+         const cand = tryRoute(sa, sb);
+         if (!cand) continue;
+         if (
+            !best ||
+            cand.bends < best.bends ||
+            (cand.bends === best.bends && cand.len < best.len)
+         ) {
+            best = cand;
+         }
+      }
+   }
+
+   // 3) Fallback if absolutely nothing works
+   if (!best) {
+      const fallback = routeOrthogonalRobust(a, b, margin, aSide, bSide, otherObstacles);
+      return normalizePath(fallback);
+   }
+
+   return normalizePath(best.path);
+}
+
 export {
    calcPointWithRotation,
+   routeOrthogonalStrict,
+   routeOrthogonalRobustDynamic,
+   routeOrthogonalClean,
+   routeOrthogonalDynamic,
+   routeOrthogonalRobust,
+   routeOrthogonal,
    IsIn,
    intersectLineWithBox,
    setCoords,

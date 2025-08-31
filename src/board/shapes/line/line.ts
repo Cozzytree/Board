@@ -1,7 +1,12 @@
 import type { BoxInterface, Point, resizeDirection, ShapeEventData, ShapeProps } from "../../types";
 import type { connectionEventData, LineProps, LineType } from "../shape_types";
-import { intersectLineWithBox, isPointNearSegment, setCoords } from "@/board/utils/utilfunc";
-import { AnchorLine, Pointer, Shape } from "@/board/index";
+import {
+   intersectLineWithBox,
+   isPointNearSegment,
+   routeOrthogonalRobustDynamic,
+   setCoords,
+} from "@/board/utils/utilfunc";
+import { AnchorLine, Box, Pointer, Shape } from "@/board/index";
 
 type Connection = {
    s: Shape;
@@ -268,44 +273,80 @@ abstract class Line extends Shape {
    }
 
    connectionEvent({ c, s, p }: connectionEventData): boolean {
-      const absPoint = {
-         x: s.left + (c.coords.x / 100) * s.width,
-         y: s.top + (c.coords.y / 100) * s.height,
-      };
+      if (this.connections.shapes.length == 2) {
+         const conn1 = this.connections.shapes[0];
+         const conn2 = this.connections.shapes[1];
+         const box1 = new Box({
+            x1: conn1.s.left,
+            y1: conn1.s.top,
+            x2: conn1.s.left + conn1.s.width,
+            y2: conn1.s.top + conn1.s.height,
+         });
+         const box2 = new Box({
+            x1: conn2.s.left,
+            y1: conn2.s.top,
+            x2: conn2.s.left + conn2.s.width,
+            y2: conn2.s.top + conn2.s.height,
+         });
 
-      let index = 0;
-      if (c.connected === "s") {
-         index = this.points.length - 1;
-      }
+         // const points = routeOrthogonal(
+         //    { left: box1.x1, top: box1.y1, bottom: box1.y2, right: box1.x2 },
+         //    { left: box2.x1, top: box2.y1, bottom: box2.y2, right: box2.x2 },
+         //    8,
+         //    "left",
+         //    "right",
+         // );
+         const points = routeOrthogonalRobustDynamic(
+            { left: box1.x1, top: box1.y1, bottom: box1.y2, right: box1.x2 },
+            { left: box2.x1, top: box2.y1, bottom: box2.y2, right: box2.x2 },
+            30,
+         );
 
-      const intersect = intersectLineWithBox(
-         this.left + this.points[index].x,
-         this.top + this.points[index].y,
-         absPoint.x,
-         absPoint.y,
-         s.left,
-         s.left + s.width,
-         s.top,
-         s.top + s.height,
-      );
+         const relativePoints = points.map((p) => {
+            return { x: p.x - this.left, y: p.y - this.top };
+         });
+         this.set("points", relativePoints);
+         return false;
+      } else {
+         const absPoint = {
+            x: s.left + (c.coords.x / 100) * s.width,
+            y: s.top + (c.coords.y / 100) * s.height,
+         };
 
-      if (intersect.length) {
-         const relativeX = intersect[0][0] - this.left;
-         const relativeY = intersect[0][1] - this.top;
-
-         if (c.connected == "s") {
-            this.points[0] = { x: relativeX, y: relativeY };
-         } else {
-            this.points[this.points.length - 1] = { x: relativeX, y: relativeY };
+         let index = 0;
+         if (c.connected === "s") {
+            index = this.points.length - 1;
          }
 
-         if (this instanceof AnchorLine) {
-            this.Resize(p, { x1: 0, y1: 0, y2: 0, x2: 0 }, "b");
+         const intersect = intersectLineWithBox(
+            this.left + this.points[index].x,
+            this.top + this.points[index].y,
+            absPoint.x,
+            absPoint.y,
+            s.left,
+            s.left + s.width,
+            s.top,
+            s.top + s.height,
+         );
+
+         if (intersect.length) {
+            const relativeX = intersect[0][0] - this.left;
+            const relativeY = intersect[0][1] - this.top;
+
+            if (c.connected == "s") {
+               this.points[0] = { x: relativeX, y: relativeY };
+            } else {
+               this.points[this.points.length - 1] = { x: relativeX, y: relativeY };
+            }
+
+            if (this instanceof AnchorLine) {
+               this.Resize(p, { x1: 0, y1: 0, y2: 0, x2: 0 }, "b");
+            }
+            this.setCoords();
+            return true;
          }
-         this.setCoords();
-         return true;
+         return false;
       }
-      return false;
    }
 }
 
