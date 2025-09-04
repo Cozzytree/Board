@@ -12,6 +12,7 @@ import { ActiveSelection, Box, Line, Path, Pointer, Rect } from "../index";
 import { generateShapeByShapeType } from "../utils/utilfunc";
 import type { HistoryType } from "../shapes/shape_store";
 import { HoveredColor } from "../constants";
+import { Text } from "../index.ts"
 
 const textAreaId = "text-update";
 
@@ -450,6 +451,9 @@ class SelectionTool implements ToolInterface {
          console.info("deleted count", c);
       } else if (e.ctrlKey) {
          const lastInserted = this._board.shapeStore.getLastInsertedShape();
+         if (e.key === "v" && this.textEdit) {
+            return;
+         }
          switch (e.key) {
             case "d":
                e.preventDefault();
@@ -511,6 +515,8 @@ class SelectionTool implements ToolInterface {
             case "y":
                e.preventDefault();
                this.redo();
+               break;
+            default:
          }
       }
    }
@@ -633,7 +639,27 @@ class SelectionTool implements ToolInterface {
 
    private getCopiesFromStoreAndAdd() {
       const copies = this._board.shapeStore.getLastCopy;
-      if (!copies.length) return;
+      if (!copies || !copies.length) {
+         navigator.clipboard.readText()
+            .then((text) => {
+               if (!text) return;
+               this._board.add(new Text({
+                  text,
+                  left: this._board.canvas.width / 2,
+                  top: this._board.canvas.height / 2,
+                  _board: this._board,
+                  ctx: this._board.ctx,
+                  verticalAlign: "center",
+                  textAlign: "center"
+               }));
+               this._board.render();
+               // do something with text
+            })
+            .catch((err) => {
+               console.error("Failed to read clipboard: ", err);
+            });
+         return;
+      };
 
       if (copies.length == 1) {
          const cloned = generateShapeByShapeType(copies[0], this._board, this._board.ctx);
