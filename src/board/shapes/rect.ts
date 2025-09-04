@@ -171,9 +171,14 @@ class Rect extends Shape {
       context.restore();
 
       if (this.text.length) {
+         const t = breakText({
+            ctx: context,
+            text: this.text,
+            width: this.width,
+         }).join("\n");
          super.renderText({
             context,
-            text: breakText({ ctx: context, text: this.text, width: this.width }).join("\n"),
+            text: t
          });
       }
    }

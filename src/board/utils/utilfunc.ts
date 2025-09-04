@@ -325,10 +325,9 @@ function breakText({
    width: number;
    text: string;
 }) {
-   const maxWidth = width;
+   const maxWidth = width * 0.48;
    // const lineHeight = this.fontSize * 1.2;
    const paragraphs = text.split("\n");
-
    const lines: string[] = [];
 
    const breakLongWord = (word: string): string[] => {

@@ -378,8 +378,8 @@ class SelectionTool implements ToolInterface {
       tarea.style.border = "1px solid #505050"
       tarea.style.outline = "none"
       tarea.contentEditable = "true";
-      tarea.style.whiteSpace = "pre";
-      tarea.style.overflowWrap = "break-word";
+      tarea.style.whiteSpace = "pre-wrap";
+      // tarea.style.overflowWrap = "break-word";
       div.append(tarea);
 
       tarea.innerText = s.text;
@@ -400,7 +400,7 @@ class SelectionTool implements ToolInterface {
       }, 0);
 
       tarea.addEventListener("blur", () => {
-         s.set("text", tarea.innerText);
+         s.set("text", getTextWithNewlines(tarea));
          this.textEdit = null;
          s._board.render();
          div.remove();
@@ -427,7 +427,13 @@ class SelectionTool implements ToolInterface {
    private onkeydown(e: KeyboardEvent) {
       if (e.key === "Escape") {
          if (this.textEdit) {
-            this.textEdit.set("text", this.getTextContentFromElement());
+            const textContent = this.getTextContentFromElement();
+            console.log(textContent);
+            if (!textContent) {
+               this.textEdit = null;
+               return;
+            };
+            this.textEdit.set("text", textContent);
             this.textEdit = null;
 
             // TODO
@@ -509,17 +515,23 @@ class SelectionTool implements ToolInterface {
       }
    }
 
-   private getTextContentFromElement() {
+   private getTextContentFromElement(): string {
       const div = document.getElementById(textAreaId);
-      const t = div?.children.item(0) as HTMLTextAreaElement | null;
+      const t = div?.children.item(0) as HTMLDivElement | null;
+
       if (t !== null) {
+         // Remove the wrapper div
          div?.remove();
-         // TODO not sure how will i remove the listener
-         // t.removeEventListener("blur", )
-         return t.value;
+
+         const text = getTextWithNewlines(t)
+         console.log("text content ", text)
+         // Use textContent to better preserve newlines
+         return text;
       }
+
       return "";
    }
+
 
    private redo() {
       const history = this.pullFromRedo();
@@ -710,5 +722,36 @@ class SelectionTool implements ToolInterface {
       ctx.restore();
    }
 }
+
+function getTextWithNewlines(el: HTMLElement): string {
+   let result = "";
+
+   el.childNodes.forEach(child => {
+      if (child.nodeType === Node.TEXT_NODE) {
+         result += child.textContent;
+      } else if (child.nodeType === Node.ELEMENT_NODE) {
+         const element = child as HTMLElement;
+         const tag = element.tagName;
+
+         if (tag === "BR") {
+            result += "\n";
+         } else {
+            const childText = getTextWithNewlines(element);
+            const display = window.getComputedStyle(element).display;
+
+            result += childText;
+
+            // Append newline if it's a block-level or flex container
+            if (display === "block" || display === "flex" || tag === "DIV" || tag === "P") {
+               result += "\n";
+            }
+         }
+      }
+   });
+
+   // Normalize multiple newlines and trim trailing whitespace
+   return result.replace(/\n{2,}/g, "\n").trim();
+}
+
 
 export default SelectionTool;
