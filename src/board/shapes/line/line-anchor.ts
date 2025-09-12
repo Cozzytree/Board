@@ -10,6 +10,17 @@ class LineAnchor extends Line {
       this.points = props.points || [];
    }
 
+   protected adjustPoints(): void {
+      const p1 = this.points[0];
+      const p2 = this.points[this.points.length - 1];
+
+      this.points.length = 4;
+      this.points[0] = p1;
+      this.points[1] = { x: p1.x + p2.x / 2, y: p1.y };
+      this.points[2] = { x: p1.x + p2.x / 2, y: p2.y };
+      this.points[3] = p2;
+   }
+
    clone(): Shape {
       const props = super.cloneProps();
       return new LineAnchor({ ...props, points: this.points });
@@ -49,16 +60,14 @@ class LineAnchor extends Line {
       const midWidth = width / 2;
       const midHeight = height / 2;
 
-      if (this.connections.size() == 0) {
-         this.points[1] = {
-            x: height > 200 ? this.points[0].x : minX + midWidth,
-            y: height > 200 ? minY + midHeight : this.points[0].y,
-         };
-         this.points[2] = {
-            x: height > 200 ? this.points[this.points.length - 1].x : minX + midWidth,
-            y: height > 200 ? minY + midHeight : this.points[this.points.length - 1].y,
-         };
-      }
+      this.points[1] = {
+         x: height > 200 ? this.points[0].x : minX + midWidth,
+         y: height > 200 ? minY + midHeight : this.points[0].y,
+      };
+      this.points[2] = {
+         x: height > 200 ? this.points[this.points.length - 1].x : minX + midWidth,
+         y: height > 200 ? minY + midHeight : this.points[this.points.length - 1].y,
+      };
    }
 
    connectionEvent({ c, s, p }: connectionEventData): boolean {
@@ -83,19 +92,27 @@ class LineAnchor extends Line {
          const midY = (this.points[0].y + this.points[this.points.length - 1].y) / 2;
          const midX = (this.points[0].x + this.points[this.points.length - 1].x) / 2;
 
-
          if (!yAlign) {
             if (c.connected === "e") {
                if (end.y > start.y) {
-                  this.points[this.points.length - 1] = { x: left + (s.width / 2) - this.left, y: top - this.top }
+                  this.points[this.points.length - 1] = {
+                     x: left + s.width / 2 - this.left,
+                     y: top - this.top,
+                  };
                } else {
-                  this.points[this.points.length - 1] = { x: left + (s.width / 2) - this.left, y: top + s.height - this.top }
+                  this.points[this.points.length - 1] = {
+                     x: left + s.width / 2 - this.left,
+                     y: top + s.height - this.top,
+                  };
                }
             } else {
                if (start.y > end.y) {
-                  this.points[0] = { x: left + (s.width / 2) - this.left, y: top - this.top }
+                  this.points[0] = { x: left + s.width / 2 - this.left, y: top - this.top };
                } else {
-                  this.points[0] = { x: left + (s.width / 2) - this.left, y: top + s.height - this.top }
+                  this.points[0] = {
+                     x: left + s.width / 2 - this.left,
+                     y: top + s.height - this.top,
+                  };
                }
             }
             this.points[1] = { y: midY, x: this.points[0].x };
@@ -105,19 +122,28 @@ class LineAnchor extends Line {
          if (!xAlign) {
             if (c.connected === "e") {
                if (end.x < start.x) {
-                  this.points[this.points.length - 1] = { x: left + s.width - this.left, y: top + (height / 2) - this.top }
+                  this.points[this.points.length - 1] = {
+                     x: left + s.width - this.left,
+                     y: top + height / 2 - this.top,
+                  };
                } else {
-                  this.points[this.points.length - 1] = { x: left - this.left, y: top + (height / 2) - this.top }
+                  this.points[this.points.length - 1] = {
+                     x: left - this.left,
+                     y: top + height / 2 - this.top,
+                  };
                }
             } else {
                if (end.x < start.x) {
-                  this.points[0] = { x: left - this.left, y: top + (height / 2) - this.top }
+                  this.points[0] = { x: left - this.left, y: top + height / 2 - this.top };
                } else {
-                  this.points[0] = { x: left + s.width - this.left, y: top + (height / 2) - this.top }
+                  this.points[0] = {
+                     x: left + s.width - this.left,
+                     y: top + height / 2 - this.top,
+                  };
                }
             }
-            this.points[1] = { x: midX, y: this.points[0].y};
-            this.points[2] = { x: midX, y: this.points[this.points.length - 1].y};
+            this.points[1] = { x: midX, y: this.points[0].y };
+            this.points[2] = { x: midX, y: this.points[this.points.length - 1].y };
          }
          super.setCoords();
       }

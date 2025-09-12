@@ -15,8 +15,9 @@ import type {
 import { Box, type Board } from "../index";
 import { IsIn } from "../utils/utilfunc";
 import { resizeRect } from "../utils/resize";
-import type { connectionEventData, ConnectionInterface } from "./shape_types";
+import type { connectionEventData, ConnectionInterface, Side } from "./shape_types";
 import Connections from "../connections";
+import { TheaterIcon } from "lucide-react";
 
 export type DrawProps = {
    ctx?: CanvasRenderingContext2D;
@@ -237,41 +238,46 @@ abstract class Shape implements ShapeProps {
    }
 
    mouseup(s: ShapeEventData): void {
+      this.connections.forEach((c) => {
+         c.s.setCoords();
+      });
       this.emit("mouseup", s);
    }
 
    mouseover(s: ShapeEventData): void {
-      const r = resizeRect(
-         s.e.point,
-         new Box({
-            x1: this.left,
-            y1: this.top,
-            x2: this.left + this.width,
-            y2: this.top + this.height,
-         }),
-         this.padding,
-      );
-      if (r && this._board.activeShapes.has(this)) {
-         switch (r.rd) {
-            case "tl":
-            case "br":
-               document.body.style.cursor = "nwse-resize";
-               break;
+      if (this._board.activeShapes.has(this)) {
+         const r = resizeRect(
+            s.e.point,
+            new Box({
+               x1: this.left,
+               y1: this.top,
+               x2: this.left + this.width,
+               y2: this.top + this.height,
+            }),
+            this.padding,
+         );
+         if (r) {
+            switch (r.rd) {
+               case "tl":
+               case "br":
+                  document.body.style.cursor = "nwse-resize";
+                  break;
 
-            case "tr":
-            case "bl":
-               document.body.style.cursor = "nesw-resize";
-               break;
+               case "tr":
+               case "bl":
+                  document.body.style.cursor = "nesw-resize";
+                  break;
 
-            case "t":
-            case "b":
-               document.body.style.cursor = "ns-resize";
-               break;
+               case "t":
+               case "b":
+                  document.body.style.cursor = "ns-resize";
+                  break;
 
-            case "l":
-            case "r":
-               document.body.style.cursor = "ew-resize";
-               break;
+               case "l":
+               case "r":
+                  document.body.style.cursor = "ew-resize";
+                  break;
+            }
          }
       } else {
          document.body.style.cursor = "default";
@@ -359,6 +365,62 @@ abstract class Shape implements ShapeProps {
    }
 
    setCoords() {}
+
+   inAnchor(p: Point): { isin: boolean; side: Side; point: Point } {
+      const inSetX = Math.floor(this.width * 0.2);
+      const inSetY = Math.floor(this.height * 0.2);
+      const inner = new Box({ x1: p.x, y1: p.y, x2: p.x + 1, y2: p.y + 1 });
+      const points: { p: Point; cond: Box; side: Side }[] = [
+         {
+            cond: new Box({
+               x1: this.left - inSetX,
+               x2: this.left + inSetX,
+               y1: this.top + this.height * 0.5 - inSetY,
+               y2: this.top + this.height * 0.5 + inSetY,
+            }),
+            p: { x: this.left, y: this.top + this.height * 0.5 },
+            side: "left",
+         },
+         {
+            cond: new Box({
+               x1: this.left + this.width * 0.5 - inSetX,
+               x2: this.left + this.width * 0.5 + inSetX,
+               y1: this.top - inSetX,
+               y2: this.top + inSetY,
+            }),
+            p: { x: this.left + this.width * 0.5, y: this.top },
+            side: "top",
+         },
+         {
+            cond: new Box({
+               x1: this.left + this.width - inSetX,
+               x2: this.left + this.width + inSetX,
+               y1: this.top + this.height * 0.5 - inSetY,
+               y2: this.top + this.height * 0.5 + inSetY,
+            }),
+            p: { x: this.left + this.width, y: this.top + this.height * 0.5 },
+            side: "right",
+         },
+         {
+            cond: new Box({
+               x1: this.left + this.width * 0.5 - inSetX,
+               x2: this.left + this.width * 0.5 + inSetX,
+               y1: this.top + this.height - inSetY,
+               y2: this.top + this.height + inSetY,
+            }),
+            p: { x: this.left + this.width * 0.5, y: this.top + this.height },
+            side: "bottom",
+         },
+      ];
+
+      for (let i = 0; i < points.length; i++) {
+         if (IsIn({ inner, outer: points[i].cond })) {
+            return { isin: true, side: points[i].side, point: points[i].p };
+         }
+      }
+
+      return { isin: false, side: "top", point: { x: 0, y: 0 } };
+   }
 
    protected renderText({ context, text }: { text?: string; context: CanvasRenderingContext2D }) {
       // text

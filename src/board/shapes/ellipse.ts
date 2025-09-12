@@ -25,7 +25,6 @@ class Ellipse extends Shape {
 
    clone(): Shape {
       const props = this.cloneProps();
-      console.log(props);
       return new Ellipse({ ...props, rx: this.rx, ry: this.ry });
    }
 

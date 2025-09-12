@@ -3,7 +3,19 @@ import Pointer from "./utils/point";
 const SCALE_RATE = 0.15;
 const keysNotNeeded = ["ctx", "eventListeners"];
 const HoveredColor = "#7090EF";
-const COLORS = ["#606090", "#487F88", "#92CEAC", "#EFD36C", "#F3AEAF", "#6B7280"];
+const COLORS = [
+   "#606090",
+   "#487F88",
+   "#92CEAC",
+   "#EFD36C",
+   "#F3AEAF",
+   "#6B7280",
+   "#FF5050",
+   "#FF2080",
+   "#EFEFEF",
+   "#222222",
+   HoveredColor
+];
 const FONT_SIZES = [
    { label: "Huge", size: 25 },
    { label: "Large", size: 20 },

@@ -7,12 +7,13 @@ class Connections implements ConnectionInterface {
    }
 
    size() {
-      return this.shapes.length
+      return this.shapes.length;
    }
 
    add(s: connection): boolean {
       for (let i = 0; i < this.shapes.length; i++) {
-         if (s.s.ID() == this.shapes[i].s.ID()) return false;
+         if (s.s.ID() == this.shapes[i].s.ID() && s.connected == this.shapes[i].connected)
+            return false;
       }
 
       this.shapes.push(s);
@@ -21,7 +22,7 @@ class Connections implements ConnectionInterface {
 
    // delete(i)
 
-   forEach(callback: (c: connection) => boolean): connection | null {
+   forEach(callback: (c: connection) => boolean | void): connection | null {
       for (let i = 0; i < this.shapes.length; i++) {
          if (callback(this.shapes[i])) {
             return this.shapes[i];
@@ -33,16 +34,23 @@ class Connections implements ConnectionInterface {
    delete(id: string) {
       const i = this.shapes.findIndex((s) => id == s.s.ID());
       if (i == -1) return;
-      this.shapes.splice(i, 1);
+      if (this.shapes.length == 1) {
+         this.shapes = [];
+      } else {
+         this.shapes.splice(i, 1);
+      }
    }
 
    clear(ct: "s" | "e", id?: string) {
-      this.shapes.forEach((s, i) => {
-         if (s.connected === ct) {
-            if (id) s.s.connections.delete(id);
-            this.shapes.splice(i, 1);
+      const findIndex = this.shapes.findIndex((s) => s.connected == ct);
+      if (findIndex !== -1) {
+         if (this.shapes.length == 1) {
+            this.shapes = [];
+         } else {
+            if (id) this.shapes[findIndex].s.connections.delete(id);
+            this.shapes.splice(findIndex, 1);
          }
-      });
+      }
    }
 }
 

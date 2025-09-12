@@ -1,7 +1,8 @@
 import type { BoxInterface, Point } from "../types";
 import type { Shape } from "@/board/index";
 
-export type connection = { s: Shape; coords: { x: number; y: number }; connected: "s" | "e" };
+export type Side = "left" | "right" | "top" | "bottom";
+export type connection = { s: Shape; connected: "s" | "e"; anchor?: Side };
 
 export type connectionEventData = { s: Shape; p: Point; c: connection };
 // export type ConnectionEventCallback = (e: connectionEevntData) => void;
@@ -13,7 +14,7 @@ export interface ConnectionInterface {
 
    add(c: connection): boolean;
 
-   forEach(callback: (c: connection) => boolean): connection | null;
+   forEach(callback: (c: connection) => boolean | void): connection | null;
 
    clear(c: "s" | "e", id?: string): void;
 

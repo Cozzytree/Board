@@ -12,7 +12,7 @@ import { ActiveSelection, Box, Line, Path, Pointer, Rect } from "../index";
 import { generateShapeByShapeType } from "../utils/utilfunc";
 import type { HistoryType } from "../shapes/shape_store";
 import { HoveredColor } from "../constants";
-import { Text } from "../index.ts"
+import { Text } from "../index.ts";
 
 const textAreaId = "text-update";
 
@@ -114,8 +114,8 @@ class SelectionTool implements ToolInterface {
                      // insert this to undo
                      if (s.s instanceof Path || s.s instanceof Line) {
                         s.s.lastPoints = s.s.points.map((p) => {
-                           return { x: p.x, y: p.y }
-                        })
+                           return { x: p.x, y: p.y };
+                        });
                      }
 
                      this.mouseDowmShapeState.push(s.s.toObject());
@@ -128,7 +128,7 @@ class SelectionTool implements ToolInterface {
                   });
                }
                // fire mouse down for the shape
-               lastInserted.mousedown({ e: { point: p } })
+               lastInserted.mousedown({ e: { point: p } });
                return;
             }
 
@@ -266,13 +266,11 @@ class SelectionTool implements ToolInterface {
                   !this._board.activeShapes.has(s) &&
                   this._board.shapeStore.getLastInsertedShape()?.type !== "selection"
                ) {
-                  this.hoveredShape = new Rect({
-                     _board: this._board,
-                     ctx: this._board.ctx,
-                     left: s.left - 4,
-                     top: s.top - 4,
-                     width: s.width + 8,
-                     height: s.height + 8,
+                  this.hoveredShape = s.clone();
+
+                  this.hoveredShape.set({
+                     fill: "transparent",
+                     dash: [0, 0],
                      stroke: HoveredColor,
                      strokeWidth: 3,
                   });
@@ -375,9 +373,9 @@ class SelectionTool implements ToolInterface {
       div.style.width = s.width + "px";
       div.style.height = s.height + "px";
 
-      tarea.style.background = "#1e1e1eff"
-      tarea.style.border = "1px solid #505050"
-      tarea.style.outline = "none"
+      tarea.style.background = "#1e1e1eff";
+      tarea.style.border = "1px solid #505050";
+      tarea.style.outline = "none";
       tarea.contentEditable = "true";
       tarea.style.whiteSpace = "pre-wrap";
       // tarea.style.overflowWrap = "break-word";
@@ -395,7 +393,7 @@ class SelectionTool implements ToolInterface {
 
          // Apply the range to the selection
          const sel = window.getSelection();
-         if (!sel) return
+         if (!sel) return;
          sel.removeAllRanges();
          sel.addRange(range);
       }, 0);
@@ -419,7 +417,7 @@ class SelectionTool implements ToolInterface {
       }
    }
 
-   onClick(): void { }
+   onClick(): void {}
 
    cleanUp(): void {
       document.removeEventListener("keydown", this.handleKeyDown);
@@ -433,7 +431,7 @@ class SelectionTool implements ToolInterface {
             if (!textContent) {
                this.textEdit = null;
                return;
-            };
+            }
             this.textEdit.set("text", textContent);
             this.textEdit = null;
 
@@ -529,15 +527,14 @@ class SelectionTool implements ToolInterface {
          // Remove the wrapper div
          div?.remove();
 
-         const text = getTextWithNewlines(t)
-         console.log("text content ", text)
+         const text = getTextWithNewlines(t);
+         console.log("text content ", text);
          // Use textContent to better preserve newlines
          return text;
       }
 
       return "";
    }
-
 
    private redo() {
       const history = this.pullFromRedo();
@@ -640,18 +637,21 @@ class SelectionTool implements ToolInterface {
    private getCopiesFromStoreAndAdd() {
       const copies = this._board.shapeStore.getLastCopy;
       if (!copies || !copies.length) {
-         navigator.clipboard.readText()
+         navigator.clipboard
+            .readText()
             .then((text) => {
                if (!text) return;
-               this._board.add(new Text({
-                  text,
-                  left: this._board.canvas.width / 2,
-                  top: this._board.canvas.height / 2,
-                  _board: this._board,
-                  ctx: this._board.ctx,
-                  verticalAlign: "center",
-                  textAlign: "center"
-               }));
+               this._board.add(
+                  new Text({
+                     text,
+                     left: this._board.canvas.width / 2,
+                     top: this._board.canvas.height / 2,
+                     _board: this._board,
+                     ctx: this._board.ctx,
+                     verticalAlign: "center",
+                     textAlign: "center",
+                  }),
+               );
                this._board.render();
                // do something with text
             })
@@ -659,7 +659,7 @@ class SelectionTool implements ToolInterface {
                console.error("Failed to read clipboard: ", err);
             });
          return;
-      };
+      }
 
       if (copies.length == 1) {
          const cloned = generateShapeByShapeType(copies[0], this._board, this._board.ctx);
@@ -752,7 +752,7 @@ class SelectionTool implements ToolInterface {
 function getTextWithNewlines(el: HTMLElement): string {
    let result = "";
 
-   el.childNodes.forEach(child => {
+   el.childNodes.forEach((child) => {
       if (child.nodeType === Node.TEXT_NODE) {
          result += child.textContent;
       } else if (child.nodeType === Node.ELEMENT_NODE) {
@@ -778,6 +778,5 @@ function getTextWithNewlines(el: HTMLElement): string {
    // Normalize multiple newlines and trim trailing whitespace
    return result.replace(/\n{2,}/g, "\n").trim();
 }
-
 
 export default SelectionTool;

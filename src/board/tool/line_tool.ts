@@ -9,7 +9,7 @@ class LineTool extends Tool {
       super(board);
    }
 
-   cleanUp(): void { }
+   cleanUp(): void {}
 
    pointerDown({ p }: ToolEventData): void {
       if (this._board.modes.sm === "line:straight") {
@@ -25,7 +25,7 @@ class LineTool extends Tool {
             left: p.x,
             top: p.y,
             lineType: "curve",
-            fill: "white"
+            fill: "white",
          });
       } else if (this._board.modes.sm === "line:curve") {
          this.newLine = new LineCurve({
@@ -39,8 +39,8 @@ class LineTool extends Tool {
             left: p.x,
             top: p.y,
             lineType: "curve",
-            fill: "white"
-         })
+            fill: "white",
+         });
       } else {
          this.newLine = new AnchorLine({
             _board: this._board,
@@ -73,20 +73,21 @@ class LineTool extends Tool {
       }
    }
 
-   pointerup(_: ToolEventData, cb?: ToolCallback): void {
+   pointerup(e: ToolEventData, cb?: ToolCallback): void {
       if (this.newLine) {
          this._board.add(this.newLine);
          this._board.render();
          this.newLine.setCoords();
+         this.newLine.mouseup({ e: { point: e.p } });
          this.newLine = null;
       }
 
       cb?.({ mode: "cursor", submode: "free" });
    }
 
-   dblClick() { }
+   dblClick() {}
 
-   onClick(): void { }
+   onClick(): void {}
 }
 
 export default LineTool;
