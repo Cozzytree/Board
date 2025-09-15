@@ -14,6 +14,7 @@ class LineAnchor extends Line {
       const p1 = this.points[0];
       const p2 = this.points[this.points.length - 1];
 
+      this.lineType = "anchor";
       this.points.length = 4;
       this.points[0] = p1;
       this.points[1] = { x: p1.x + p2.x / 2, y: p1.y };
@@ -47,8 +48,8 @@ class LineAnchor extends Line {
       context.restore();
    }
 
-   Resize(current: Point, old: BoxInterface, d: resizeDirection): void {
-      super.Resize(current, old, d);
+   Resize(current: Point, old: BoxInterface, d: resizeDirection): Shape[] | void {
+      const shapes = super.Resize(current, old, d);
       const maxX = Math.max(this.points[this.points.length - 1].x, this.points[0].x);
       const minX = Math.min(this.points[this.points.length - 1].x, this.points[0].x);
 
@@ -68,6 +69,7 @@ class LineAnchor extends Line {
          x: height > 200 ? this.points[this.points.length - 1].x : minX + midWidth,
          y: height > 200 ? minY + midHeight : this.points[this.points.length - 1].y,
       };
+      return shapes;
    }
 
    connectionEvent({ c, s, p }: connectionEventData): boolean {
@@ -145,7 +147,6 @@ class LineAnchor extends Line {
             this.points[1] = { x: midX, y: this.points[0].y };
             this.points[2] = { x: midX, y: this.points[this.points.length - 1].y };
          }
-         super.setCoords();
       }
       return b;
    }

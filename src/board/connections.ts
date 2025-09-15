@@ -42,16 +42,26 @@ class Connections implements ConnectionInterface {
    }
 
    clear(ct: "s" | "e", id?: string) {
-      const findIndex = this.shapes.findIndex((s) => s.connected == ct);
-      if (findIndex !== -1) {
-         if (this.shapes.length == 1) {
-            this.shapes = [];
-         } else {
-            if (id) this.shapes[findIndex].s.connections.delete(id);
-            this.shapes.splice(findIndex, 1);
-         }
-      }
+      const index = this.shapes.findIndex((conn) => conn?.connected === ct);
+      if (index == -1) return;
+
+      const val = this.shapes[index];
+      console.log(val);
+      if (id) val.s.connections.delete(id);
+      this.shapes.splice(index, 1);
    }
+
+   // clear(ct: "s" | "e", id?: string) {
+   //    const findIndex = this.shapes.findIndex((s) => s.connected == ct);
+   //    if (findIndex !== -1) {
+   //       if (this.shapes.length == 1) {
+   //          this.shapes = [];
+   //       } else {
+   //          if (id) this.shapes[findIndex].s.connections.delete(id);
+   //          this.shapes.splice(findIndex, 1);
+   //       }
+   //    }
+   // }
 }
 
 export default Connections;

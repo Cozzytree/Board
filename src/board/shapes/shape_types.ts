@@ -2,7 +2,12 @@ import type { BoxInterface, Point } from "../types";
 import type { Shape } from "@/board/index";
 
 export type Side = "left" | "right" | "top" | "bottom";
-export type connection = { s: Shape; connected: "s" | "e"; anchor?: Side };
+export type connection = {
+   s: Shape;
+   connected: "s" | "e";
+   anchor?: Side;
+   coords?: { x: number; y: number };
+};
 
 export type connectionEventData = { s: Shape; p: Point; c: connection };
 // export type ConnectionEventCallback = (e: connectionEevntData) => void;
@@ -27,7 +32,7 @@ export type ActiveSelectionShape = {
    offset?: Point;
 };
 
-export type LineType = "curve" | "straight";
+export type LineType = "curve" | "straight" | "anchor";
 
 export type LineProps = {
    points?: Point[];

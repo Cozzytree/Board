@@ -29,6 +29,9 @@ export type ShapeEventData = {
 export type ShapeEventCallback = (shape: Shape, data?: ShapeEventData) => void;
 
 export type ShapeProps = {
+   selectionFill?: string;
+   selectionAlpha?: number;
+   selectionDash?: [number, number];
    selectionColor?: string;
    selectionStrokeWidth?: number;
    fontSize?: number;
@@ -92,7 +95,7 @@ export interface BoardInterface {
    onMouseUp?: () => void;
 }
 
-export type modes = "cursor" | "shape" | "line" | "draw" | "text";
+export type modes = "cursor" | "shape" | "line" | "draw" | "text" | "eraser";
 
 export type submodeline = "line:straight" | "line:anchor" | "line:curve";
 export type submodecursor = "grab" | "free";

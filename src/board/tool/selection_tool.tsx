@@ -266,14 +266,16 @@ class SelectionTool implements ToolInterface {
                   !this._board.activeShapes.has(s) &&
                   this._board.shapeStore.getLastInsertedShape()?.type !== "selection"
                ) {
-                  this.hoveredShape = s.clone();
-
-                  this.hoveredShape.set({
-                     fill: "transparent",
-                     dash: [0, 0],
-                     stroke: HoveredColor,
-                     strokeWidth: 3,
-                  });
+                  /*
+                  TODO : need to fix cloning
+                  */
+                  // this.hoveredShape = s.clone();
+                  // this.hoveredShape.set({
+                  //    fill: "transparent",
+                  //    dash: [0, 0],
+                  //    stroke: HoveredColor,
+                  //    strokeWidth: 2,
+                  // });
                }
             }
             s.mouseover({ e: { point: p } });
@@ -355,11 +357,62 @@ class SelectionTool implements ToolInterface {
       return callback;
    }
 
+   // private createText({ s, start }: { start: Point; s: Shape; p: Point }) {
+   //    let div = document.getElementById(textAreaId);
+   //    if (div) {
+   //       div.remove();
+   //    }
+
+   //    div = document.createElement("div");
+   //    div.setAttribute("id", textAreaId);
+
+   //    const tarea = document.createElement("div");
+   //    div.classList.add("input-container");
+   //    div.style.position = "absolute";
+   //    div.style.fontSize = `${s.fontSize}px`;
+   //    div.style.zIndex = "50";
+   //    div.style.left = `${start.x + this._board.view.x - this._board.view.x}px`;
+   //    div.style.top = start.y + this._board.view.y + "px";
+   //    div.style.width = s.width + "px";
+   //    div.style.height = s.height + "px";
+
+   //    tarea.style.background = "#1e1e1eff";
+   //    tarea.style.border = "1px solid #505050";
+   //    tarea.style.outline = "none";
+   //    tarea.contentEditable = "true";
+   //    tarea.style.whiteSpace = "pre-wrap";
+   //    // tarea.style.overflowWrap = "break-word";
+   //    div.append(tarea);
+
+   //    tarea.innerText = s.text;
+   //    document.body.append(div);
+
+   //    setTimeout(() => {
+   //       tarea.focus();
+   //       // Create a new range
+   //       const range = document.createRange();
+   //       range.selectNodeContents(tarea);
+   //       range.collapse(false); // collapse to end
+
+   //       // Apply the range to the selection
+   //       const sel = window.getSelection();
+   //       if (!sel) return;
+   //       sel.removeAllRanges();
+   //       sel.addRange(range);
+   //    }, 0);
+
+   //    tarea.addEventListener("blur", () => {
+   //       s.set("text", getTextWithNewlines(tarea));
+   //       this.textEdit = null;
+   //       s._board.render();
+   //       div.remove();
+   //       tarea.remove();
+   //    });
+   // }
+
    private createText({ s, start }: { start: Point; s: Shape; p: Point }) {
       let div = document.getElementById(textAreaId);
-      if (div) {
-         div.remove();
-      }
+      if (div) div.remove();
 
       div = document.createElement("div");
       div.setAttribute("id", textAreaId);
@@ -368,30 +421,39 @@ class SelectionTool implements ToolInterface {
       div.classList.add("input-container");
       div.style.position = "absolute";
       div.style.zIndex = "50";
-      div.style.left = start.x + this._board.view.x + "px";
-      div.style.top = start.y + this._board.view.y + "px";
-      div.style.width = s.width + "px";
-      div.style.height = s.height + "px";
 
+      // --- Map canvas coords to screen coords ---
+      const ctx = this._board.ctx;
+      const m = ctx.getTransform(); // DOMMatrix
+
+      // Apply matrix to start.x/start.y
+      const screenX = m.a * start.x + m.c * start.y + m.e;
+      const screenY = m.b * start.x + m.d * start.y + m.f;
+
+      // Also apply scaling for width/height & font size
+      const scale = m.a; // assuming uniform scale
+      div.style.left = `${screenX}px`;
+      div.style.top = `${screenY}px`;
+      div.style.width = `${s.width * scale}px`;
+      div.style.height = `${s.height * scale}px`;
+      div.style.fontSize = `${s.fontSize * scale}px`;
+
+      // --- Style the editable div ---
       tarea.style.background = "#1e1e1eff";
       tarea.style.border = "1px solid #505050";
       tarea.style.outline = "none";
       tarea.contentEditable = "true";
       tarea.style.whiteSpace = "pre-wrap";
-      // tarea.style.overflowWrap = "break-word";
-      div.append(tarea);
 
+      div.append(tarea);
       tarea.innerText = s.text;
       document.body.append(div);
 
       setTimeout(() => {
          tarea.focus();
-         // Create a new range
          const range = document.createRange();
          range.selectNodeContents(tarea);
-         range.collapse(false); // collapse to end
-
-         // Apply the range to the selection
+         range.collapse(false);
          const sel = window.getSelection();
          if (!sel) return;
          sel.removeAllRanges();
@@ -524,11 +586,12 @@ class SelectionTool implements ToolInterface {
       const t = div?.children.item(0) as HTMLDivElement | null;
 
       if (t !== null) {
+         const text = getTextWithNewlines(t);
+         console.log("text content ", text);
+
          // Remove the wrapper div
          div?.remove();
 
-         const text = getTextWithNewlines(t);
-         console.log("text content ", text);
          // Use textContent to better preserve newlines
          return text;
       }

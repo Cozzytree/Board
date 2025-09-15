@@ -16,6 +16,7 @@ import {
    LineTool,
    TextTool,
 } from "./index";
+import EraserTool from "./tool/eraser_tool";
 
 type BoardProps = {
    canvas: HTMLCanvasElement;
@@ -299,9 +300,12 @@ class Board implements BoardInterface {
       } else if (m === "draw") {
          this.setTool(new DrawTool(this));
       } else if (m === "line") {
+         this.discardActiveShapes();
          this.setTool(new LineTool(this));
       } else if (m === "text") {
          this.setTool(new TextTool(this));
+      } else if (m === "eraser") {
+         this.setTool(new EraserTool(this));
       }
 
       this.modes = { m, sm };

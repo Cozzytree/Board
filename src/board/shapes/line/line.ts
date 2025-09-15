@@ -1,18 +1,23 @@
 import type { BoxInterface, Point, resizeDirection, ShapeEventData, ShapeProps } from "../../types";
 import type { connectionEventData, LineProps, LineType, Side } from "../shape_types";
+
+import { Box, Pointer, Rect, Shape } from "@/board/index";
 import {
    intersectLineWithBox,
    isPointNearSegment,
    routeOrthogonalRobustDynamic,
    setCoords,
 } from "@/board/utils/utilfunc";
-import { AnchorLine, Box, Pointer, Shape } from "@/board/index";
 
 type Connection = {
    s: Shape;
 };
 
 abstract class Line extends Shape {
+   private indicator: {
+      show: boolean;
+      rect: Rect;
+   };
    declare lastPoints: Point[];
    protected resizeIndex: number | null = null;
    declare points: Point[];
@@ -31,6 +36,27 @@ abstract class Line extends Shape {
       this.arrowS = true;
       this.arrowE = false;
       this.points = props.points || [];
+      this.indicator = {
+         rect: new Rect({
+            _board: props._board,
+            ctx: this._board.ctx2,
+            strokeWidth: 10,
+            selectionStrokeWidth: 20,
+            selectionColor: "#606060",
+            selectionAlpha: 0.5,
+            selectionDash: [0, 0],
+            rx: 2,
+            ry: 2,
+         }),
+         show: false,
+      };
+   }
+
+   private establishConnection(p: Point) {}
+
+   mousedown(s: ShapeEventData): void {
+      this.establishConnection(s.e.point);
+      super.mousedown(s);
    }
 
    activeRect(ctx?: CanvasRenderingContext2D) {
@@ -192,18 +218,16 @@ abstract class Line extends Shape {
       });
 
       if (!foundShape) {
-         // remove the connection
-         let d: "s" | "e" = "s";
-         if (this.resizeIndex === 0) {
-            d = "e";
-         } else if (this.resizeIndex === this.points.length - 1) {
-            d = "s";
-         }
-         console.info("resizeIndex ", this.resizeIndex);
+         const d: "s" | "e" = this.resizeIndex === 0 ? "s" : "e";
          this.connections.clear(d, this.ID());
-         console.log(this.connections);
+         this.resizeIndex = null;
          return;
       }
+
+      const coords = {
+         x: ((s.e.point.x - foundShape.left) / foundShape.width) * 100,
+         y: ((s.e.point.y - foundShape.top) / foundShape.height) * 100,
+      };
 
       if (this.resizeIndex == 0) {
          // check if already connected to end
@@ -211,35 +235,37 @@ abstract class Line extends Shape {
             if (connect.s.ID() === foundShape.ID() && connect.connected === "e") return true;
             return false;
          });
-         console.log("start ", foundShape.ID());
          if (alreadyConnected == null) {
-            this.connections.add({ s: foundShape, connected: "s", anchor });
+            this.connections.add({ s: foundShape, connected: "s", anchor, coords });
             foundShape.connections.add({ s: this, connected: "s", anchor });
          }
       } else {
          // check if already connected to start
          const alreadyConnected = this.connections.forEach((connect) => {
-            if (connect.s.ID() === foundShape.ID() && connect.connected === "s") return true;
+            if (connect && connect.s.ID() === foundShape.ID() && connect.connected === "s")
+               return true;
             return false;
          });
          if (alreadyConnected == null) {
-            this.connections.add({ s: foundShape, connected: "e", anchor });
+            this.connections.add({ s: foundShape, connected: "e", anchor, coords });
             foundShape.connections.add({ s: this, connected: "e", anchor });
          }
       }
+
+      console.log("start ", this.connections);
+      this.resizeIndex = null;
       if (this.connections.size() == 1 || this.connections.size() == 0) {
+         console.log("connections adjust");
          this.adjustPoints();
       }
-      this.resizeIndex = null;
    }
 
-   Resize(current: Point, _: BoxInterface, d: resizeDirection): void {
+   Resize(current: Point, _: BoxInterface, d: resizeDirection): Shape[] | void {
+      const drawShapes: Shape[] = [];
       const index = d === "br" ? this.points.length - 1 : this.resizeIndex;
       if (index === null || index < 0 || index > this.points.length - 1) return;
 
-      if (this.resizeIndex == null) {
-         this.resizeIndex = index;
-      }
+      this.resizeIndex = index;
 
       const anchorDirection: { p: Point; s: Side } = { p: { x: 0, y: 0 }, s: "bottom" };
       const foundShape = this._board.shapeStore.forEach((s) => {
@@ -248,45 +274,63 @@ abstract class Line extends Shape {
           */
          const a = s.inAnchor(current);
          if (a.isin) {
+            this.indicator.show = true;
+            this.indicator.rect.set({
+               left: s.left - s.padding,
+               top: s.top - s.padding,
+               width: s.width + 2 * s.padding,
+               height: s.height + 2 * s.padding,
+            });
+
+            drawShapes.push(this.indicator.rect);
             anchorDirection.s = a.side;
             anchorDirection.p = a.point;
             return true;
+         } else {
+            this.indicator.show = false;
          }
          return false;
       });
 
       if (foundShape && anchorDirection) {
-         this.points[index] = {
-            x: anchorDirection.p.x - this.left,
-            y: anchorDirection.p.y - this.top,
-         };
-         // let oppositeP = index;
-         // if (index === 0) {
-         //    oppositeP = 1;
-         // } else {
-         //    oppositeP = this.points.length - 2;
-         // }
-         // const i = intersectLineWithBox(
-         //    current.x,
-         //    current.y,
-         //    this.left + this.points[oppositeP].x,
-         //    this.top + this.points[oppositeP].y,
-         //    foundShape.left,
-         //    foundShape.left + foundShape.width,
-         //    foundShape.top,
-         //    foundShape.top + foundShape.height,
-         // );
-         // if (i.length) {
-         //    const intersectPoint = new Pointer({ x: i[0][0], y: i[0][1] });
+         if (this.lineType === "straight") {
+            let oppositeP = index;
+            if (index === 0) {
+               oppositeP = 1;
+            } else {
+               oppositeP = this.points.length - 2;
+            }
+            const i = intersectLineWithBox(
+               current.x,
+               current.y,
+               this.left + this.points[oppositeP].x,
+               this.top + this.points[oppositeP].y,
+               foundShape.left,
+               foundShape.left + foundShape.width,
+               foundShape.top,
+               foundShape.top + foundShape.height,
+            );
+            if (i.length) {
+               const intersectPoint = new Pointer({ x: i[0][0], y: i[0][1] });
 
-         //    // Convert intersection point to relative coordinates within this box
-         //    const relativeX = intersectPoint.x - this.left;
-         //    const relativeY = intersectPoint.y - this.top;
+               // Convert intersection point to relative coordinates within this box
+               const relativeX = intersectPoint.x - this.left;
+               const relativeY = intersectPoint.y - this.top;
 
-         //    this.points[index] = new Pointer({ x: relativeX, y: relativeY });
-         // }
+               this.points[index] = new Pointer({ x: relativeX, y: relativeY });
+            }
+         } else {
+            this.points[index] = {
+               x: anchorDirection.p.x - this.left,
+               y: anchorDirection.p.y - this.top,
+            };
+         }
       } else {
          this.points[index] = { x: current.x - this.left, y: current.y - this.top };
+      }
+
+      if (this.indicator.show) {
+         return drawShapes;
       }
    }
 
@@ -295,25 +339,27 @@ abstract class Line extends Shape {
       if (size == 2) {
          const conn1 = this.connections.shapes[0];
          const conn2 = this.connections.shapes[1];
+         const start = conn1.connected == "s" ? conn1 : conn2;
+         const end = conn1.connected == "e" ? conn1 : conn2;
          const box1 = new Box({
-            x1: conn1.s.left,
-            y1: conn1.s.top,
-            x2: conn1.s.left + conn1.s.width,
-            y2: conn1.s.top + conn1.s.height,
+            x1: start.s.left,
+            y1: start.s.top,
+            x2: start.s.left + start.s.width,
+            y2: start.s.top + start.s.height,
          });
          const box2 = new Box({
-            x1: conn2.s.left,
-            y1: conn2.s.top,
-            x2: conn2.s.left + conn2.s.width,
-            y2: conn2.s.top + conn2.s.height,
+            x1: end.s.left,
+            y1: end.s.top,
+            x2: end.s.left + end.s.width,
+            y2: end.s.top + end.s.height,
          });
 
          const points = routeOrthogonalRobustDynamic(
             { left: box1.x1, top: box1.y1, bottom: box1.y2, right: box1.x2 },
             { left: box2.x1, top: box2.y1, bottom: box2.y2, right: box2.x2 },
             30,
-            conn1.anchor,
-            conn2.anchor,
+            start.anchor,
+            end.anchor,
          );
 
          const relativePoints = points.map((p) => {
@@ -321,7 +367,7 @@ abstract class Line extends Shape {
          });
          this.set("points", relativePoints);
          return false;
-      } else if (size == 1) {
+      } else {
          const absPoint = {
             x: s.left + s.width / 2,
             y: s.top + s.height / 2,
@@ -357,7 +403,6 @@ abstract class Line extends Shape {
          }
          return false;
       }
-      return false;
    }
 }
 

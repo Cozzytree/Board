@@ -17,7 +17,7 @@ import { IsIn } from "../utils/utilfunc";
 import { resizeRect } from "../utils/resize";
 import type { connectionEventData, ConnectionInterface, Side } from "./shape_types";
 import Connections from "../connections";
-import { TheaterIcon } from "lucide-react";
+import { HoveredColor, LINE_CONNECTION_PADDING } from "../constants";
 
 export type DrawProps = {
    ctx?: CanvasRenderingContext2D;
@@ -34,7 +34,10 @@ abstract class Shape implements ShapeProps {
    declare type: shapeType;
    declare id: string;
    declare _board: Board;
+   declare selectionAlpha: number;
+   declare selectionDash: [number, number];
    declare selectionColor: string;
+   declare selectionFill: string;
    declare selectionStrokeWidth: number;
 
    fontWeight: number;
@@ -86,8 +89,12 @@ abstract class Shape implements ShapeProps {
       textAlign,
       connections,
       selectionColor,
+      selectionDash,
+      selectionAlpha,
+      selectionFill,
+      selectionStrokeWidth,
    }: ShapeProps) {
-      this.fill = fill || "#000000";
+      this.fill = fill || "#00000000";
       this.height = height || 100;
       this.width = width || 100;
       this.left = left || 0;
@@ -109,7 +116,10 @@ abstract class Shape implements ShapeProps {
       this.connections = connections || new Connections();
       this.id = uuidv4();
       this.selectionColor = selectionColor || "#5e79e6";
-      this.selectionStrokeWidth = 2;
+      this.selectionStrokeWidth = selectionStrokeWidth || 2;
+      this.selectionAlpha = selectionAlpha || 0.5;
+      this.selectionDash = selectionDash || [5, 5];
+      this.selectionFill = selectionFill || "#20202050";
 
       this.lastFlippedState = { x: false, y: false };
    }
@@ -204,7 +214,7 @@ abstract class Shape implements ShapeProps {
          context.fillStyle = "black";
          context.strokeStyle = "white";
          context.lineWidth = 1 / currentScale; // Keep dot border consistent too
-         context.roundRect(cx - wh / 2, cy - wh / 2, wh, wh, 2);
+         context.roundRect(cx - wh / 2, cy - wh / 2, wh, wh, 0);
          context.stroke();
          context.fill();
          context.closePath();
@@ -278,6 +288,8 @@ abstract class Shape implements ShapeProps {
                   document.body.style.cursor = "ew-resize";
                   break;
             }
+         } else {
+            document.body.style.cursor = "default";
          }
       } else {
          document.body.style.cursor = "default";
@@ -414,7 +426,18 @@ abstract class Shape implements ShapeProps {
       ];
 
       for (let i = 0; i < points.length; i++) {
-         if (IsIn({ inner, outer: points[i].cond })) {
+         const p = points[i].cond;
+         if (
+            IsIn({
+               inner,
+               outer: new Box({
+                  x1: p.x1 - LINE_CONNECTION_PADDING,
+                  y1: p.y1 - LINE_CONNECTION_PADDING,
+                  x2: p.x2 + LINE_CONNECTION_PADDING,
+                  y2: p.y2 + LINE_CONNECTION_PADDING,
+               }),
+            })
+         ) {
             return { isin: true, side: points[i].side, point: points[i].p };
          }
       }

@@ -1,11 +1,12 @@
 import * as React from "react";
+import Toolbar from "./components/toolbar";
 import type { modes, submodes } from "./types";
 import { Board, Shape } from "./index";
-import Toolbar from "./components/toolbar";
 import {
    BoxIcon,
    CircleIcon,
    DiamondIcon,
+   EraserIcon,
    GrabIcon,
    Minus,
    MousePointer,
@@ -13,7 +14,6 @@ import {
    PentagonIcon,
    PlusIcon,
    Spline,
-   SplineIcon,
    TriangleIcon,
    TypeOutlineIcon,
    type LucideIcon,
@@ -84,7 +84,6 @@ const BoardProvider = ({
          subMode: [
             { sm: "line:anchor", I: Spline },
             { sm: "line:straight", I: Minus },
-            { sm: "line:curve", I: SplineIcon }
          ],
       },
       {
@@ -95,6 +94,11 @@ const BoardProvider = ({
       {
          mode: "text",
          I: TypeOutlineIcon,
+         subMode: [],
+      },
+      {
+         mode: "eraser",
+         I: EraserIcon,
          subMode: [],
       },
    ]);

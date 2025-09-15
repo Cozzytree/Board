@@ -145,13 +145,14 @@ class Rect extends Shape {
       const currentScale = context.getTransform().a;
 
       if (resize) {
-         context.globalAlpha = 0.4;
+         context.globalAlpha = this.selectionAlpha;
          context.strokeStyle = this.selectionColor;
-         context.fillStyle = "#606060";
-         context.lineWidth = this.selectionStrokeWidth / currentScale;
+         context.fillStyle = this.selectionFill;
+         // context.lineWidth = this.selectionStrokeWidth / currentScale;
+         context.lineWidth = this.selectionStrokeWidth;
          context.setLineDash([
-            this.selectionStrokeWidth / currentScale,
-            this.selectionStrokeWidth / currentScale,
+            this.selectionDash[0] / currentScale,
+            this.selectionDash[1] / currentScale,
          ]);
       } else {
          context.setLineDash(this.dash);
@@ -178,13 +179,65 @@ class Rect extends Shape {
          }).join("\n");
          super.renderText({
             context,
-            text: t
+            text: t,
          });
       }
    }
 
    Resize(current: Point, old: BoxInterface, d: resizeDirection) {
       switch (d) {
+         case "t":
+            if (current.y > old.y2) {
+               super.set({
+                  top: old.y2,
+                  height: current.y - old.y2,
+               });
+            } else {
+               super.set({
+                  top: current.y,
+                  height: old.y2 - current.y,
+               });
+            }
+            break;
+         case "b":
+            if (current.y > old.y1) {
+               super.set({
+                  top: old.y1,
+                  height: current.y - old.y1,
+               });
+            } else {
+               super.set({
+                  top: current.y,
+                  height: old.y2 - current.y,
+               });
+            }
+            break;
+         case "l":
+            if (current.x > old.x2) {
+               super.set({
+                  left: old.x2,
+                  width: current.x - old.x2,
+               });
+            } else {
+               super.set({
+                  left: current.x,
+                  width: old.x2 - current.x,
+               });
+            }
+            break;
+         case "r":
+            if (current.x > old.x1) {
+               super.set({
+                  left: old.x1,
+                  width: current.x - old.x1,
+               });
+            } else {
+               super.set({
+                  left: current.x,
+                  width: old.x1 - current.x,
+               });
+            }
+            break;
          case "tl":
             if (current.x > old.x2) {
                this.left = old.x2;

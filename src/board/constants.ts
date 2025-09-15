@@ -1,5 +1,6 @@
 import Pointer from "./utils/point";
 
+const LINE_CONNECTION_PADDING = 10;
 const SCALE_RATE = 0.15;
 const keysNotNeeded = ["ctx", "eventListeners"];
 const HoveredColor = "#7090EF";
@@ -14,7 +15,7 @@ const COLORS = [
    "#FF2080",
    "#EFEFEF",
    "#222222",
-   HoveredColor
+   HoveredColor,
 ];
 const FONT_SIZES = [
    { label: "Huge", size: 25 },
@@ -34,4 +35,12 @@ const pathShapesPoints = {
    ],
 };
 
-export { SCALE_RATE, pathShapesPoints, keysNotNeeded, HoveredColor, COLORS, FONT_SIZES };
+export {
+   SCALE_RATE,
+   pathShapesPoints,
+   LINE_CONNECTION_PADDING,
+   keysNotNeeded,
+   HoveredColor,
+   COLORS,
+   FONT_SIZES,
+};
