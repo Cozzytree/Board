@@ -261,7 +261,11 @@ class SelectionTool implements ToolInterface {
 
       this._board.shapeStore.forEach((s) => {
          if (s.isWithin(p)) {
-            if (this.draggedShape == null && this.resizableShape == null) {
+            if (
+               this._board.hoverEffect &&
+               this.draggedShape == null &&
+               this.resizableShape == null
+            ) {
                if (
                   !this._board.activeShapes.has(s) &&
                   this._board.shapeStore.getLastInsertedShape()?.type !== "selection"
@@ -269,13 +273,13 @@ class SelectionTool implements ToolInterface {
                   /*
                   TODO : need to fix cloning
                   */
-                  // this.hoveredShape = s.clone();
-                  // this.hoveredShape.set({
-                  //    fill: "transparent",
-                  //    dash: [0, 0],
-                  //    stroke: HoveredColor,
-                  //    strokeWidth: 2,
-                  // });
+                  this.hoveredShape = s.clone();
+                  this.hoveredShape.set({
+                     fill: "transparent",
+                     dash: [0, 0],
+                     stroke: HoveredColor,
+                     strokeWidth: 2,
+                  });
                }
             }
             s.mouseover({ e: { point: p } });

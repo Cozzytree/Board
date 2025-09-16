@@ -28,7 +28,7 @@ export type DrawProps = {
 const keysNotNeeded = ["ctx", "eventListeners"];
 
 abstract class Shape implements ShapeProps {
-   padding = 5;
+   padding = 4;
 
    protected lastFlippedState: { x: boolean; y: boolean };
    declare type: shapeType;
@@ -115,10 +115,10 @@ abstract class Shape implements ShapeProps {
       this.textAlign = textAlign || "center";
       this.connections = connections || new Connections();
       this.id = uuidv4();
-      this.selectionColor = selectionColor || "#5e79e6";
+      this.selectionColor = selectionColor || HoveredColor;
       this.selectionStrokeWidth = selectionStrokeWidth || 2;
-      this.selectionAlpha = selectionAlpha || 0.5;
-      this.selectionDash = selectionDash || [5, 5];
+      this.selectionAlpha = selectionAlpha || 0.4;
+      this.selectionDash = selectionDash || [0, 0];
       this.selectionFill = selectionFill || "#20202050";
 
       this.lastFlippedState = { x: false, y: false };
@@ -179,7 +179,7 @@ abstract class Shape implements ShapeProps {
 
    activeRect(ctx?: CanvasRenderingContext2D) {
       const context = ctx || this.ctx;
-      const pad = this.padding;
+      const pad = 2;
       const x = this.left - pad;
       const y = this.top - pad;
       const w = this.width + pad * 2;
@@ -200,20 +200,20 @@ abstract class Shape implements ShapeProps {
 
       // Draw outer rectangle with constant visual width
       context.beginPath();
-      context.strokeStyle = "#5e79e6";
+      context.strokeStyle = this.selectionColor;
       context.lineWidth = this.strokeWidth / currentScale; // Adjust for scale
       context.rect(x, y, w, h);
       context.stroke();
       context.closePath();
 
       // Corner dot size in screen pixels
-      const screenDotSize = 8;
+      const screenDotSize = 6;
       const drawDot = (cx: number, cy: number) => {
          const wh = screenDotSize / currentScale; // Inverse scale for visual consistency
          context.beginPath();
-         context.fillStyle = "black";
-         context.strokeStyle = "white";
-         context.lineWidth = 1 / currentScale; // Keep dot border consistent too
+         context.fillStyle = this._board.background;
+         context.strokeStyle = this.selectionColor;
+         context.lineWidth = this.selectionStrokeWidth / currentScale; // Keep dot border consistent too
          context.roundRect(cx - wh / 2, cy - wh / 2, wh, wh, 0);
          context.stroke();
          context.fill();

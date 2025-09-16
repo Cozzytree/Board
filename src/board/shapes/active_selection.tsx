@@ -1,3 +1,4 @@
+import type { ActiveSelectionShape } from "./shape_types";
 import { keysNotNeeded } from "../constants";
 import { Box, Ellipse, Line, Path, Shape } from "../index";
 import type {
@@ -9,8 +10,6 @@ import type {
    ShapeProps,
 } from "../types";
 import { resizeRect } from "../utils/resize";
-import { IsIn } from "../utils/utilfunc";
-import type { ActiveSelectionShape } from "./shape_types";
 
 export type ActiveSeletionProps = {
    shapes?: { oldProps?: BoxInterface; s: Shape }[];
@@ -258,7 +257,9 @@ class ActiveSelection extends Shape {
                y1: s.top,
                y2: s.top + s.height,
             });
-            if (IsIn({ inner, outer })) {
+
+            if (outer.isInOtherPartial(inner)) {
+               console.log("inside");
                this.shapes.push({ s });
                updateBox = updateBox.compareAndReturnSmall(inner);
             }
@@ -275,7 +276,7 @@ class ActiveSelection extends Shape {
          }
       }
 
-      this.setUp++;
+      if (this.setUp <= 0) this.setUp++;
       this.emit("mouseup", s);
    }
 

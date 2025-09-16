@@ -19,12 +19,14 @@ import {
 import EraserTool from "./tool/eraser_tool";
 
 type BoardProps = {
+   background?: string;
    canvas: HTMLCanvasElement;
    width: number;
    height: number;
    onModeChange?: (m: modes, sm: submodes) => void;
    onMouseUp?: (e: ShapeEventData) => void;
    scl?: number;
+   hoverEffect?: boolean;
 };
 
 class Board implements BoardInterface {
@@ -53,6 +55,8 @@ class Board implements BoardInterface {
       eps: 5,
    };
 
+   hoverEffect: boolean;
+   background: string;
    declare view: { x: number; y: number; scl: number; cartesian: boolean };
    declare activeShapes: Set<Shape>;
    declare shapeStore: ShapeStore<Shape>;
@@ -74,12 +78,25 @@ class Board implements BoardInterface {
    modes: { m: modes; sm: submodes | null };
    onMouseUpCallback?: (e: ShapeEventData) => void;
 
-   constructor({ canvas, width, scl = 1, height, onModeChange, onMouseUp }: BoardProps) {
+   constructor({
+      canvas,
+      width,
+      scl = 1,
+      height,
+      onModeChange,
+      onMouseUp,
+      background,
+      hoverEffect,
+   }: BoardProps) {
+      this.hoverEffect = hoverEffect || true;
       this.canvas = canvas;
       this.canvas.width = width;
       this.canvas.height = height;
       this.onModeChange = onModeChange;
       this.view = { x: 0, y: 0, scl, cartesian: false };
+
+      this.background = background || "#101011";
+      this.canvas.style.background = this.background;
 
       // Ensure only one secondary canvas
       let c2 = document.getElementById("board-overlay-canvas") as HTMLCanvasElement | null;

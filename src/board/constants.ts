@@ -3,7 +3,7 @@ import Pointer from "./utils/point";
 const LINE_CONNECTION_PADDING = 10;
 const SCALE_RATE = 0.15;
 const keysNotNeeded = ["ctx", "eventListeners"];
-const HoveredColor = "#7090EF";
+const HoveredColor = "#007FFF";
 const COLORS = [
    "#606090",
    "#487F88",
