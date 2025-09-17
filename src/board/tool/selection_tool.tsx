@@ -9,7 +9,7 @@ import type {
    ToolInterface,
 } from "../types";
 import { ActiveSelection, Box, Line, Path, Pointer, Rect } from "../index";
-import { generateShapeByShapeType } from "../utils/utilfunc";
+import { generateShapeByShapeType, snapShape } from "../utils/utilfunc";
 import type { HistoryType } from "../shapes/shape_store";
 import { HoveredColor } from "../constants";
 import { Text } from "../index.ts";
@@ -24,6 +24,7 @@ type ResizeShapeProps = {
 } | null;
 
 class SelectionTool implements ToolInterface {
+   private snapLines: Shape[];
    private hoveredShape: Shape | null = null;
    private isDragging: boolean = false;
    private textEdit: Shape | null = null;
@@ -45,6 +46,7 @@ class SelectionTool implements ToolInterface {
    private hasSelectionStarted: boolean = false;
 
    constructor(board: Board, sb: submodes) {
+      this.snapLines = [];
       this._board = board;
       this.subMode = sb || "free";
 
@@ -53,6 +55,7 @@ class SelectionTool implements ToolInterface {
    }
 
    pointerDown({ e, p }: ToolEventData): void {
+      this.snapLines = [];
       this.mouseDownPoint = p;
       this.lastPoint = new Pointer(p);
       this.isDragging = false;
@@ -224,8 +227,20 @@ class SelectionTool implements ToolInterface {
 
       if (this.draggedShape != null && this.isDragging) {
          const shapes = this.draggedShape.dragging(new Pointer(this.lastPoint), new Pointer(p));
+
          this.lastPoint = p;
-         this.draw(this.draggedShape, ...(shapes || []));
+
+         // show snap
+         if (this._board.snap) {
+            const { lines } = snapShape({
+               board: this._board,
+               current: p,
+               shape: this.draggedShape,
+            });
+            this.draw(this.draggedShape, ...(shapes || []), ...lines);
+         } else {
+            this.draw(this.draggedShape, ...(shapes || []));
+         }
          return;
       }
 
@@ -235,7 +250,18 @@ class SelectionTool implements ToolInterface {
             this.resizableShape.oldProps,
             this.resizableShape.d,
          );
-         this.draw(this.resizableShape.s, ...(shapes || []));
+
+         if (this._board.snap) {
+            const { lines } = snapShape({
+               board: this._board,
+               current: p,
+               shape: this.resizableShape.s,
+            });
+            this.draw(this.resizableShape.s, ...(shapes || []), ...lines);
+         } else {
+            this.draw(this.resizableShape.s, ...(shapes || []));
+         }
+
          return;
       }
 
@@ -486,6 +512,7 @@ class SelectionTool implements ToolInterface {
    onClick(): void {}
 
    cleanUp(): void {
+      this.snapLines = [];
       document.removeEventListener("keydown", this.handleKeyDown);
    }
 

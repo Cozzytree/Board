@@ -40,7 +40,7 @@ class LineTool extends Tool {
             points: [
                { x: 0, y: 0 },
                { x: 0, y: 0 },
-               { x: 0, y: 0 },
+               // { x: 0, y: 0 },
             ],
             left: p.x,
             top: p.y,

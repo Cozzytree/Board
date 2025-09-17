@@ -30,7 +30,9 @@ class PlainLine extends Line {
             y: this.points[this.points.length - 1].y,
          };
       } else {
-         this.points[1] = { x: mid.x, y: mid.y };
+         if (this.points.length > 2) {
+            this.points[1] = { x: mid.x, y: mid.y };
+         }
       }
    }
 

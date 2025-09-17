@@ -1,5 +1,6 @@
 import { v4 as uuidv4 } from "uuid";
 
+import type { connectionEventData, ConnectionInterface, Side } from "./shape_types";
 import type {
    ShapeEvent,
    BoxInterface,
@@ -15,7 +16,6 @@ import type {
 import { Box, type Board } from "../index";
 import { IsIn } from "../utils/utilfunc";
 import { resizeRect } from "../utils/resize";
-import type { connectionEventData, ConnectionInterface, Side } from "./shape_types";
 import Connections from "../connections";
 import { HoveredColor, LINE_CONNECTION_PADDING } from "../constants";
 
@@ -151,7 +151,7 @@ abstract class Shape implements ShapeProps {
 
    connectionEvent(_: connectionEventData) {}
 
-   dragging(_: Point, current: Point): Shape[] | void {
+   dragging(p: Point, current: Point): Shape[] | void {
       if (this.connections) {
          const s: Shape[] = [];
          this.connections.forEach((c) => {
@@ -159,7 +159,6 @@ abstract class Shape implements ShapeProps {
             c.s.connectionEvent({ s: this, c, p: current });
             return false;
          });
-
          return s;
       }
    }

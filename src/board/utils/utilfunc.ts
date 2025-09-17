@@ -1,13 +1,15 @@
+import { SnapeLineColor } from "../constants";
 import {
    ActiveSelection,
    Board,
    Rect,
    Box,
-   type Shape,
    Pointer,
+   Shape,
    SimplePath,
    Ellipse,
    Text,
+   Path,
 } from "../index";
 import type { ActiveSeletionProps } from "../shapes/active_selection";
 import type { PathProps } from "../shapes/paths/path";
@@ -1205,7 +1207,256 @@ function routeOrthogonalRobustDynamic(
    return normalizePath(best.path);
 }
 
+function snapShape({ shape, board }: { current: Point; board: Board; shape: Shape }): {
+   lines: Shape[];
+} {
+   let snapped = false;
+   const linesV: Shape[] = [];
+   const linesH: Shape[] = [];
+
+   const newLine = (p1: Point, p2: Point, o: "h" | "v") => {
+      const left = Math.min(p1.x, p2.x);
+      const top = Math.min(p1.y, p2.y);
+
+      const l = new Path({
+         _board: board,
+         ctx: board.ctx,
+         left,
+         top,
+         selectionAlpha: 1,
+         selectionColor: SnapeLineColor,
+         selectionStrokeWidth: 2,
+         points: [
+            { x: p1.x - left, y: p1.y - top },
+            { x: p2.x - left, y: p2.y - top },
+         ],
+      });
+
+      if (o == "v" && linesV.length < 2) {
+         linesV.push(l);
+      }
+
+      if (o == "h" && linesH.length < 2) {
+         linesH.push(l);
+      }
+   };
+
+   // shape being moved
+   const sTop = shape.top;
+   const sLeft = shape.left;
+   const sRight = sLeft + shape.width;
+   const sBottom = sTop + shape.height;
+   const sMidX = sLeft + shape.width / 2;
+   const sMidY = sTop + shape.height / 2;
+
+   const SNAP_TOLERANCE = 5;
+
+   board.shapeStore.forEach((sha) => {
+      if (shape.ID() === sha.ID()) return false;
+
+      const top = sha.top;
+      const left = sha.left;
+      const right = left + sha.width;
+      const bottom = top + sha.height;
+      const midX = left + sha.width / 2;
+      const midY = top + sha.height / 2;
+
+      // ---------------- HORIZONTAL ALIGNMENTS ----------------
+      // top ↔ top
+      if (Math.abs(top - sTop) < SNAP_TOLERANCE) {
+         newLine({ x: midX, y: top }, { x: sMidX, y: top }, "h");
+         if (!snapped) {
+            shape.set({
+               top: top,
+            });
+            snapped = true;
+         }
+      }
+      // mid ↔ top
+      if (Math.abs(midY - sTop) < SNAP_TOLERANCE) {
+         newLine({ x: midX, y: midY }, { x: sMidX, y: midY }, "h");
+         if (!snapped) {
+            shape.set({
+               top: midY,
+            });
+            snapped = true;
+         }
+      }
+      // bottom ↔ top
+      if (Math.abs(bottom - sTop) < SNAP_TOLERANCE) {
+         newLine({ x: midX, y: bottom }, { x: sMidX, y: bottom }, "h");
+         if (!snapped) {
+            shape.set({
+               top: bottom,
+            });
+            snapped = true;
+         }
+      }
+
+      // top ↔ mid
+      if (Math.abs(top - sMidY) < SNAP_TOLERANCE) {
+         newLine({ x: midX, y: top }, { x: sMidX, y: top }, "h");
+         if (!snapped) {
+            shape.set({
+               top: top - Math.floor(shape.height / 2),
+            });
+            snapped = true;
+         }
+      }
+      // mid ↔ mid
+      if (Math.abs(midY - sMidY) < SNAP_TOLERANCE) {
+         newLine({ x: midX, y: midY }, { x: sMidX, y: midY }, "h");
+         if (!snapped) {
+            shape.set({
+               top: midY - Math.floor(shape.height / 2),
+            });
+            snapped = true;
+         }
+      }
+      // bottom ↔ mid
+      if (Math.abs(bottom - sMidY) < SNAP_TOLERANCE) {
+         newLine({ x: midX, y: bottom }, { x: sMidX, y: bottom }, "h");
+         if (!snapped) {
+            shape.set({
+               top: bottom - Math.floor(shape.height / 2),
+            });
+            snapped = true;
+         }
+      }
+
+      // top ↔ bottom
+      if (Math.abs(top - sBottom) < SNAP_TOLERANCE) {
+         newLine({ x: midX, y: top }, { x: sMidX, y: top }, "h");
+         if (!snapped) {
+            shape.set({
+               top: top - shape.height,
+            });
+            snapped = true;
+         }
+      }
+      // mid ↔ bottom
+      if (Math.abs(midY - sBottom) < SNAP_TOLERANCE) {
+         newLine({ x: midX, y: midY }, { x: sMidX, y: midY }, "h");
+         if (!snapped) {
+            shape.set({
+               top: midY - shape.height,
+            });
+            snapped = true;
+         }
+      }
+      // bottom ↔ bottom
+      if (Math.abs(bottom - sBottom) < SNAP_TOLERANCE) {
+         newLine({ x: midX, y: bottom }, { x: sMidX, y: bottom }, "h");
+         if (!snapped) {
+            shape.set({
+               top: bottom - shape.height,
+            });
+            snapped = true;
+         }
+      }
+
+      // ---------------- VERTICAL ALIGNMENTS ----------------
+      // left ↔ left
+      if (Math.abs(left - sLeft) < SNAP_TOLERANCE) {
+         newLine({ x: left, y: midY }, { x: left, y: sMidY }, "v");
+         if (!snapped) {
+            shape.set({
+               left: left,
+            });
+            snapped = true;
+         }
+      }
+      // center ↔ left
+      if (Math.abs(midX - sLeft) < SNAP_TOLERANCE) {
+         newLine({ x: midX, y: midY }, { x: midX, y: sMidY }, "v");
+         if (!snapped) {
+            shape.set({
+               left: midX,
+            });
+            snapped = true;
+         }
+      }
+      // right ↔ left
+      if (Math.abs(right - sLeft) < SNAP_TOLERANCE) {
+         newLine({ x: right, y: midY }, { x: right, y: sMidY }, "v");
+         if (!snapped) {
+            shape.set({
+               left: right,
+            });
+            snapped = true;
+         }
+      }
+
+      // left ↔ center
+      if (Math.abs(left - sMidX) < SNAP_TOLERANCE) {
+         newLine({ x: left, y: midY }, { x: left, y: sMidY }, "v");
+         if (!snapped) {
+            shape.set({
+               left: left - Math.floor(shape.width / 2),
+            });
+            snapped = true;
+         }
+      }
+      // center ↔ center
+      if (Math.abs(midX - sMidX) < SNAP_TOLERANCE) {
+         newLine({ x: midX, y: midY }, { x: midX, y: sMidY }, "v");
+         if (!snapped) {
+            shape.set({
+               left: left + Math.floor(shape.width / 2),
+            });
+            snapped = true;
+         }
+      }
+      // right ↔ center
+      if (Math.abs(right - sMidX) < SNAP_TOLERANCE) {
+         newLine({ x: right, y: midY }, { x: right, y: sMidY }, "v");
+         if (!snapped) {
+            shape.set({
+               left: right - Math.floor(shape.width / 2),
+            });
+            snapped = true;
+         }
+      }
+
+      // left ↔ right
+      if (Math.abs(left - sRight) < SNAP_TOLERANCE) {
+         newLine({ x: left, y: midY }, { x: left, y: sMidY }, "v");
+         if (!snapped) {
+            shape.set({
+               left: left - shape.width,
+            });
+            snapped = true;
+         }
+      }
+      // center ↔ right
+      if (Math.abs(midX - sRight) < SNAP_TOLERANCE) {
+         newLine({ x: midX, y: midY }, { x: midX, y: sMidY }, "v");
+         if (!snapped) {
+            shape.set({
+               left: midX - shape.width,
+            });
+            snapped = true;
+         }
+      }
+      // right ↔ right
+      if (Math.abs(right - sRight) < SNAP_TOLERANCE) {
+         newLine({ x: right, y: midY }, { x: right, y: sMidY }, "v");
+         if (!snapped) {
+            shape.set({
+               left: right - shape.width,
+            });
+            snapped = true;
+         }
+      }
+
+      return false;
+   });
+
+   return { lines: [...linesH, ...linesV] };
+}
+
 export {
+   snapShape,
    calcPointWithRotation,
    routeOrthogonalStrict,
    routeOrthogonalRobustDynamic,

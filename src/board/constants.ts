@@ -4,6 +4,7 @@ const LINE_CONNECTION_PADDING = 10;
 const SCALE_RATE = 0.15;
 const keysNotNeeded = ["ctx", "eventListeners"];
 const HoveredColor = "#007FFF";
+const SnapeLineColor = "#FF2020";
 const COLORS = [
    "#606090",
    "#487F88",
@@ -36,6 +37,7 @@ const pathShapesPoints = {
 };
 
 export {
+   SnapeLineColor,
    SCALE_RATE,
    pathShapesPoints,
    LINE_CONNECTION_PADDING,

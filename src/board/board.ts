@@ -27,6 +27,7 @@ type BoardProps = {
    onMouseUp?: (e: ShapeEventData) => void;
    scl?: number;
    hoverEffect?: boolean;
+   snap?: boolean;
 };
 
 class Board implements BoardInterface {
@@ -55,6 +56,7 @@ class Board implements BoardInterface {
       eps: 5,
    };
 
+   snap: boolean;
    hoverEffect: boolean;
    background: string;
    declare view: { x: number; y: number; scl: number; cartesian: boolean };
@@ -87,8 +89,10 @@ class Board implements BoardInterface {
       onMouseUp,
       background,
       hoverEffect,
+      snap,
    }: BoardProps) {
-      this.hoverEffect = hoverEffect || true;
+      this.snap = !!snap;
+      this.hoverEffect = !!hoverEffect;
       this.canvas = canvas;
       this.canvas.width = width;
       this.canvas.height = height;
@@ -288,7 +292,11 @@ class Board implements BoardInterface {
 
    private onmousemove(e: PointerEvent | MouseEvent | TouchEvent) {
       e.preventDefault();
-      this.throttledPointerMove(e);
+      const p = this.getTransFormedCoords(e);
+      this.evt.dy = this.evt.y - this.evt.yi;
+      this.evt.dx = this.evt.x - this.evt.xi;
+      this.currentTool.pointermove({ e, p });
+      // this.throttledPointerMove(e);
    }
 
    private onmouseup(e: PointerEvent | MouseEvent | TouchEvent) {

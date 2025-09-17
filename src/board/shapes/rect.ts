@@ -90,8 +90,11 @@ class Rect extends Shape {
 
       // this.left = this._startPos.x + localDx;
       // this.top = this._startPos.y + localDy;
-      this.left += dx;
-      this.top += dy;
+      const newPos = { x: (this.left += dx), y: (this.top += dy) };
+      super.set({
+         left: newPos.x,
+         top: newPos.y,
+      });
 
       return super.dragging(prev, current);
    }
