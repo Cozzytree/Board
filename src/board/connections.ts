@@ -10,6 +10,13 @@ class Connections implements ConnectionInterface {
       return this.shapes.length;
    }
 
+   getByConnection(c: "s" | "e") {
+      for (let i = 0; i < this.shapes.length; i++) {
+         if (this.shapes[i].connected === c) return this.shapes[i];
+      }
+      return null;
+   }
+
    add(s: connection): boolean {
       for (let i = 0; i < this.shapes.length; i++) {
          if (s.s.ID() == this.shapes[i].s.ID() && s.connected == this.shapes[i].connected)

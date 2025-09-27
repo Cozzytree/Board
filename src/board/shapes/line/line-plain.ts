@@ -14,8 +14,8 @@ class PlainLine extends Line {
       return new PlainLine({ ...props, points: this.points });
    }
 
-   Resize(current: Point, _: BoxInterface, d: resizeDirection): void {
-      super.Resize(current, _, d);
+   Resize(current: Point, _: BoxInterface, d: resizeDirection): Shape[] | void {
+      const shape = super.Resize(current, _, d);
       const mid = {
          x: (this.points[0].x + this.points[this.points.length - 1].x) / 2,
          y: (this.points[0].y + this.points[this.points.length - 1].y) / 2,
@@ -34,65 +34,82 @@ class PlainLine extends Line {
             this.points[1] = { x: mid.x, y: mid.y };
          }
       }
+      return shape;
    }
 
    connectionEvent({ c, s, p }: connectionEventData): boolean {
       const size = this.connections.size();
       const index = this.points.length - 1;
-      const { shapes } = this.connections;
 
       if (size == 2) {
-         const startIndex = shapes[0].connected === "s" ? 0 : 1;
-         const endIndex = shapes[0].connected === "s" ? 1 : 0;
+         const start = this.connections.getByConnection("s");
+         if (start) {
+            const sp = intersectLineWithBox(
+               start.s.left + ((start.coords?.x ?? 0) / 100) * start.s.width,
+               start.s.top + ((start.coords?.y ?? 0) / 100) * start.s.height,
+               this.left + this.points[this.points.length - 1].x,
+               this.top + this.points[this.points.length - 1].y,
+               start.s.left,
+               start.s.left + start.s.width,
+               start.s.top,
+               start.s.top + start.s.height,
+            );
+            if (sp.length) {
+               this.points[start.index || 0] = { x: sp[0][0] - this.left, y: sp[0][1] - this.top };
+            }
+         }
 
-         const startBox = [
-            shapes[endIndex].s.left,
-            shapes[endIndex].s.left + shapes[endIndex].s.width,
-            shapes[endIndex].s.top,
-            shapes[endIndex].s.top + shapes[endIndex].s.height,
-         ];
-         const pointStart = intersectLineWithBox(
-            p.x,
-            p.y, // line start
-            this.connections.shapes[endIndex].s.left,
-            this.connections.shapes[endIndex].s.top,
-            // box
-            startBox[0],
-            startBox[1],
-            startBox[2],
-            startBox[3],
-         );
-         // const pointend = intersectLineWithBox(p.x, p.y);
-         if (pointStart.length) {
-            this.points[index] = {
-               x: pointStart[0][0] - this.left,
-               y: pointStart[0][1] - this.top,
-            };
+         const end = this.connections.getByConnection("e");
+         if (end) {
+            const ep = intersectLineWithBox(
+               end.s.left + ((end.coords?.x ?? 0) / 100) * end.s.width,
+               end.s.top + ((end.coords?.y ?? 0) / 100) * end.s.height,
+               this.left + this.points[0].x,
+               this.top + this.points[0].y,
+               end.s.left,
+               end.s.left + end.s.width,
+               end.s.top,
+               end.s.top + end.s.height,
+            );
+            if (ep.length) {
+               this.points[end.index || this.points.length - 1] = { x: ep[0][0], y: ep[0][1] };
+            }
          }
       } else {
          const otherSide =
-            c.connected == "s"
-               ? { x: this.points[index].x, y: this.points[index].y }
-               : {
-                    x: this.points[0].x,
-                    y: this.points[0].y,
-                 };
+            c.connected == "s" ? this.points[this.points.length - 1] : this.points[0];
+         const followPoint = {
+            x: s.left + ((c.coords?.x ?? 0) / 100) * s.width,
+            y: s.top + ((c.coords?.y ?? 0) / 100) * s.height,
+         };
          const points = intersectLineWithBox(
-            otherSide.x,
-            otherSide.y,
-            c.s.left + (c.s.left + (c.coords?.x ?? 0 / 100) * c.s.width),
-            c.s.top + (c.s.top + (c.coords?.y ?? 0 / 100) * c.s.height),
-            c.s.left,
-            c.s.left + c.s.width,
-            c.s.top,
-            c.s.top + c.s.height,
+            this.left + otherSide.x,
+            this.top + otherSide.y,
+            followPoint.x,
+            followPoint.y,
+            s.left,
+            s.left + s.width,
+            s.top,
+            s.top + s.height,
          );
          if (points.length) {
-            console.log(points);
-            this.points[c.connected === "s" ? index : 0] = {
-               x: points[1][0] - this.left,
-               y: points[1][1] - this.top,
-            };
+            const changeIndex = c.connected === "s" ? 0 : index;
+
+            if (this.points.length == 3) {
+               this.points[changeIndex] = {
+                  x: s.left + ((c.coords?.x ?? 0) / 100) * s.width - this.left,
+                  y: s.top + ((c.coords?.y ?? 0) / 100) * s.height - this.top,
+               };
+               this.points[1] = {
+                  x: points[0][0] - this.left,
+                  y: points[0][1] - this.top,
+               };
+            } else {
+               this.points[changeIndex] = {
+                  x: points[0][0] - this.left,
+                  y: points[0][1] - this.top,
+               };
+            }
          }
       }
       return true;
@@ -110,13 +127,25 @@ class PlainLine extends Line {
       context.lineWidth = this.strokeWidth;
 
       context.beginPath();
-      context.moveTo(this.points[0].x, this.points[0].y);
-      const mid = {
-         x: (this.points[0].x + this.points[this.points.length - 1].x) / 2,
-         y: (this.points[0].y + this.points[this.points.length - 1].y) / 2,
-      };
-      context.lineTo(mid.x, mid.y);
-      context.lineTo(this.points[this.points.length - 1].x, this.points[this.points.length - 1].y);
+      if (this.connections.size() > 0 && this.points.length === 3) {
+         const conn = this.connections.shapes[0];
+         const isStart = conn.connected == "s";
+         const movePoint = isStart ? this.points[this.points.length - 1] : this.points[0];
+
+         context.moveTo(movePoint.x, movePoint.y);
+         context.lineTo(this.points[1].x, this.points[1].y);
+      } else {
+         context.moveTo(this.points[0].x, this.points[0].y);
+         const mid = {
+            x: (this.points[0].x + this.points[this.points.length - 1].x) / 2,
+            y: (this.points[0].y + this.points[this.points.length - 1].y) / 2,
+         };
+         context.lineTo(mid.x, mid.y);
+         context.lineTo(
+            this.points[this.points.length - 1].x,
+            this.points[this.points.length - 1].y,
+         );
+      }
       context.stroke();
 
       context.restore();
