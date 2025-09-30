@@ -53,7 +53,7 @@ abstract class Line extends Shape {
     };
   }
 
-  private establishConnection(p: Point) {}
+  private establishConnection(_: Point) {}
 
   mousedown(s: ShapeEventData): void {
     this.establishConnection(s.e.point);
@@ -391,7 +391,7 @@ abstract class Line extends Shape {
     return this.indicator.show ? drawShapes : undefined;
   }
 
-  connectionEvent({ c, s, p }: connectionEventData): boolean {
+  connectionEvent({ c, s }: connectionEventData): boolean {
     const size = this.connections.size();
     if (size == 2) {
       const conn1 = this.connections.shapes[0];

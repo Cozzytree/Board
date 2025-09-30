@@ -434,7 +434,6 @@ function calcPointWithRotation({
 type rect = { left: number; top: number; right: number; bottom: number };
 type Side = "left" | "right" | "top" | "bottom";
 
-// @ts-ignore
 function center(r: rect): Point {
   return { x: (r.left + r.right) / 2, y: (r.top + r.bottom) / 2 };
 }
@@ -1252,6 +1251,7 @@ function snapShape({ shape, board }: { current: Point; board: Board; shape: Shap
 
   board.shapeStore.forEach((sha) => {
     if (shape.ID() === sha.ID()) return false;
+    if (sha.connections.forEach((c) => c.s.ID() == shape.ID())) return false;
 
     const top = sha.top;
     const left = sha.left;
