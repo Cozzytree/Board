@@ -24,7 +24,12 @@ class Group extends Shape {
   }
 
   draw(options: DrawProps): void {
-    return;
+    const context = this.ctx || options.ctx;
+    if (options.resize) {
+    }
+    this.shapes.forEach((s) => {
+      s.draw({});
+    });
   }
 }
 

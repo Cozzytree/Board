@@ -22,14 +22,14 @@ import type { textAlign } from "../types";
 import { helperEvent } from "../utils/utilfunc";
 
 function ShapeOptions() {
-  const { activeShape, canvas } = useBoard();
+  const { activeShape, canvas, setActiveShape } = useBoard();
 
   return (
     <div className="flex bg-background divide-x gap-2 p-1 items-center rounded-sm border border-muted shadow shadow-foreground/5">
       <Popover>
         <PopoverTrigger asChild>
           <button className={"py-[0.25em] text-sm px-[0.6em] rounded-sm hover:bg-foreground/10"}>
-            <PaintBucket fill={activeShape?.get("fill")} className="w-3 md:w-4" />
+            <PaintBucket fill={activeShape?.fill} className="w-3 md:w-4" />
           </button>
         </PopoverTrigger>
         <PopoverContent
@@ -37,6 +37,11 @@ function ShapeOptions() {
             if (!activeShape) return;
             helperEvent(e, "data-color", (color) => {
               activeShape.set("fill", color);
+              const ac = canvas?.getActiveShapes();
+              if (ac?.length) {
+                setActiveShape(ac[0]);
+              }
+              canvas?.render();
             });
           }}
           className="w-fit p-1 grid grid-cols-4 gap-1">
@@ -65,6 +70,7 @@ function ShapeOptions() {
             if (!activeShape) return;
             helperEvent(e, "data-s-color", (val) => {
               activeShape.set("stroke", val);
+              canvas?.render();
             });
           }}
           className="w-fit p-1 grid grid-cols-4 gap-1">

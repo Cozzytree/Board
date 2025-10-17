@@ -7,7 +7,7 @@ export default function Toolbar() {
   const { mode, setMode, tools } = useBoard();
 
   return (
-    <div className="flex flex-col bg-background gap-1 p-1 items-center rounded-sm border border-muted shadow">
+    <div className="flex bg-background gap-1 p-1 items-center rounded-sm border border-muted shadow">
       {tools.map((t, i) => (
         <div key={i} className="flex items-center">
           <Popover>
@@ -27,8 +27,8 @@ export default function Toolbar() {
               </button>
             </PopoverTrigger>
             <PopoverContent
-              side="left"
-              className="w-fit flex flex-col bg-background p-1 items-center rounded-xs border border-muted shadow">
+              side="top"
+              className="w-fit grid grid-cols-3 bg-background p-1 items-center rounded-xs border border-muted shadow">
               {t.subMode.map((sm, index) => (
                 <div key={index} className="">
                   <button

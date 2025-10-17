@@ -1,7 +1,3 @@
-import * as React from "react";
-import Toolbar from "./components/toolbar";
-import type { modes, submodes } from "./types";
-import { Board, Shape } from "./index";
 import {
   BoxIcon,
   CircleIcon,
@@ -18,7 +14,11 @@ import {
   TypeOutlineIcon,
   type LucideIcon,
 } from "lucide-react";
+import * as React from "react";
 import ShapeOptions from "./components/shapeoptions";
+import Toolbar from "./components/toolbar";
+import { Board, Shape } from "./index";
+import type { modes, submodes } from "./types";
 
 type ContextProps = {
   mode: { m: modes; sm: submodes | null };
@@ -31,6 +31,12 @@ type ContextProps = {
   activeShape: Shape | null;
   canvas: Board | null;
   setActiveShape: (v: Shape | null) => void;
+
+  snap: boolean;
+  hover: boolean;
+
+  setSnap: (s: boolean) => void;
+  setHover: (h: boolean) => void;
 };
 
 const BoardContext = React.createContext<ContextProps | undefined>(undefined);
@@ -43,6 +49,8 @@ const BoardProvider = ({
   height?: number;
 }) => {
   const [activeShape, setActiveShape] = React.useState<Shape | null>(null);
+  const [isSnap, setSnap] = React.useState(false);
+  const [isHover, setHover] = React.useState(false);
   const [tools, setTools] = React.useState<
     {
       mode: modes;
@@ -115,10 +123,13 @@ const BoardProvider = ({
       width,
       height,
       canvas: canvasRef.current,
-      snap: true,
-      hoverEffect: true,
+      snap: isSnap,
+      hoverEffect: isHover,
       onModeChange: (m, sm) => {
         setMode({ m, sm });
+      },
+      onActiveShape: (ac) => {
+        setActiveShape(ac);
       },
       onMouseUp: () => {
         const active = borderRef.current?.getActiveShapes();
@@ -135,6 +146,12 @@ const BoardProvider = ({
       newBoard.clean();
     };
   }, []);
+
+  React.useEffect(() => {
+    if (!borderRef.current) return;
+    borderRef.current.setSnap = isSnap;
+    borderRef.current.hoverEffect = isHover;
+  }, [isSnap, isHover]);
 
   const handleModeChange = (m: modes, sm: submodes | null) => {
     if (!borderRef.current) return;
@@ -171,11 +188,20 @@ const BoardProvider = ({
         tools,
         mode,
         setMode: handleModeChange,
+        hover: isHover,
+        setHover: (h) => {
+          setHover(h);
+        },
+
+        snap: isSnap,
+        setSnap: (s) => {
+          setSnap(s);
+        },
       }}>
       <div className="w-32 bg-amber-100" />
 
       <canvas ref={canvasRef} style={{ width: width + "px", height: height + "px" }} />
-      <div className="pointer-events-auto z-50 right-3 md:right-8 top-1/2 w-fit -translate-y-[50%] fixed flex justify-center">
+      <div className="pointer-events-auto z-50 fixed left-1/2 -translate-x-1/2 bottom-4 flex justify-center">
         <Toolbar />
       </div>
 

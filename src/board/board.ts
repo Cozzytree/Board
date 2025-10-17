@@ -28,6 +28,7 @@ type BoardProps = {
   scl?: number;
   hoverEffect?: boolean;
   snap?: boolean;
+  onActiveShape?: (e: Shape | null) => void;
 };
 
 class Board implements BoardInterface {
@@ -79,6 +80,7 @@ class Board implements BoardInterface {
   ctx: CanvasRenderingContext2D;
   modes: { m: modes; sm: submodes | null };
   onMouseUpCallback?: (e: ShapeEventData) => void;
+  onActiveShapeCallback?: (e: Shape | null) => void;
 
   constructor({
     canvas,
@@ -90,6 +92,7 @@ class Board implements BoardInterface {
     background,
     hoverEffect,
     snap,
+    onActiveShape,
   }: BoardProps) {
     this.snap = !!snap;
     this.hoverEffect = !!hoverEffect;
@@ -98,10 +101,10 @@ class Board implements BoardInterface {
     this.canvas.height = height;
     this.onModeChange = onModeChange;
     this.view = { x: 0, y: 0, scl, cartesian: false };
-
     this.background = background || "#101011";
     this.canvas.style.background = this.background;
 
+    this.onActiveShapeCallback = onActiveShape;
     // Ensure only one secondary canvas
     let c2 = document.getElementById("board-overlay-canvas") as HTMLCanvasElement | null;
     if (!c2) {
@@ -196,6 +199,7 @@ class Board implements BoardInterface {
     if (shapes.length == 1) {
       this.discardActiveShapes();
       this.activeShapes.add(shapes[0]);
+      this.onActiveShapeCallback?.(shapes[0]);
     } else {
       //
     }
