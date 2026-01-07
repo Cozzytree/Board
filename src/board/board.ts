@@ -61,7 +61,7 @@ class Board implements BoardInterface {
   hoverEffect: boolean;
   background: string;
   declare view: { x: number; y: number; scl: number; cartesian: boolean };
-  declare activeShapes: Set<Shape>;
+  declare activeShapes: Shape | null;
   declare shapeStore: ShapeStore<Shape>;
   declare canvas2: HTMLCanvasElement;
   declare ctx2: CanvasRenderingContext2D;
@@ -141,7 +141,7 @@ class Board implements BoardInterface {
 
     this.modes = { m: "cursor", sm: "free" };
     this.shapeStore = new ShapeStore();
-    this.activeShapes = new Set();
+    this.activeShapes = null;
 
     this.currentTool = new SelectionTool(this, "free");
     this.handleClick = this.onclick.bind(this);
@@ -176,38 +176,49 @@ class Board implements BoardInterface {
     this.canvas2.height = height;
   }
 
-  getActiveShapes(): Shape[] {
-    const s: Shape[] = [];
-    this.activeShapes.forEach((sa) => {
-      s.push(sa);
-    });
-    // const iter = this.activeShapes.values(); // Get Iterator<Shape>
-    // let entry = iter.next();
-    // while (!entry.done) {
-    //    s.push(entry.value);
-    //    entry = iter.next();
-    // }
-    return s;
+  getActiveShapes(): Shape | null {
+    return this.activeShapes;
+  }
+
+  set setSnap(snap: boolean) {
+    this.snap = snap;
   }
 
   discardActiveShapes() {
     // this.shapeStore.setLastInserted = null;
-    this.activeShapes.clear();
+    this.activeShapes = null;
   }
 
   setActiveShape(...shapes: Shape[]) {
     if (shapes.length == 1) {
       this.discardActiveShapes();
-      this.activeShapes.add(shapes[0]);
+      this.activeShapes = shapes[0];
       this.onActiveShapeCallback?.(shapes[0]);
-    } else {
-      //
+    } else if (shapes.length > 1) {
+      this.discardActiveShapes();
+      const shapesData = shapes.map((s) => ({ s }));
+      const activeSelection = new ActiveSelection({
+        shapes: shapesData,
+        ctx: this.ctx,
+        _board: this,
+      });
+      this.activeShapes = activeSelection;
+      this.onActiveShapeCallback?.(activeSelection);
     }
+  }
+
+  removeActiveSelectionOnly() {
+    const sel = this.getActiveShapes();
+    if (!(sel instanceof ActiveSelection)) return;
+
+    const shapes = sel.shapes;
+    sel.shapes = [];
+    this.removeShape(sel);
+    return shapes;
   }
 
   removeShape(...shapes: Shape[]): number {
     let count = 0;
-    this.discardActiveShapes();
     shapes.forEach((s) => {
       if (s instanceof ActiveSelection && s.type === "selection") {
         s.shapes.forEach((as) => {
@@ -217,7 +228,12 @@ class Board implements BoardInterface {
       if (this.shapeStore.removeById(s.ID())) count++;
     });
 
+    this.activeShapes = null;
+    this.shapeStore.setLastInserted = null;
     this.render();
+
+    // clear secondary canvas
+    // this.ctx2.clearRect(0, 0, this.canvas2.width, this.canvas2.height);
     return count;
   }
 
@@ -282,9 +298,7 @@ class Board implements BoardInterface {
     });
 
     if (activeShapes) {
-      activeShapes.forEach((s) => {
-        s.activeRect(ctx);
-      });
+      activeShapes.activeRect(ctx);
     }
     this.ctx.restore();
   }

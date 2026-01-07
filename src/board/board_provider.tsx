@@ -117,6 +117,19 @@ const BoardProvider = ({
   const canvasRef = React.useRef<HTMLCanvasElement>(null);
   const borderRef = React.useRef<Board>(null);
 
+  const onMouseUp = React.useCallback(() => {
+    const active = borderRef.current?.getActiveShapes();
+    if (active) {
+      setActiveShape(active);
+    } else {
+      setActiveShape(null);
+    }
+  }, []);
+
+  const onModeChange = React.useCallback((m: modes, sm: submodes) => {
+    setMode({ m, sm });
+  }, []);
+
   React.useEffect(() => {
     if (!canvasRef.current) return;
     const newBoard = new Board({
@@ -125,27 +138,18 @@ const BoardProvider = ({
       canvas: canvasRef.current,
       snap: isSnap,
       hoverEffect: isHover,
-      onModeChange: (m, sm) => {
-        setMode({ m, sm });
-      },
+      onModeChange: onModeChange,
       onActiveShape: (ac) => {
         setActiveShape(ac);
       },
-      onMouseUp: () => {
-        const active = borderRef.current?.getActiveShapes();
-        if (active?.length) {
-          setActiveShape(active[0]);
-        } else {
-          setActiveShape(null);
-        }
-      },
+      onMouseUp: onMouseUp,
     });
     borderRef.current = newBoard;
 
     return () => {
       newBoard.clean();
     };
-  }, []);
+  }, [width, height, isHover]);
 
   React.useEffect(() => {
     if (!borderRef.current) return;

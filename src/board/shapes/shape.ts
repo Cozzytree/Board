@@ -153,6 +153,10 @@ abstract class Shape implements ShapeProps {
 
   connectionEvent(_: connectionEventData) {}
 
+  remove() {
+    this._board.removeShape(this);
+  }
+
   dragging(_: Point, current: Point): Shape[] | void {
     if (this.connections) {
       const s: Shape[] = [];
@@ -255,7 +259,7 @@ abstract class Shape implements ShapeProps {
   }
 
   mouseover(s: ShapeEventData): void {
-    if (this._board.activeShapes.has(this)) {
+    if (this._board.activeShapes?.ID() == this.ID()) {
       const r = resizeRect(
         s.e.point,
         new Box({

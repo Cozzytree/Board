@@ -1,5 +1,5 @@
 import Board from "../board";
-import type Shape from "../shapes/shape";
+import Shape from "../shapes/shape";
 import type {
   Identity,
   Point,
@@ -144,26 +144,25 @@ class SelectionTool implements ToolInterface {
 
       // if a shape is already active check if resizable
       const currentActive = this._board.getActiveShapes();
-      if (currentActive.length) {
-        const s = currentActive[0];
-        const d = s.IsResizable(p);
+      if (currentActive) {
+        const d = currentActive.IsResizable(p);
         if (d) {
-          this.mouseDowmShapeState.push(s.toObject());
+          this.mouseDowmShapeState.push(currentActive.toObject());
 
           this.resizableShape = {
-            s,
+            s: currentActive,
             oldProps: new Box({
-              x1: s.left,
-              y1: s.top,
-              x2: s.left + s.width,
-              y2: s.top + s.height,
+              x1: currentActive.left,
+              y1: currentActive.top,
+              x2: currentActive.left + currentActive.width,
+              y2: currentActive.top + currentActive.height,
             }),
             d,
           };
           return;
         }
 
-        if (s.IsDraggable(p)) {
+        if (currentActive.IsDraggable(p)) {
           this.isTextEditale = true;
         }
       }
@@ -275,9 +274,9 @@ class SelectionTool implements ToolInterface {
         p,
         new Box({
           x1: this.mouseDownPoint.x,
-          x2: this.mouseDownPoint.x + 2,
+          x2: this.mouseDownPoint.x,
           y1: this.mouseDownPoint.y,
-          y2: this.mouseDownPoint.y + 2,
+          y2: this.mouseDownPoint.y,
         }),
         "br",
       );
@@ -289,7 +288,7 @@ class SelectionTool implements ToolInterface {
       if (s.isWithin(p)) {
         if (this._board.hoverEffect && this.draggedShape == null && this.resizableShape == null) {
           if (
-            !this._board.activeShapes.has(s) &&
+            this._board.activeShapes?.ID() !== s.ID() &&
             this._board.shapeStore.getLastInsertedShape()?.type !== "selection"
           ) {
             /*
@@ -331,10 +330,10 @@ class SelectionTool implements ToolInterface {
       this.resizableShape = null;
 
       const ac = this._board.getActiveShapes();
-      if (!ac.length) return;
-      if (ac[0].IsDraggable(p)) {
-        this.createText({ s: ac[0], p, start: { x: ac[0].left, y: ac[0].top } });
-        this.textEdit = ac[0];
+      if (!ac) return;
+      if (ac.IsDraggable(p)) {
+        this.createText({ s: ac, p, start: { x: ac.left, y: ac.top } });
+        this.textEdit = ac;
         this.activeShape = null;
         this._board.ctx2.clearRect(0, 0, this._board.canvas2.width, this._board.canvas2.height);
         return;
@@ -497,8 +496,8 @@ class SelectionTool implements ToolInterface {
 
   dblClick({ p }: ToolEventData): void {
     const active = this._board.getActiveShapes();
-    if (active.length) {
-      const a = active[0];
+    if (active) {
+      const a = active;
       if (a.IsDraggable(p)) {
         this.createText({ p, s: a, start: { x: a.left, y: a.top } });
       }
@@ -534,53 +533,46 @@ class SelectionTool implements ToolInterface {
     if (e.key === "Delete") {
       const shapes = this._board.getActiveShapes();
 
-      const c = this._board.removeShape(...shapes);
-      console.info("deleted count", c);
+      if (shapes) {
+        const c = this._board.removeShape(shapes);
+        console.info("deleted count", c);
+      }
     } else if (e.ctrlKey) {
-      const lastInserted = this._board.shapeStore.getLastInsertedShape();
+      // const lastInserted = this._board.shapeStore.getLastInsertedShape();
       if (e.key === "v" && this.textEdit) {
         return;
       }
       switch (e.key) {
-        case "d":
+        case "d": {
           e.preventDefault();
-          [...this._board.activeShapes].forEach((s) => {
-            this._board.activeShapes.delete(s);
-            const newShapes: Shape[] = [];
-            if (s instanceof ActiveSelection) {
-              const clone = s.clone() as ActiveSelection;
-              clone.shapes.forEach((shape) => {
-                shape.s.left += 10;
-                shape.s.top += 10;
-                newShapes.push(shape.s);
-              });
-              if (lastInserted?.type === "selection") {
-                this._board.removeShape(lastInserted);
-              }
-
-              this._board.discardActiveShapes();
-              this._board.setActiveShape(clone);
-              newShapes.push(clone);
-            } else {
-              const c = s.clone();
-              c.left += 10;
-              c.top += 10;
-              newShapes.push(c);
-            }
-            const objs = newShapes.map((s) => s.toObject());
-            this.pushToUndo({ undoType: "create", objects: objs });
-            this._board.add(...newShapes);
+          const activeShape = this._board.getActiveShapes();
+          if (!activeShape) return;
+          const clone = activeShape.clone();
+          clone.set({
+            left: clone.left + 10,
+            top: clone.top + 10,
           });
-          this._board.render();
-          break;
-        case "a":
-          e.preventDefault();
-          if (lastInserted?.type === "selection") {
-            this._board.removeShape(lastInserted);
-            this._board.ctx2.clearRect(0, 0, this._board.canvas2.width, this._board.canvas2.height);
+          const newShapes: Shape[] = [];
+          if (clone instanceof ActiveSelection) {
+            clone.shapes.forEach((s) => {
+              if (!s.s) return;
+              s.s.set({ left: s.s.left + 10, top: s.s.top + 10 });
+              newShapes.push(s.s);
+            });
           }
-          this.selectAll();
+          newShapes.push(clone);
+          this._board.add(...newShapes);
+          this._board.setActiveShape(clone);
           this._board.render();
+
+          break;
+        }
+        case "a":
+          {
+            e.preventDefault();
+            this.selectAll();
+            this._board.render();
+          }
           break;
         case "c":
           e.preventDefault();
@@ -683,20 +675,22 @@ class SelectionTool implements ToolInterface {
             const found = this._board.shapeStore.get(s.id);
             if (found) {
               currState.push(found.toObject());
-              found.left = s.left;
-              found.top = s.top;
-              found.width = s.width;
-              found.height = s.height;
-              found.stroke = s.stroke;
-              found.strokeWidth = s.strokeWidth;
-              found.fill = s.fill;
-              found.flipX = s.flipX;
-              found.flipY = s.flipY;
-              found.rotate = s.rotate;
-              found.scale = s.scale;
-              found.dash = s.dash;
-              found.text = s.text;
-              found.connections = s.connections;
+              found.set({
+                left: s.left,
+                top: s.top,
+                width: s.width,
+                height: s.height,
+                stroke: s.stroke,
+                strokeWidth: s.strokeWidth,
+                fill: s.fill,
+                flipX: s.flipX,
+                flipY: s.flipY,
+                rotate: s.rotate,
+                scale: s.scale,
+                dash: s.dash,
+                text: s.text,
+                connections: s.connections,
+              });
             }
           }
         });
@@ -770,41 +764,45 @@ class SelectionTool implements ToolInterface {
   }
 
   private insertCopiesToStore() {
-    const copies: Identity<Shape>[] = Array.from({
-      length: this._board.activeShapes.size,
-    });
-    [...this._board.activeShapes].forEach((s, i) => {
-      copies[i] = s.toObject();
-    });
+    const copies: Identity<Shape>[] = [];
+    const s = this._board.activeShapes;
+    if (s) {
+      copies.push(s.toObject());
+    }
 
     this._board.shapeStore.insertCopy = copies;
   }
 
   private selectAll() {
+    this._board.removeActiveSelectionOnly();
+    this._board.discardActiveShapes();
+
     const shapes: { oldProps?: Box; s: Shape }[] = [];
     this._board.shapeStore.forEach((s) => {
-      shapes.push({
-        s,
-        oldProps: new Box({
-          x1: s.left,
-          y1: s.top,
-          x2: s.left + s.width,
-          y2: s.top + s.height,
-        }),
-      });
+      // dont insert selection
+      if (s.type != "selection") {
+        shapes.push({
+          s,
+          oldProps: new Box({
+            x1: s.left,
+            y1: s.top,
+            x2: s.left + s.width,
+            y2: s.top + s.height,
+          }),
+        });
+      }
       return false;
     });
 
     if (shapes.length == 1) {
-      this._board.activeShapes.add(shapes[0].s);
+      this._board.add(shapes[0].s);
     } else {
       const as = new ActiveSelection({
         shapes,
         ctx: this._board.ctx,
         _board: this._board,
       });
-      this._board.activeShapes.add(as);
-      this._board.shapeStore.insert(as);
+      this._board.add(as);
     }
   }
 
