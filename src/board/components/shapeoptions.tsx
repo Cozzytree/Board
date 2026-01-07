@@ -7,6 +7,7 @@ import {
   Circle,
   CircleDashed,
   GroupIcon,
+  Italic,
   ItalicIcon,
   Minus,
   PaintBucket,
@@ -14,16 +15,13 @@ import {
   UngroupIcon,
 } from "lucide-react";
 import { useBoard } from "../board_provider";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { COLORS, FONT_SIZES, strokeSize } from "../constants";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
 import type { textAlign } from "../types";
 import { helperEvent } from "../utils/utilfunc";
+import ActiveSelection from "../shapes/active_selection";
 
 function ShapeOptions() {
   const { activeShape, canvas, setActiveShape } = useBoard();
@@ -32,10 +30,7 @@ function ShapeOptions() {
     <div className="flex bg-background divide-x gap-2 p-1 items-center rounded-sm border border-muted shadow shadow-foreground/5">
       <Popover>
         <PopoverTrigger asChild>
-          <button
-            className={
-              "py-[0.25em] text-sm px-[0.6em] rounded-sm hover:bg-foreground/10"
-            }>
+          <button className={"py-[0.25em] text-sm px-[0.6em] rounded-sm hover:bg-foreground/10"}>
             <PaintBucket fill={activeShape?.fill} className="w-3 md:w-4" />
           </button>
         </PopoverTrigger>
@@ -43,10 +38,15 @@ function ShapeOptions() {
           onClick={(e) => {
             if (!activeShape) return;
             helperEvent(e, "data-color", (color) => {
+              if (activeShape instanceof ActiveSelection) {
+                activeShape.shapes.forEach((s) => {
+                  if (s.s) s.s.set("fill", color);
+                });
+              }
               activeShape.set("fill", color);
               const ac = canvas?.getActiveShapes();
-              if (ac?.length) {
-                setActiveShape(ac[0]);
+              if (ac) {
+                setActiveShape(ac);
               }
               canvas?.render();
             });
@@ -57,36 +57,36 @@ function ShapeOptions() {
               key={c}
               data-color={c}
               style={{ background: c }}
-              className={
-                "py-[0.25em] h-6 w-6 text-sm px-[0.6em] rounded-xs"
-              }></button>
+              className={"py-[0.25em] h-6 w-6 text-sm px-[0.6em] rounded-xs"}></button>
           ))}
           <button
             data-color={"#00000000"}
             style={{ background: "#00000000" }}
-            className={
-              "relativepy-[0.25em] h-6 w-6 text-sm px-[0.6em] rounded-xs border"
-            }></button>
+            className={"relativepy-[0.25em] h-6 w-6 text-sm px-[0.6em] rounded-xs border"}></button>
         </PopoverContent>
       </Popover>
 
       <Popover>
         <PopoverTrigger asChild>
-          <button
-            className={
-              "py-[0.25em] text-sm px-[0.6em] rounded-sm hover:bg-foreground/10"
-            }>
-            <BrushIcon
-              fill={activeShape?.get("stroke")}
-              className="w-3 md:w-4"
-            />
+          <button className={"py-[0.25em] text-sm px-[0.6em] rounded-sm hover:bg-foreground/10"}>
+            <BrushIcon fill={activeShape?.get("stroke")} className="w-3 md:w-4" />
           </button>
         </PopoverTrigger>
         <PopoverContent
           onClick={(e) => {
             if (!activeShape) return;
             helperEvent(e, "data-s-color", (val) => {
+              if (activeShape instanceof ActiveSelection) {
+                activeShape.shapes.forEach((s) => {
+                  if (s.s) s.s.set("stroke", val);
+                });
+              }
               activeShape.set("stroke", val);
+
+              const ac = canvas?.getActiveShapes();
+              if (ac) {
+                setActiveShape(ac);
+              }
               canvas?.render();
             });
           }}
@@ -96,27 +96,19 @@ function ShapeOptions() {
               key={c}
               data-s-color={c}
               style={{ background: c }}
-              className={
-                "py-[0.25em] h-6 w-6 text-sm px-[0.6em] rounded-xs"
-              }></button>
+              className={"py-[0.25em] h-6 w-6 text-sm px-[0.6em] rounded-xs"}></button>
           ))}
         </PopoverContent>
       </Popover>
 
-      <button
-        className={
-          "py-[0.25em] text-sm px-[0.6em] rounded-sm hover:bg-foreground/10"
-        }>
+      <button className={"py-[0.25em] text-sm px-[0.6em] rounded-sm hover:bg-foreground/10"}>
         <TrashIcon className="w-3 md:w-4" />
       </button>
 
       {/*stroke size*/}
       <Popover>
         <PopoverTrigger asChild>
-          <button
-            className={
-              "py-[0.25em] text-sm px-[0.24em] rounded-sm hover:bg-foreground/10"
-            }>
+          <button className={"py-[0.25em] text-sm px-[0.24em] rounded-sm hover:bg-foreground/10"}>
             <Minus />
           </button>
         </PopoverTrigger>
@@ -124,7 +116,17 @@ function ShapeOptions() {
           onClick={(e) => {
             if (!activeShape) return;
             helperEvent(e, "data-stroke", (val) => {
+              if (activeShape instanceof ActiveSelection) {
+                activeShape.shapes.forEach((s) => {
+                  if (s.s) s.s.set("strokeWidth", val);
+                });
+              }
               activeShape.set("strokeWidth", val);
+              const ac = canvas?.getActiveShapes();
+              if (ac) {
+                setActiveShape(ac);
+              }
+              canvas?.render();
             });
           }}
           sideOffset={12}
@@ -150,10 +152,7 @@ function ShapeOptions() {
 
       <div className="flex items-center">
         <BoldOption />
-        <button
-          className={`${activeShape?.italic ? "bg-muted" : "bg-none"} py-[0.25em] text-sm px-[0.6em] rounded-sm hover:bg-foreground/10`}>
-          <ItalicIcon className="w-3 md:w-4" />
-        </button>
+        <ItalicOption />
       </div>
 
       <AlignOptions />
@@ -168,14 +167,43 @@ function ShapeOptions() {
   );
 }
 
+function ItalicOption() {
+  const { activeShape, canvas, setActiveShape } = useBoard();
+  const [isItalic, setItalic] = useState(!!activeShape?.get("italic"));
+  return (
+    <button
+      className={`${isItalic ? "bg-muted" : "bg-none"} py-[0.25em] text-sm px-[0.6em] rounded-sm hover:bg-foreground/10`}>
+      <ItalicIcon
+        onClick={() => {
+          if (!canvas || !activeShape) return;
+          if (activeShape instanceof ActiveSelection) {
+            activeShape.shapes.forEach((s) => {
+              if (s.s) s.s.set("italic", !isItalic);
+            });
+          }
+          activeShape?.set("italic", !isItalic);
+          setItalic(!isItalic);
+
+          setActiveShape(activeShape);
+          canvas.render();
+        }}
+        className="w-3 md:w-4"
+      />
+    </button>
+  );
+}
+
 function AlignOptions() {
   const { activeShape, canvas } = useBoard();
-  const [allign, setAllign] = useState(
-    (activeShape?.get("textAlign") as textAlign) || "center",
-  );
+  const [allign, setAllign] = useState((activeShape?.get("textAlign") as textAlign) || "center");
 
   const handleAlign = (a: textAlign) => {
     if (!activeShape || !canvas) return;
+    if (activeShape instanceof ActiveSelection) {
+      activeShape.shapes.forEach((s) => {
+        if (s.s) s.s.set("textAlign", a);
+      });
+    }
     activeShape.set("textAlign", a);
     canvas.render();
     setAllign(a);
@@ -185,9 +213,7 @@ function AlignOptions() {
     <div
       className="flex items-center"
       onClick={(e) => {
-        const target = (e.target as HTMLElement).closest(
-          "[data-align]",
-        ) as HTMLElement;
+        const target = (e.target as HTMLElement).closest("[data-align]") as HTMLElement;
         const a = target.getAttribute("data-align") as textAlign;
         if (!a) return;
         handleAlign(a);
@@ -231,17 +257,12 @@ function BoldOption() {
 
 function FontSizes() {
   const { activeShape, canvas } = useBoard();
-  const [size, setSize] = useState(
-    FONT_SIZES.find((f) => f.size === activeShape?.get("fontSize")),
-  );
+  const [size, setSize] = useState(FONT_SIZES.find((f) => f.size === activeShape?.get("fontSize")));
 
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <button
-          className={
-            "py-[0.25em] text-sm px-[0.6em] rounded-sm hover:bg-foreground/10"
-          }>
+        <button className={"py-[0.25em] text-sm px-[0.6em] rounded-sm hover:bg-foreground/10"}>
           {size && size.label}
         </button>
       </PopoverTrigger>
@@ -251,6 +272,11 @@ function FontSizes() {
           if (!activeShape || !canvas) return;
           helperEvent(e, "data-size", (size) => {
             if (isNaN(size)) return;
+            if (activeShape instanceof ActiveSelection) {
+              activeShape.shapes.forEach((s) => {
+                if (s.s) s.s.set("fontSize", size);
+              });
+            }
             activeShape.set("fontSize", Number(size));
             canvas.render();
             setSize(() => {
@@ -279,6 +305,11 @@ function StrokeDash() {
   const [s, setS] = useState(activeShape?.get("dash").toString() || "");
 
   const handledash = (v: [number, number]) => {
+    if (activeShape instanceof ActiveSelection) {
+      activeShape.shapes.forEach((s) => {
+        if (s.s) s.s.set("dash", v);
+      });
+    }
     activeShape?.set("dash", v);
     canvas?.render();
     setActiveShape(activeShape);

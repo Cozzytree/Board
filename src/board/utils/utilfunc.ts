@@ -13,7 +13,7 @@ import {
 } from "../index";
 import type { ActiveSeletionProps } from "../shapes/active_selection";
 import type { PathProps } from "../shapes/paths/path";
-import type { ActiveSelectionShape } from "../shapes/shape_types";
+import type { ActiveSelectionShape, connection } from "../shapes/shape_types";
 import type { BoxInterface, Identity, Point, resizeDirection } from "../types";
 
 function IsIn({ inner, outer }: { inner: Box; outer: Box }): boolean {
@@ -1462,7 +1462,15 @@ function helperEvent(e: React.MouseEvent, attrName: string, fn: (v: any) => void
   }
 }
 
+function getAnchorPoint(conn: connection) {
+  return {
+    x: conn.s.left + ((conn.coords?.x ?? 0) / 100) * conn.s.width,
+    y: conn.s.top + ((conn.coords?.y ?? 0) / 100) * conn.s.height,
+  };
+}
+
 export {
+  getAnchorPoint,
   snapShape,
   helperEvent,
   calcPointWithRotation,

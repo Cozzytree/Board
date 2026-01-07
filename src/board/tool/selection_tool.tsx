@@ -285,7 +285,7 @@ class SelectionTool implements ToolInterface {
     }
 
     this._board.shapeStore.forEach((s) => {
-      if (s.isWithin(p)) {
+      if (s.isWithin(p) && !this.isGrabbing) {
         if (this._board.hoverEffect && this.draggedShape == null && this.resizableShape == null) {
           if (
             this._board.activeShapes?.ID() !== s.ID() &&

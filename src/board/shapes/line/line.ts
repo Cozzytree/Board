@@ -250,7 +250,6 @@ abstract class Line extends Shape {
       this.resizeIndex = null;
 
       if (this.connections.size() == 1 || this.connections.size() == 0) {
-        console.log("connections adjust");
         this.adjustPoints();
       }
 
@@ -261,7 +260,6 @@ abstract class Line extends Shape {
       x: ((s.e.point.x - foundShape.left) / foundShape.width) * 100,
       y: ((s.e.point.y - foundShape.top) / foundShape.height) * 100,
     };
-    console.log("% ", coords);
 
     if (this.resizeIndex == 0) {
       // check if already connected to end
@@ -274,6 +272,7 @@ abstract class Line extends Shape {
           s: foundShape,
           connected: "s",
           anchor,
+          coords,
           index: this.resizeIndex,
         });
         foundShape.connections.add({ s: this, connected: "s", anchor, coords });
@@ -289,6 +288,7 @@ abstract class Line extends Shape {
           s: foundShape,
           connected: "e",
           anchor,
+          coords,
           index: this.resizeIndex,
         });
         foundShape.connections.add({ s: this, connected: "e", anchor, coords });
@@ -369,7 +369,6 @@ abstract class Line extends Shape {
           foundShape.top,
           foundShape.top + foundShape.height,
         );
-        console.log(i);
         if (i.length) {
           const intersectPoint = new Pointer({ x: i[0][0], y: i[0][1] });
           // Convert intersection point to relative coordinates within this box
@@ -397,8 +396,8 @@ abstract class Line extends Shape {
       const conn1 = this.connections.shapes[0];
       const conn2 = this.connections.shapes[1];
       /*
-            start should be connection1
-            */
+      start should be connection1
+      */
       const start = conn1.connected == "s" ? conn1 : conn2;
       const end = conn1.connected == "e" ? conn1 : conn2;
       const box1 = new Box({

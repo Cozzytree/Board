@@ -49,8 +49,8 @@ const BoardProvider = ({
   height?: number;
 }) => {
   const [activeShape, setActiveShape] = React.useState<Shape | null>(null);
-  const [isSnap, setSnap] = React.useState(false);
-  const [isHover, setHover] = React.useState(false);
+  const [isSnap, setSnap] = React.useState(true);
+  const [isHover, setHover] = React.useState(true);
   const [tools, setTools] = React.useState<
     {
       mode: modes;
@@ -81,7 +81,7 @@ const BoardProvider = ({
         },
         {
           sm: "path:trapezoid",
-          I: "./src/assets/shapes/trapezoid.svg",
+          I: "/assets/shapes/trapezoid.svg",
         },
       ],
     },
