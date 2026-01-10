@@ -18,6 +18,8 @@ import {
 } from "./index";
 import EraserTool from "./tool/eraser_tool";
 
+type view_t = { x: number; y: number; scl: number };
+
 type BoardProps = {
   background?: string;
   canvas: HTMLCanvasElement;
@@ -29,9 +31,13 @@ type BoardProps = {
   hoverEffect?: boolean;
   snap?: boolean;
   onActiveShape?: (e: Shape | null) => void;
+  onZoom?: (n: view_t) => void;
+  onScroll?: (view: view_t) => void;
 };
 
 class Board implements BoardInterface {
+  onZoomCallback: (n: view_t) => void;
+  onScroll: (view: view_t) => void;
   currentTool: ToolInterface;
   _lastMousePosition: Point = { x: 0, y: 0 };
   evt = {
@@ -93,7 +99,15 @@ class Board implements BoardInterface {
     hoverEffect,
     snap,
     onActiveShape,
+    onZoom,
+    onScroll,
   }: BoardProps) {
+    this.onZoomCallback = (n) => {
+      onZoom?.(n);
+    };
+    this.onScroll = (view: view_t) => {
+      onScroll?.(view);
+    };
     this.snap = !!snap;
     this.hoverEffect = !!hoverEffect;
     this.canvas = canvas;
@@ -158,8 +172,10 @@ class Board implements BoardInterface {
 
     this.canvas.addEventListener("click", this.handleClick);
     this.canvas.addEventListener("pointerdown", this.handlePointerDown);
-    this.canvas.addEventListener("pointermove", this.handlePointerMove);
+    // this.canvas.addEventListener("pointermove", this.handlePointerMove);
+    document.addEventListener("pointermove", this.handlePointerMove);
     this.canvas.addEventListener("pointerup", this.handlePointerUp);
+    // document.addEventListener("pointerup", this.handlePointerUp);
     this.canvas.addEventListener("dblclick", this.handleDoubleClick);
     window.addEventListener("wheel", this.handleWheel, { passive: false });
 
@@ -244,8 +260,43 @@ class Board implements BoardInterface {
     }
 
     this.shapeStore.insert(...shapes);
+
+    this.adjustBox(shapes[shapes.length - 1]);
+
     this.discardActiveShapes();
     this.setActiveShape(...shapes);
+  }
+
+  adjustBox(shape: Shape) {
+    const scale = this.view.scl;
+
+    const viewLeft = -this.view.x / scale;
+    const viewTop = -this.view.y / scale;
+    const viewRight = viewLeft + this.canvas.width / scale;
+    const viewBottom = viewTop + this.canvas.height / scale;
+
+    const shapeLeft = shape.left;
+    const shapeTop = shape.top;
+    const shapeRight = shape.left + shape.width;
+    const shapeBottom = shape.top + shape.height;
+
+    /* ---- X ---- */
+    if (shapeRight > viewRight) {
+      this.view.x -= (shapeRight - viewRight) * scale;
+    }
+
+    if (shapeLeft < viewLeft) {
+      this.view.x += (viewLeft - shapeLeft) * scale;
+    }
+
+    /* ---- Y ---- */
+    if (shapeBottom > viewBottom) {
+      this.view.y -= (shapeBottom - viewBottom) * scale;
+    }
+
+    if (shapeTop < viewTop) {
+      this.view.y += (viewTop - shapeTop) * scale;
+    }
   }
 
   private setTool(tool: ToolInterface) {
@@ -304,17 +355,21 @@ class Board implements BoardInterface {
   }
 
   private onmousedown(e: PointerEvent | MouseEvent | TouchEvent) {
+    // Ignore right-click (mouse only)
+    if ((e instanceof MouseEvent || e instanceof PointerEvent) && e.button === 2) {
+      return;
+    }
     const p = this.getTransFormedCoords(e);
     this.currentTool.pointerDown({ e, p });
   }
 
   private onmousemove(e: PointerEvent | MouseEvent | TouchEvent) {
     e.preventDefault();
-    const p = this.getTransFormedCoords(e);
-    this.evt.dy = this.evt.y - this.evt.yi;
-    this.evt.dx = this.evt.x - this.evt.xi;
-    this.currentTool.pointermove({ e, p });
-    // this.throttledPointerMove(e);
+    // const p = this.getTransFormedCoords(e);
+    // this.evt.dy = this.evt.y - this.evt.yi;
+    // this.evt.dx = this.evt.x - this.evt.xi;
+    // this.currentTool.pointermove({ e, p });
+    this.throttledPointerMove(e);
   }
 
   private onmouseup(e: PointerEvent | MouseEvent | TouchEvent) {
@@ -407,7 +462,8 @@ class Board implements BoardInterface {
     this.canvas.removeEventListener("dblclick", this.handleDoubleClick);
     this.canvas.removeEventListener("click", this.handleClick);
     this.canvas.removeEventListener("pointerdown", this.handlePointerDown);
-    this.canvas.removeEventListener("pointermove", this.handlePointerMove);
+    // this.canvas.removeEventListener("pointermove", this.handlePointerMove);
+    document.removeEventListener("pointermove", this.handlePointerMove);
     this.canvas.removeEventListener("pointerup", this.handlePointerUp);
     window.removeEventListener("wheel", this.handleWheel);
     if (this.currentTool) {
@@ -442,8 +498,10 @@ class Board implements BoardInterface {
       this.view.x = e.x + this.evt.dscl * (this.view.x - e.x);
       this.view.y = e.y + this.evt.dscl * (this.view.y - e.y);
       this.view.scl *= this.evt.dscl;
+      this.onZoomCallback(this.view);
     }
     this.render();
+    this.onScroll(this.view);
   }
 }
 

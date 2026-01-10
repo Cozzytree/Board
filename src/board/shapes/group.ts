@@ -1,4 +1,7 @@
 import type { Point, resizeDirection, ShapeProps } from "../types";
+import Box from "../utils/box";
+import { resizeRect } from "../utils/resize";
+import { calcPointWithRotation } from "../utils/utilfunc";
 import Shape, { type DrawProps } from "./shape";
 
 type Props = {
@@ -16,6 +19,24 @@ class Group extends Shape {
   }
 
   IsResizable(p: Point): resizeDirection | null {
+    const { width, height, left, top, rotate } = this;
+    const halfW = this.width / 2;
+    const halfH = this.height / 2;
+    const localBox = new Box({
+      x1: -halfW,
+      x2: halfW,
+      y1: -halfH,
+      y2: halfH,
+    });
+    const d = resizeRect(
+      calcPointWithRotation({ height, width, left, point: p, rotate, top }),
+      localBox,
+      this.padding,
+    );
+    if (d) {
+      return d.rd;
+    }
+
     return null;
   }
 
@@ -25,8 +46,7 @@ class Group extends Shape {
 
   draw(options: DrawProps): void {
     const context = this.ctx || options.ctx;
-    if (options.resize) {
-    }
+
     this.shapes.forEach((s) => {
       s.draw({});
     });

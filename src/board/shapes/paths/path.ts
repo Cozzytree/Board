@@ -5,271 +5,309 @@ import { Box, Shape } from "../../index";
 import { IsIn, flipXandYByDirection, setCoords } from "@/board/utils/utilfunc";
 
 export type PathProps = {
-   points?: Point[];
-   pathType?: string;
+  points?: Point[];
+  pathType?: string;
 };
 
 class Path extends Shape {
-   declare points: Point[];
-   lastPoints: Point[];
-   declare pathType: string;
+  declare points: Point[];
+  lastPoints: Point[];
+  declare pathType: string;
 
-   constructor(props: ShapeProps & PathProps) {
-      super(props);
-      this.points = props.points || [];
-      this.lastPoints = this.points.map((p) => {
-         return { x: p.x, y: p.y };
-      });
-      this.type = "path";
-   }
+  constructor(props: ShapeProps & PathProps) {
+    super(props);
+    this.points = props.points || [];
+    this.lastPoints = this.points.map((p) => {
+      return { x: p.x, y: p.y };
+    });
+    this.type = "path";
+  }
 
-   setCoords(): void {
-      const { box, points } = setCoords(this.points, this.left, this.top);
-      this.set({
-         points,
-         left: box.x1,
-         top: box.y1,
-         width: box.x2 - box.x1,
-         height: box.y2 - box.y1,
-      });
-   }
+  setCoords(): void {
+    const { box, points } = setCoords(this.points, this.left, this.top);
+    this.set({
+      points,
+      left: box.x1,
+      top: box.y1,
+      width: box.x2 - box.x1,
+      height: box.y2 - box.y1,
+    });
+  }
 
-   clone(): Shape {
-      const props = super.cloneProps();
-      return new Path({ ...props, points: this.points });
-   }
+  clone(): Shape {
+    const props = super.cloneProps();
+    return new Path({ ...props, points: this.points });
+  }
 
-   mouseup(s: ShapeEventData): void {
-      this.lastPoints = [];
-      super.set("lastFlippedState", {
-         x: super.get("flipX"),
-         y: super.get("flipY"),
-      });
-      this.setCoords();
-      super.mouseup(s);
-   }
+  mouseup(s: ShapeEventData): void {
+    this.lastPoints = [];
+    super.set("lastFlippedState", {
+      x: super.get("flipX"),
+      y: super.get("flipY"),
+    });
+    this.setCoords();
+    super.mouseup(s);
+  }
 
-   IsDraggable(p: Point): boolean {
-      return IsIn({
-         inner: new Box({ x1: p.x, y1: p.y, x2: p.x + 1, y2: p.y + 1 }),
-         outer: new Box({
-            x1: this.left,
-            y1: this.top,
-            x2: this.left + this.width,
-            y2: this.top + this.height,
-         }),
-      });
-   }
+  IsDraggable(p: Point): boolean {
+    return IsIn({
+      inner: new Box({ x1: p.x, y1: p.y, x2: p.x + 1, y2: p.y + 1 }),
+      outer: new Box({
+        x1: this.left,
+        y1: this.top,
+        x2: this.left + this.width,
+        y2: this.top + this.height,
+      }),
+    });
+  }
 
-   draw({ ctx, addStyles = true, resize }: DrawProps): void {
-      if (this.points.length < 2) return;
-      const context = ctx || this.ctx;
+  draw({ ctx, addStyles = true, resize }: DrawProps): void {
+    if (this.points.length < 2) return;
+    const context = ctx || this.ctx;
 
-      context.save();
-      context.translate(this.left, this.top);
+    context.save();
+    context.translate(this.left, this.top);
 
-      const currentScale = context.getTransform().a;
+    const currentScale = context.getTransform().a;
 
-      if (resize) {
-         context.globalAlpha = this.selectionAlpha;
-         context.strokeStyle = this.selectionColor;
-         context.fillStyle = this.selectionFill;
-         context.lineWidth = this.selectionStrokeWidth / currentScale;
-         context.setLineDash([
-            this.selectionDash[0] / currentScale,
-            this.selectionDash[1] / currentScale,
-         ]);
-      } else {
-         context.setLineDash(this.dash);
-         context.lineWidth = this.strokeWidth / currentScale;
-         context.strokeStyle = this.stroke;
-         context.fillStyle = this.fill;
-      }
-      context.scale(this.scale, this.scale);
+    if (resize) {
+      context.globalAlpha = this.selectionAlpha;
+      context.strokeStyle = this.selectionColor;
+      context.fillStyle = this.selectionFill;
+      context.lineWidth = this.selectionStrokeWidth / currentScale;
+      context.setLineDash([
+        this.selectionDash[0] / currentScale,
+        this.selectionDash[1] / currentScale,
+      ]);
+    } else {
+      context.setLineDash(this.dash);
+      context.lineWidth = this.strokeWidth / currentScale;
+      context.strokeStyle = this.stroke;
+      context.fillStyle = this.fill;
+    }
+    context.scale(this.scale, this.scale);
 
-      context.beginPath();
+    context.beginPath();
 
-      let startX = this.points[0].x;
-      let startY = this.points[0].y;
+    let startX = this.points[0].x;
+    let startY = this.points[0].y;
+
+    if (this.flipX) {
+      startX = this.width - startX;
+    }
+
+    if (this.flipY) {
+      startY = this.height - startY;
+    }
+
+    context.moveTo(startX, startY);
+
+    for (let i = 1; i < this.points.length; i++) {
+      let x = this.points[i].x;
+      let y = this.points[i].y;
 
       if (this.flipX) {
-         startX = this.width - startX;
+        x = this.width - x;
       }
 
       if (this.flipY) {
-         startY = this.height - startY;
+        y = this.height - y;
       }
+      context.lineTo(x, y);
+    }
+    if (addStyles) {
+      context.fill();
+    }
 
-      context.moveTo(startX, startY);
+    if (!resize) {
+      context.fill();
+    }
+    context.closePath();
+    context.stroke();
+    context.restore();
 
-      for (let i = 1; i < this.points.length; i++) {
-         let x = this.points[i].x;
-         let y = this.points[i].y;
+    super.renderText({ context });
+  }
 
-         if (this.flipX) {
-            x = this.width - x;
-         }
+  IsResizable(p: Point) {
+    const rs = resizeRect(
+      p,
+      new Box({
+        x1: this.left,
+        y1: this.top,
+        x2: this.left + this.width,
+        y2: this.top + this.height,
+      }),
+      this.padding,
+    );
+    if (rs) {
+      this.lastPoints = this.points.map((p) => ({ x: p.x, y: p.y }));
+      return rs.rd;
+    }
+    return null;
+  }
 
-         if (this.flipY) {
-            y = this.height - y;
-         }
-         context.lineTo(x, y);
-      }
-      if (addStyles) {
-         context.fill();
-      }
+  Resize(current: Point, old: BoxInterface, d: resizeDirection) {
+    let newWidth = this.width;
+    let newHeight = this.height;
 
-      if (!resize) {
-         context.fill();
-      }
-      context.closePath();
-      context.stroke();
-      context.restore();
+    let fixedX: number = 0;
+    let fixedY: number = 0;
 
-      super.renderText({ context });
-   }
+    switch (d) {
+      case "l":
+        fixedX = old.x2;
+        if (current.x < old.x2) {
+          this.left = current.x;
+          newWidth = old.x2 - current.x;
+        } else {
+          this.left = old.x2;
+          newWidth = current.x - old.x2;
+        }
+        break;
+      case "r":
+        fixedX = old.x1;
+        if (current.x > old.x1) {
+          newWidth = current.x - old.x1;
+        } else {
+          newWidth = old.x1 - current.x;
+          this.left = current.x;
+        }
+        break;
+      case "t":
+        fixedY = old.y2;
+        if (current.y < old.y2) {
+          this.top = current.y;
+          newHeight = old.y2 - current.y;
+        } else {
+          this.top = old.y2;
+          newHeight = current.y - old.y2;
+        }
+        break;
+      case "b":
+        fixedY = old.y1;
+        if (current.y > old.y1) {
+          newHeight = current.y - old.y1;
+        } else {
+          newHeight = old.y1 - current.y;
+          this.top = current.y;
+        }
+        break;
+      case "br":
+        fixedX = old.x1;
+        fixedY = old.y1;
 
-   IsResizable(p: Point) {
-      const rs = resizeRect(
-         p,
-         new Box({
-            x1: this.left,
-            y1: this.top,
-            x2: this.left + this.width,
-            y2: this.top + this.height,
-         }),
-         this.padding,
-      );
-      if (rs) {
-         this.lastPoints = this.points.map((p) => ({ x: p.x, y: p.y }));
-         return rs.rd;
-      }
-      return null;
-   }
+        if (current.x > old.x1) {
+          newWidth = current.x - old.x1;
+        } else {
+          newWidth = old.x1 - current.x;
+          this.left = current.x;
+        }
 
-   Resize(current: Point, old: BoxInterface, d: resizeDirection) {
-      let newWidth = this.width;
-      let newHeight = this.height;
+        if (current.y > old.y1) {
+          newHeight = current.y - old.y1;
+        } else {
+          newHeight = old.y1 - current.y;
+          this.top = current.y;
+        }
+        break;
+      case "tl":
+        fixedX = old.x2;
+        fixedY = old.y2;
+        if (current.x < old.x2) {
+          this.left = current.x;
+          newWidth = old.x2 - current.x;
+        } else {
+          this.left = old.x2;
+          newWidth = current.x - old.x2;
+        }
 
-      let fixedX: number = 0;
-      let fixedY: number = 0;
+        if (current.y < old.y2) {
+          this.top = current.y;
+          newHeight = old.y2 - current.y;
+        } else {
+          this.top = old.y2;
+          newHeight = current.y - old.y2;
+        }
+        break;
+      case "bl":
+        fixedX = old.x2;
+        fixedY = old.y1;
+        if (current.x < old.x2) {
+          this.left = current.x;
+          newWidth = old.x2 - current.x;
+        } else {
+          this.left = old.x2;
+          newWidth = current.x - old.x2;
+        }
 
-      switch (d) {
-         case "br":
-            fixedX = old.x1;
-            fixedY = old.y1;
+        if (current.y > old.y1) {
+          newHeight = current.y - old.y1;
+        } else {
+          newHeight = old.y1 - current.y;
+          this.top = current.y;
+        }
+        break;
+      case "tr":
+        fixedX = old.x1;
+        fixedY = old.y2;
+        if (current.x > old.x1) {
+          newWidth = current.x - old.x1;
+        } else {
+          newWidth = old.x1 - current.x;
+          this.left = current.x;
+        }
 
-            if (current.x > old.x1) {
-               newWidth = current.x - old.x1;
-            } else {
-               newWidth = old.x1 - current.x;
-               this.left = current.x;
-            }
+        if (current.y < old.y2) {
+          this.top = current.y;
+          newHeight = old.y2 - current.y;
+        } else {
+          this.top = old.y2;
+          newHeight = current.y - old.y2;
+        }
+    }
 
-            if (current.y > old.y1) {
-               newHeight = current.y - old.y1;
-            } else {
-               newHeight = old.y1 - current.y;
-               this.top = current.y;
-            }
-            break;
-         case "tl":
-            fixedX = old.x2;
-            fixedY = old.y2;
-            if (current.x < old.x2) {
-               this.left = current.x;
-               newWidth = old.x2 - current.x;
-            } else {
-               this.left = old.x2;
-               newWidth = current.x - old.x2;
-            }
+    const flip = flipXandYByDirection(
+      current,
+      fixedX,
+      fixedY,
+      this.lastFlippedState.x,
+      this.lastFlippedState.y,
+      d,
+      old,
+    );
 
-            if (current.y < old.y2) {
-               this.top = current.y;
-               newHeight = old.y2 - current.y;
-            } else {
-               this.top = old.y2;
-               newHeight = current.y - old.y2;
-            }
-            break;
-         case "bl":
-            fixedX = old.x2;
-            fixedY = old.y1;
-            if (current.x < old.x2) {
-               this.left = current.x;
-               newWidth = old.x2 - current.x;
-            } else {
-               this.left = old.x2;
-               newWidth = current.x - old.x2;
-            }
+    newWidth = Math.max(newWidth, 20);
+    newHeight = this.adjustHeight(Math.max(newHeight, 20));
+    const oldWidth = old.x2 - old.x1;
+    const oldHeight = old.y2 - old.y1;
+    this.points.forEach((p, i) => {
+      const original = this.lastPoints[i];
+      // % within the box / newVal
+      const scaledX = (original.x / oldWidth) * newWidth;
+      const scaledY = (original.y / oldHeight) * newHeight;
+      p.x = scaledX;
+      p.y = scaledY;
+    });
+    super.set({
+      width: newWidth,
+      height: newHeight,
+      flipX: flip.flipX,
+      flipY: flip.flipY,
+    });
 
-            if (current.y > old.y1) {
-               newHeight = current.y - old.y1;
-            } else {
-               newHeight = old.y1 - current.y;
-               this.top = current.y;
-            }
-            break;
-         case "tr":
-            fixedX = old.x1;
-            fixedY = old.y2;
-            if (current.x > old.x1) {
-               newWidth = current.x - old.x1;
-            } else {
-               newWidth = old.x1 - current.x;
-               this.left = current.x;
-            }
+    return super.Resize(current, old, d);
+  }
 
-            if (current.y < old.y2) {
-               this.top = current.y;
-               newHeight = old.y2 - current.y;
-            } else {
-               this.top = old.y2;
-               newHeight = current.y - old.y2;
-            }
-      }
+  dragging(prev: Point, current: Point) {
+    const dx = current.x - prev.x;
+    const dy = current.y - prev.y;
 
-      const flip = flipXandYByDirection(
-         current,
-         fixedX,
-         fixedY,
-         this.lastFlippedState.x,
-         this.lastFlippedState.y,
-         d,
-         old,
-      );
+    this.left += dx;
+    this.top += dy;
 
-      newWidth = Math.max(newWidth, 20);
-      newHeight = Math.max(newHeight, 20);
-      const oldWidth = old.x2 - old.x1;
-      const oldHeight = old.y2 - old.y1;
-      this.points.forEach((p, i) => {
-         const original = this.lastPoints[i];
-         // % within the box / newVal
-         const scaledX = (original.x / oldWidth) * newWidth;
-         const scaledY = (original.y / oldHeight) * newHeight;
-         p.x = scaledX;
-         p.y = scaledY;
-      });
-      super.set({
-         width: newWidth,
-         height: newHeight,
-         flipX: flip.flipX,
-         flipY: flip.flipY,
-      });
-
-      return super.Resize(current, old, d);
-   }
-
-   dragging(prev: Point, current: Point) {
-      const dx = current.x - prev.x;
-      const dy = current.y - prev.y;
-
-      this.left += dx;
-      this.top += dy;
-
-      return super.dragging(prev, current);
-   }
+    return super.dragging(prev, current);
+  }
 }
 
 export default Path;

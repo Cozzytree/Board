@@ -101,7 +101,13 @@ function ShapeOptions() {
         </PopoverContent>
       </Popover>
 
-      <button className={"py-[0.25em] text-sm px-[0.6em] rounded-sm hover:bg-foreground/10"}>
+      <button
+        onClick={() => {
+          if (!activeShape || !canvas) return;
+          canvas.removeShape(activeShape);
+          setActiveShape(null);
+        }}
+        className={"py-[0.25em] text-sm px-[0.6em] rounded-sm hover:bg-foreground/10"}>
         <TrashIcon className="w-3 md:w-4" />
       </button>
 

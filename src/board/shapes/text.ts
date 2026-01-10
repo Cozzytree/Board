@@ -4,219 +4,272 @@ import Shape, { type DrawProps } from "./shape";
 import { resizeRect } from "@/board/utils/resize";
 
 class Text extends Shape {
-   constructor(props: ShapeProps) {
-      super(props);
-   }
+  constructor(props: ShapeProps) {
+    super(props);
+  }
 
-   clone(): Shape {
-      const props = super.cloneProps();
-      return new Text(props);
-   }
+  clone(): Shape {
+    const props = super.cloneProps();
+    return new Text(props);
+  }
 
-   draw({ ctx, resize = false }: DrawProps): void {
-      const context = ctx || this.ctx;
+  draw({ ctx, resize = false }: DrawProps): void {
+    const context = ctx || this.ctx;
 
-      const currentScale = context.getTransform().a;
-      if (resize) {
-         context.globalAlpha = 0.5;
+    const currentScale = context.getTransform().a;
+    if (resize) {
+      context.globalAlpha = 0.5;
 
-         context.beginPath();
-         context.lineWidth = this.selectionStrokeWidth;
-         context.strokeStyle = this.selectionColor;
-         context.rect(this.left, this.top, this.width, this.height);
-         context.setLineDash([
-            this.selectionStrokeWidth / currentScale,
-            this.selectionStrokeWidth / currentScale,
-         ]);
-         context.stroke();
-         context.closePath();
-      }
-
-      context.save();
       context.beginPath();
-
-      const maxWidth = this.width;
-      // const lineHeight = this.fontSize * 1.2;
-      const paragraphs = this.text.split("\n");
-
-      const lines: string[] = [];
-
-      const breakLongWord = (word: string): string[] => {
-         const broken: string[] = [];
-         let current = "";
-
-         for (const char of word) {
-            const test = current + char;
-            if (context.measureText(test).width > maxWidth) {
-               if (current) broken.push(current);
-               current = char;
-            } else {
-               current += char;
-            }
-         }
-
-         if (current) broken.push(current);
-         return broken;
-      };
-
-      for (const paragraph of paragraphs) {
-         if (paragraph.trim() === "") {
-            lines.push(""); // Preserve empty lines
-            continue;
-         }
-
-         const words = paragraph.split(" ");
-         let line = "";
-
-         for (const word of words) {
-            const testLine = line ? line + " " + word : word;
-            const testWidth = context.measureText(testLine).width;
-
-            if (testWidth <= maxWidth) {
-               line = testLine;
-            } else {
-               if (line) {
-                  lines.push(line);
-               }
-
-               // Now handle word — break if it's too long
-               if (context.measureText(word).width > maxWidth) {
-                  const brokenWords = breakLongWord(word);
-                  for (let i = 0; i < brokenWords.length - 1; i++) {
-                     lines.push(brokenWords[i]);
-                  }
-                  line = brokenWords[brokenWords.length - 1]; // Start next line with remainder
-               } else {
-                  line = word;
-               }
-            }
-         }
-
-         if (line) lines.push(line);
-      }
-
-      super.renderText({ context, text: lines.join("\n") });
+      context.lineWidth = this.selectionStrokeWidth;
+      context.strokeStyle = this.selectionColor;
+      context.rect(this.left, this.top, this.width, this.height);
+      context.setLineDash([
+        this.selectionStrokeWidth / currentScale,
+        this.selectionStrokeWidth / currentScale,
+      ]);
+      context.stroke();
       context.closePath();
-      context.restore();
-   }
+    }
 
-   Resize(current: Point, old: BoxInterface, d: resizeDirection): Shape[] | void {
-      let newHeight = 0,
-         newWidth = 0;
-      switch (d) {
-         case "tl":
-            if (current.x > old.x2) {
-               this.left = old.x2;
-               newWidth = current.x - old.x2;
-            } else {
-               this.left = current.x;
-               newWidth = old.x2 - current.x;
-            }
+    context.save();
+    context.beginPath();
 
-            if (current.y > old.y2) {
-               this.top = old.y2;
-               newHeight = current.y - old.y2;
-            } else {
-               this.top = current.y;
-               newHeight = old.y2 - current.y;
-            }
-            break;
-         case "tr":
-            if (current.x < old.x1) {
-               this.left = current.x;
-               newWidth = old.x1 - current.x;
-            } else {
-               this.left = old.x1;
-               newWidth = current.x - old.x1;
-            }
+    const maxWidth = this.width;
+    // const lineHeight = this.fontSize * 1.2;
+    const paragraphs = this.text.split("\n");
 
-            if (current.y > old.y2) {
-               this.top = old.y2;
-               newHeight = current.y - old.y2;
-            } else {
-               this.top = current.y;
-               newHeight = old.y2 - current.y;
-            }
-            break;
-         case "br":
-            if (current.x - old.x1 <= this.fontSize || current.y - old.y1 <= this.fontSize) return;
-            if (current.x < old.x1) {
-               this.left = current.x;
-               newWidth = old.x1 - current.x;
-            } else {
-               this.left = old.x1;
-               newWidth = current.x - old.x1;
-            }
+    const lines: string[] = [];
 
-            if (current.y > old.y1) {
-               this.top = old.y1;
-               newHeight = current.y - old.y1;
-            } else {
-               this.top = current.y;
-               newHeight = old.y1 - current.y;
-            }
-            break;
-         case "bl":
-            if (current.x > old.x2) {
-               this.left = old.x2;
-               newWidth = current.x - old.x2;
-            } else {
-               this.left = current.x;
-               newWidth = old.x2 - current.x;
-            }
-            if (current.y > old.y1) {
-               this.top = old.y1;
-               newHeight = current.y - old.y1;
-            } else {
-               this.top = current.y;
-               newHeight = old.y1 - current.y;
-            }
+    const breakLongWord = (word: string): string[] => {
+      const broken: string[] = [];
+      let current = "";
+
+      for (const char of word) {
+        const test = current + char;
+        if (context.measureText(test).width > maxWidth) {
+          if (current) broken.push(current);
+          current = char;
+        } else {
+          current += char;
+        }
       }
 
-      const currHeight = this.text.split("\n").length * this.fontSize;
-      this.set({ width: newWidth, height: Math.max(newHeight, currHeight) });
-      return super.Resize(current, old, d);
-   }
+      if (current) broken.push(current);
+      return broken;
+    };
 
-   IsDraggable(p: Point): boolean {
-      const condition =
-         p.x > this.left &&
-         p.x < this.left + this.width &&
-         p.y > this.top &&
-         p.y < this.top + this.height;
-      if (condition) {
-         return true;
-      }
-      return false;
-   }
-
-   dragging(prev: Point, current: Point) {
-      const dx = current.x - prev.x;
-      const dy = current.y - prev.y;
-
-      this.left += dx;
-      this.top += dy;
-
-      return super.dragging(prev, current);
-   }
-
-   IsResizable(p: Point): resizeDirection | null {
-      const d = resizeRect(
-         p,
-         new Box({
-            x1: this.left,
-            y1: this.top,
-            x2: this.left + this.width,
-            y2: this.top + this.height,
-         }),
-         this.padding,
-      );
-      if (d) {
-         return d.rd;
+    for (const paragraph of paragraphs) {
+      if (paragraph.trim() === "") {
+        lines.push(""); // Preserve empty lines
+        continue;
       }
 
-      return null;
-   }
+      const words = paragraph.split(" ");
+      let line = "";
+
+      for (const word of words) {
+        const testLine = line ? line + " " + word : word;
+        const testWidth = context.measureText(testLine).width;
+
+        if (testWidth <= maxWidth) {
+          line = testLine;
+        } else {
+          if (line) {
+            lines.push(line);
+          }
+
+          // Now handle word — break if it's too long
+          if (context.measureText(word).width > maxWidth) {
+            const brokenWords = breakLongWord(word);
+            for (let i = 0; i < brokenWords.length - 1; i++) {
+              lines.push(brokenWords[i]);
+            }
+            line = brokenWords[brokenWords.length - 1]; // Start next line with remainder
+          } else {
+            line = word;
+          }
+        }
+      }
+
+      if (line) lines.push(line);
+    }
+
+    super.renderText({ context, text: lines.join("\n") });
+    context.closePath();
+    context.restore();
+  }
+
+  Resize(current: Point, old: BoxInterface, d: resizeDirection): Shape[] | void {
+    let newHeight = 0,
+      newWidth = 0;
+    switch (d) {
+      case "t":
+        if (current.y > old.y2) {
+          super.set({
+            top: old.y2,
+          });
+          newHeight = current.y - old.y2;
+        } else {
+          super.set({
+            top: current.y,
+          });
+          newHeight = old.y1 - current.y;
+        }
+        break;
+      case "b":
+        if (current.y > old.y1) {
+          super.set({
+            top: old.y1,
+          });
+          newHeight = current.y - old.y1;
+        } else {
+          super.set({
+            top: current.y,
+          });
+          newHeight = old.y2 - current.y;
+        }
+        break;
+      case "l":
+        if (current.x > old.x2) {
+          super.set({
+            left: old.x2,
+          });
+          newWidth = current.x - old.x2;
+        } else {
+          super.set({
+            left: current.x,
+          });
+          newWidth = old.x2 - current.x;
+        }
+        break;
+      case "r":
+        if (current.x > old.x1) {
+          super.set({
+            left: old.x1,
+            width: current.x - old.x1,
+          });
+          newWidth = current.x - old.x1;
+        } else {
+          super.set({
+            left: current.x,
+            width: old.x1 - current.x,
+          });
+          newWidth = old.x1 - current.x;
+        }
+        break;
+      case "tl":
+        if (current.x > old.x2) {
+          this.left = old.x2;
+          newWidth = current.x - old.x2;
+        } else {
+          this.left = current.x;
+          newWidth = old.x2 - current.x;
+        }
+
+        if (current.y > old.y2) {
+          this.top = old.y2;
+          newHeight = current.y - old.y2;
+        } else {
+          this.top = current.y;
+          newHeight = old.y2 - current.y;
+        }
+        break;
+      case "tr":
+        if (current.x < old.x1) {
+          this.left = current.x;
+          newWidth = old.x1 - current.x;
+        } else {
+          this.left = old.x1;
+          newWidth = current.x - old.x1;
+        }
+
+        if (current.y > old.y2) {
+          this.top = old.y2;
+          newHeight = current.y - old.y2;
+        } else {
+          this.top = current.y;
+          newHeight = old.y2 - current.y;
+        }
+        break;
+      case "br":
+        if (current.x - old.x1 <= this.fontSize || current.y - old.y1 <= this.fontSize) return;
+        if (current.x < old.x1) {
+          this.left = current.x;
+          newWidth = old.x1 - current.x;
+        } else {
+          this.left = old.x1;
+          newWidth = current.x - old.x1;
+        }
+
+        if (current.y > old.y1) {
+          this.top = old.y1;
+          newHeight = current.y - old.y1;
+        } else {
+          this.top = current.y;
+          newHeight = old.y1 - current.y;
+        }
+        break;
+      case "bl":
+        if (current.x > old.x2) {
+          this.left = old.x2;
+          newWidth = current.x - old.x2;
+        } else {
+          this.left = current.x;
+          newWidth = old.x2 - current.x;
+        }
+        if (current.y > old.y1) {
+          this.top = old.y1;
+          newHeight = current.y - old.y1;
+        } else {
+          this.top = current.y;
+          newHeight = old.y1 - current.y;
+        }
+    }
+
+    this.set({ width: newWidth, height: this.adjustHeight(newHeight) });
+    return super.Resize(current, old, d);
+  }
+
+  IsDraggable(p: Point): boolean {
+    const condition =
+      p.x > this.left &&
+      p.x < this.left + this.width &&
+      p.y > this.top &&
+      p.y < this.top + this.height;
+    if (condition) {
+      return true;
+    }
+    return false;
+  }
+
+  dragging(prev: Point, current: Point) {
+    const dx = current.x - prev.x;
+    const dy = current.y - prev.y;
+
+    this.left += dx;
+    this.top += dy;
+
+    return super.dragging(prev, current);
+  }
+
+  IsResizable(p: Point): resizeDirection | null {
+    const d = resizeRect(
+      p,
+      new Box({
+        x1: this.left,
+        y1: this.top,
+        x2: this.left + this.width,
+        y2: this.top + this.height,
+      }),
+      this.padding,
+    );
+    if (d) {
+      return d.rd;
+    }
+
+    return null;
+  }
 }
 
 export default Text;

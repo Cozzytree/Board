@@ -114,7 +114,7 @@ abstract class Shape implements ShapeProps {
     this.fontSize = fontSize || 20;
     this.verticalAlign = verticalAlign || "center";
     this.fontWeight = 500;
-    this.textAlign = textAlign || "center";
+    this.textAlign = textAlign || "left";
     this.connections = connections || new Connections();
     this.id = uuidv4();
     this.selectionColor = selectionColor || HoveredColor;
@@ -122,7 +122,7 @@ abstract class Shape implements ShapeProps {
     this.selectionAlpha = selectionAlpha || 0.4;
     this.selectionDash = selectionDash || [0, 0];
     this.selectionFill = selectionFill || "#20202050";
-    this.italic = italic || true;
+    this.italic = italic || false;
     this.lastFlippedState = { x: false, y: false };
   }
 
@@ -308,6 +308,18 @@ abstract class Shape implements ShapeProps {
 
   clean() {
     this.eventListeners.clear();
+  }
+
+  adjustHeight(requestedHeight: number) {
+    if (this.text.length === 0) {
+      return requestedHeight;
+    }
+
+    const lines = this.text.split("\n");
+    const lineHeight = this.fontSize * 1.2;
+    const minTextHeight = lines.length * lineHeight;
+
+    return Math.max(requestedHeight, minTextHeight);
   }
 
   isWithin(p: Point): boolean {

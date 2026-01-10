@@ -24,6 +24,7 @@ type ResizeShapeProps = {
 } | null;
 
 class SelectionTool implements ToolInterface {
+  private isInput: boolean = false;
   private snapLines: Shape[];
   private hoveredShape: Shape | null = null;
   private isDragging: boolean = false;
@@ -31,7 +32,9 @@ class SelectionTool implements ToolInterface {
   private isTextEditale: boolean = false;
   private dragThreshold = 2;
 
-  // to store the changed shape to before storing into undo redo store
+  /**
+  to store the changed shape to before storing into undo redo store
+  */
   private mouseDowmShapeState: Record<string, any>[] = [];
 
   private isGrabbing: boolean = false;
@@ -65,23 +68,39 @@ class SelectionTool implements ToolInterface {
     this.isTextEditale = false;
 
     //  get the text document
-    if (this.textEdit) {
-      const content = this.getTextContentFromElement();
-      this.textEdit.set("text", content);
+    if (this.textEdit && this.isInput) {
       this.textEdit = null;
+      this.isInput = !this.isInput;
     }
 
     if (this.subMode === "free") {
       // altkey for duplicate
       if (e.altKey) {
-        const shapeFound = this._board.shapeStore.forEach((s) => {
-          if (s.IsDraggable(p)) return true;
-          return false;
-        });
-        if (shapeFound) {
-          const cloned = shapeFound.clone();
-          this._board.add(cloned);
-          this.draggedShape = cloned;
+        const activeShape = this._board.getActiveShapes();
+        if (activeShape && activeShape.IsDraggable(p)) {
+          const clone = activeShape.clone();
+
+          if (clone instanceof ActiveSelection) {
+            clone.shapes.forEach((s) => {
+              if (s.s) {
+                this._board.add(s.s);
+              }
+            });
+          }
+          this._board.add(clone);
+          this.draggedShape = clone;
+        } else {
+          const shapeFound = this._board.shapeStore.forEach((s) => {
+            if (s.IsDraggable(p)) return true;
+            return false;
+          });
+          console.log(shapeFound);
+
+          if (shapeFound) {
+            const cloned = shapeFound.clone();
+            this._board.add(cloned);
+            this.draggedShape = cloned;
+          }
         }
         return;
       }
@@ -174,6 +193,7 @@ class SelectionTool implements ToolInterface {
       if (drag) {
         this.draggedShape = drag;
         this._board.setActiveShape(drag);
+
         this.mouseDowmShapeState.push(drag.toObject());
       }
 
@@ -240,6 +260,7 @@ class SelectionTool implements ToolInterface {
       } else {
         this.draw(this.draggedShape, ...(shapes || []));
       }
+
       return;
     }
 
@@ -332,9 +353,10 @@ class SelectionTool implements ToolInterface {
       const ac = this._board.getActiveShapes();
       if (!ac) return;
       if (ac.IsDraggable(p)) {
-        this.createText({ s: ac, p, start: { x: ac.left, y: ac.top } });
+        this.isInput = true;
+        this.createText();
         this.textEdit = ac;
-        this.activeShape = null;
+        this._board.discardActiveShapes();
         this._board.ctx2.clearRect(0, 0, this._board.canvas2.width, this._board.canvas2.height);
         return;
       }
@@ -382,116 +404,17 @@ class SelectionTool implements ToolInterface {
     return callback;
   }
 
-  // private createText({ s, start }: { start: Point; s: Shape; p: Point }) {
-  //    let div = document.getElementById(textAreaId);
-  //    if (div) {
-  //       div.remove();
-  //    }
+  private createText() {
+    if (!this.textEdit) return;
+    const { ctx2: context, canvas2: canvas } = this._board;
 
-  //    div = document.createElement("div");
-  //    div.setAttribute("id", textAreaId);
+    context.setTransform(1, 0, 0, 1, 0, 0);
+    context.clearRect(0, 0, canvas.width, canvas.height);
 
-  //    const tarea = document.createElement("div");
-  //    div.classList.add("input-container");
-  //    div.style.position = "absolute";
-  //    div.style.fontSize = `${s.fontSize}px`;
-  //    div.style.zIndex = "50";
-  //    div.style.left = `${start.x + this._board.view.x - this._board.view.x}px`;
-  //    div.style.top = start.y + this._board.view.y + "px";
-  //    div.style.width = s.width + "px";
-  //    div.style.height = s.height + "px";
+    this.textEdit.adjustHeight(this.textEdit.height);
+    this.textEdit.draw({ ctx: context, addStyles: true });
 
-  //    tarea.style.background = "#1e1e1eff";
-  //    tarea.style.border = "1px solid #505050";
-  //    tarea.style.outline = "none";
-  //    tarea.contentEditable = "true";
-  //    tarea.style.whiteSpace = "pre-wrap";
-  //    // tarea.style.overflowWrap = "break-word";
-  //    div.append(tarea);
-
-  //    tarea.innerText = s.text;
-  //    document.body.append(div);
-
-  //    setTimeout(() => {
-  //       tarea.focus();
-  //       // Create a new range
-  //       const range = document.createRange();
-  //       range.selectNodeContents(tarea);
-  //       range.collapse(false); // collapse to end
-
-  //       // Apply the range to the selection
-  //       const sel = window.getSelection();
-  //       if (!sel) return;
-  //       sel.removeAllRanges();
-  //       sel.addRange(range);
-  //    }, 0);
-
-  //    tarea.addEventListener("blur", () => {
-  //       s.set("text", getTextWithNewlines(tarea));
-  //       this.textEdit = null;
-  //       s._board.render();
-  //       div.remove();
-  //       tarea.remove();
-  //    });
-  // }
-
-  private createText({ s, start }: { start: Point; s: Shape; p: Point }) {
-    let div = document.getElementById(textAreaId);
-    if (div) div.remove();
-
-    div = document.createElement("div");
-    div.setAttribute("id", textAreaId);
-
-    const tarea = document.createElement("div");
-    div.classList.add("input-container");
-    div.style.position = "absolute";
-    div.style.zIndex = "50";
-
-    // --- Map canvas coords to screen coords ---
-    const ctx = this._board.ctx;
-    const m = ctx.getTransform(); // DOMMatrix
-
-    // Apply matrix to start.x/start.y
-    const screenX = m.a * start.x + m.c * start.y + m.e;
-    const screenY = m.b * start.x + m.d * start.y + m.f;
-
-    // Also apply scaling for width/height & font size
-    const scale = m.a; // assuming uniform scale
-    div.style.left = `${screenX}px`;
-    div.style.top = `${screenY}px`;
-    div.style.width = `${s.width * scale}px`;
-    div.style.height = `${s.height * scale}px`;
-    div.style.fontSize = `${s.fontSize * scale}px`;
-
-    // --- Style the editable div ---
-    tarea.style.background = "#1e1e1eff";
-    tarea.style.border = "1px solid #505050";
-    tarea.style.outline = "none";
-    tarea.contentEditable = "true";
-    tarea.style.whiteSpace = "pre-wrap";
-
-    div.append(tarea);
-    tarea.innerText = s.text;
-    document.body.append(div);
-
-    setTimeout(() => {
-      tarea.focus();
-      const range = document.createRange();
-      range.selectNodeContents(tarea);
-      range.collapse(false);
-      const sel = window.getSelection();
-      if (!sel) return;
-      sel.removeAllRanges();
-      sel.addRange(range);
-    }, 0);
-
-    tarea.addEventListener("blur", () => {
-      s.set("text", getTextWithNewlines(tarea));
-      this.textEdit = null;
-      s._board.render();
-      div.remove();
-      tarea.remove();
-    });
+    context.restore();
   }
 
   dblClick({ p }: ToolEventData): void {
@@ -499,7 +422,7 @@ class SelectionTool implements ToolInterface {
     if (active) {
       const a = active;
       if (a.IsDraggable(p)) {
-        this.createText({ p, s: a, start: { x: a.left, y: a.top } });
+        this.createText();
       }
     }
   }
@@ -512,6 +435,34 @@ class SelectionTool implements ToolInterface {
   }
 
   private onkeydown(e: KeyboardEvent) {
+    if (this.isInput && this.textEdit) {
+      if (
+        e.key != "Escape" &&
+        e.key !== "Shift" &&
+        !e.ctrlKey &&
+        !e.altKey &&
+        !e.metaKey &&
+        e.key !== "CapsLock"
+      ) {
+        if (e.key == "Enter") {
+          this.textEdit.text += "\n";
+        } else if (e.key == "Backspace") {
+          this.textEdit.text = this.textEdit.text.slice(0, this.textEdit.text.length - 1);
+        } else {
+          this.textEdit.text += e.key;
+        }
+
+        this.createText();
+      } else if (e.key === "Escape") {
+        if (this.textEdit) {
+          this._board.ctx2.clearRect(0, 0, this._board.canvas2.width, this._board.canvas2.height);
+          this._board.render();
+          this.isInput = !this.isInput;
+        }
+      }
+      return;
+    }
+
     if (e.key === "Escape") {
       if (this.textEdit) {
         const textContent = this.getTextContentFromElement();

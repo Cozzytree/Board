@@ -5,6 +5,7 @@ import {
   EraserIcon,
   GrabIcon,
   Minus,
+  MinusIcon,
   MousePointer,
   PencilIcon,
   PentagonIcon,
@@ -19,6 +20,13 @@ import ShapeOptions from "./components/shapeoptions";
 import Toolbar from "./components/toolbar";
 import { Board, Shape } from "./index";
 import type { modes, submodes } from "./types";
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuTrigger,
+} from "@/components/ui/context-menu";
+import { Button } from "@/components/ui/button";
 
 type ContextProps = {
   mode: { m: modes; sm: submodes | null };
@@ -48,9 +56,11 @@ const BoardProvider = ({
   width?: number;
   height?: number;
 }) => {
+  const [offset, setOffset] = React.useState([0, 0]);
+  const [zoom, setZoom] = React.useState(100);
   const [activeShape, setActiveShape] = React.useState<Shape | null>(null);
-  const [isSnap, setSnap] = React.useState(true);
-  const [isHover, setHover] = React.useState(true);
+  const [isSnap, setSnap] = React.useState(false);
+  const [isHover, setHover] = React.useState(false);
   const [tools, setTools] = React.useState<
     {
       mode: modes;
@@ -81,7 +91,7 @@ const BoardProvider = ({
         },
         {
           sm: "path:trapezoid",
-          I: "/assets/shapes/trapezoid.svg",
+          I: "/shapes/trapezoid.svg",
         },
       ],
     },
@@ -143,6 +153,14 @@ const BoardProvider = ({
         setActiveShape(ac);
       },
       onMouseUp: onMouseUp,
+      onZoom: (v) => {
+        setZoom(v.scl * 100);
+        setOffset([v.x, v.y]);
+      },
+      onScroll: (v) => {
+        setOffset([v.x, v.y]);
+        setZoom(v.scl * 100);
+      },
     });
     borderRef.current = newBoard;
 
@@ -157,7 +175,7 @@ const BoardProvider = ({
     borderRef.current.hoverEffect = isHover;
   }, [isSnap, isHover]);
 
-  const handleModeChange = (m: modes, sm: submodes | null) => {
+  const handleModeChange = React.useCallback((m: modes, sm: submodes | null) => {
     if (!borderRef.current) return;
     setMode({ m, sm });
     borderRef.current.setMode = { m, sm, originUi: true };
@@ -179,42 +197,108 @@ const BoardProvider = ({
 
       return [...prev];
     });
+  }, []);
+
+  const handleZoom = React.useCallback((v: boolean) => {
+    if (!borderRef.current) return;
+    if (v) {
+      borderRef.current.view.scl += 0.1;
+    } else {
+      borderRef.current.view.scl -= 0.1;
+    }
+
+    setZoom(borderRef.current.view.scl * 100);
+    borderRef.current.render();
+  }, []);
+
+  const handleCenter = () => {
+    if (!borderRef.current) return;
+
+    [borderRef.current.view.x, borderRef.current.view.y] = [0, 0];
+    borderRef.current.render();
+    setOffset([0, 0]);
   };
 
   return (
-    <BoardContext.Provider
-      value={{
-        setActiveShape: (s) => {
-          setActiveShape(s);
-        },
-        canvas: borderRef.current,
-        activeShape,
-        tools,
-        mode,
-        setMode: handleModeChange,
-        hover: isHover,
-        setHover: (h) => {
-          setHover(h);
-        },
+    <ContextMenu>
+      <BoardContext.Provider
+        value={{
+          setActiveShape: (s) => {
+            setActiveShape(s);
+          },
+          canvas: borderRef.current,
+          activeShape,
+          tools,
+          mode,
+          setMode: handleModeChange,
+          hover: isHover,
+          setHover: (h) => {
+            setHover(h);
+          },
 
-        snap: isSnap,
-        setSnap: (s) => {
-          setSnap(s);
-        },
-      }}>
-      <div className="w-32 bg-amber-100" />
+          snap: isSnap,
+          setSnap: (s) => {
+            setSnap(s);
+          },
+        }}>
+        <div className="w-32 bg-amber-100" />
 
-      <canvas ref={canvasRef} style={{ width: width + "px", height: height + "px" }} />
-      <div className="pointer-events-auto z-50 fixed left-1/2 -translate-x-1/2 bottom-4 flex justify-center">
-        <Toolbar />
-      </div>
-
-      {activeShape && (
-        <div className="z-50 fixed top-3 md:top-5 left-1/2 -translate-x-[50%]">
-          <ShapeOptions />
+        <ContextMenuTrigger>
+          <canvas ref={canvasRef} style={{ width: width + "px", height: height + "px" }} />
+        </ContextMenuTrigger>
+        <div className="pointer-events-auto z-50 fixed left-1/2 -translate-x-1/2 bottom-4 flex justify-center">
+          <Toolbar />
         </div>
-      )}
-    </BoardContext.Provider>
+
+        <div className="fixed z-50 bottom-5 right-5">
+          {(offset[0] != 0 || offset[1] != 0) && (
+            <Button
+              className="cursor-pointer"
+              onClick={handleCenter}
+              variant={"outline"}
+              size={"sm"}>
+              center
+            </Button>
+          )}
+        </div>
+
+        <div className="z-50 fixed left-4 bottom-5 flex items-center gap-2">
+          <Button
+            onClick={() => {
+              handleZoom(true);
+            }}
+            variant={"outline"}
+            size={"sm"}
+            className="cursor-pointer">
+            <PlusIcon />
+          </Button>
+          <span>{zoom.toFixed(0)} %</span>
+          <Button
+            onClick={() => {
+              handleZoom(false);
+            }}
+            variant={"outline"}
+            size={"sm"}
+            className="cursor-pointer">
+            <MinusIcon />
+          </Button>
+        </div>
+
+        {activeShape && (
+          <div className="z-50 fixed top-3 md:top-5 left-1/2 -translate-x-[50%]">
+            <ShapeOptions />
+          </div>
+        )}
+      </BoardContext.Provider>
+      <ContextMenuContent>
+        <ContextMenuItem
+          onClick={() => {
+            setSnap(() => !isSnap);
+          }}>
+          snap {isSnap ? "off" : "on"}
+        </ContextMenuItem>
+      </ContextMenuContent>
+    </ContextMenu>
   );
 };
 

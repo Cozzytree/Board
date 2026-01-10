@@ -10,12 +10,22 @@ export type ActiveSeletionProps = {
 class ActiveSelection extends Shape {
   private setUp = 0;
   declare shapes: ActiveSelectionShape[];
-  constructor(props: ShapeProps & ActiveSeletionProps) {
+
+  /**
+   *
+   * @param props ShapeProps
+   * @param setup if 0 means it will take every shape that is within its box as selected
+   *  especially used on first mousedown after creation
+   */
+  constructor(props: ShapeProps & ActiveSeletionProps, setup?: 0 | 1) {
     super(props);
     this.shapes = props.shapes || [];
     this.type = "selection";
     this.fill = "#404040";
     this.stroke = "#404040";
+    if (setup) {
+      this.setUp = setup;
+    }
 
     if (this.shapes.length) {
       let newBox = new Box({
@@ -52,10 +62,13 @@ class ActiveSelection extends Shape {
     const cloneShapes = this.shapes
       .filter((s) => s.s.ID() !== this.ID())
       .map((s) => ({ s: s.s.clone(), oldProps: s.oldProps }));
-    return new ActiveSelection({
-      ...props,
-      shapes: cloneShapes,
-    });
+    return new ActiveSelection(
+      {
+        ...props,
+        shapes: cloneShapes,
+      },
+      1,
+    );
   }
 
   IsDraggable(p: Point): boolean {
