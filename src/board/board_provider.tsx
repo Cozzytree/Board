@@ -1,4 +1,5 @@
 import {
+  ArrowLeft,
   BoxIcon,
   CircleIcon,
   DiamondIcon,
@@ -250,14 +251,14 @@ const BoardProvider = ({
           <Toolbar />
         </div>
 
-        <div className="fixed z-50 bottom-5 right-5">
-          {(offset[0] != 0 || offset[1] != 0) && (
+        <div className="fixed w-fit z-50 md:left-5 md:top-5 right-15 bottom-5">
+          {(Math.abs(offset[0]) > 100 || Math.abs(offset[1]) > 100) && (
             <Button
               className="cursor-pointer"
               onClick={handleCenter}
-              variant={"outline"}
-              size={"sm"}>
-              center
+              variant={"secondary"}
+              size={"xs"}>
+              <ArrowLeft width={10} /> <span className="hidden md:block">Back to center</span>
             </Button>
           )}
         </div>
@@ -267,28 +268,24 @@ const BoardProvider = ({
             onClick={() => {
               handleZoom(true);
             }}
-            variant={"outline"}
-            size={"sm"}
+            variant={"secondary"}
+            size={"xs"}
             className="cursor-pointer">
             <PlusIcon />
           </Button>
-          <span>{zoom.toFixed(0)} %</span>
+          <span className="text-sm">{zoom.toFixed(0)} %</span>
           <Button
             onClick={() => {
               handleZoom(false);
             }}
-            variant={"outline"}
-            size={"sm"}
+            variant={"secondary"}
+            size={"xs"}
             className="cursor-pointer">
             <MinusIcon />
           </Button>
         </div>
 
-        {activeShape && (
-          <div className="z-50 fixed top-3 md:top-5 left-1/2 -translate-x-[50%]">
-            <ShapeOptions />
-          </div>
-        )}
+        {activeShape && <ShapeOptions />}
       </BoardContext.Provider>
       <ContextMenuContent>
         <ContextMenuItem

@@ -21,20 +21,20 @@ export default function Toolbar() {
                 }}
                 className={cn(
                   mode.m === t.mode ? "bg-primary text-background" : "hover:bg-foreground/10",
-                  "py-[0.25em] px-[0.4em] rounded-sm",
+                  "py-[0.2em] px-[0.4em] rounded-sm",
                 )}>
                 <ShowIcon I={t.I} />
               </button>
             </PopoverTrigger>
             <PopoverContent
               side="top"
-              className="w-fit grid grid-cols-3 bg-background p-1 items-center rounded-xs border border-muted shadow">
+              className="w-fit grid grid-cols-3 place-items-center p-1 gap-[0.2em] bg-background items-center rounded-xs border border-muted shadow">
               {t.subMode.map((sm, index) => (
-                <div key={index} className="">
+                <div key={index} className="w-fit">
                   <button
                     className={cn(
                       mode.sm === sm.sm ? "bg-primary text-background" : "hover:bg-foreground/10",
-                      "py-[0.25em] px-[0.4em] rounded-sm",
+                      "py-[0.2em] px-[0.5em] rounded-sm cursor-pointer w-7 g-7 md:w-8 md:h-8 flex justify-center items-center",
                     )}
                     onClick={() => {
                       if (mode.sm == sm.sm) return;
@@ -54,7 +54,7 @@ export default function Toolbar() {
 
 function ShowIcon({ I }: { I: LucideIcon | string }) {
   if (typeof I == "string") {
-    return <img src={I} alt={I} loading="lazy" width={20} />;
+    return <img src={I} alt={I} loading="lazy" width={18} />;
   } else {
     return <I className="w-3 md:w-4" />;
   }

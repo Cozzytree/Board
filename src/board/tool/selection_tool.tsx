@@ -246,6 +246,7 @@ class SelectionTool implements ToolInterface {
 
     if (this.draggedShape != null && this.isDragging) {
       const shapes = this.draggedShape.dragging(new Pointer(this.lastPoint), new Pointer(p));
+      this._board.adjustBox(this.draggedShape);
 
       this.lastPoint = p;
 

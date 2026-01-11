@@ -2,6 +2,7 @@ import type { ActiveSelectionShape } from "./shape_types";
 import { Box, Ellipse, Line, Path, Shape } from "../index";
 import type { BoxInterface, Point, resizeDirection, ShapeEventData, ShapeProps } from "../types";
 import { resizeRect } from "../utils/resize";
+import Group from "./group";
 
 export type ActiveSeletionProps = {
   shapes?: { oldProps?: BoxInterface; s: Shape }[];
@@ -55,6 +56,19 @@ class ActiveSelection extends Shape {
       this.width = newBox.x2 - newBox.x1 + this.padding * 2;
       this.height = newBox.y2 - newBox.y1 + this.padding * 2;
     }
+  }
+
+  group() {
+    if (!this.shapes.length) return;
+
+    const newGroup = new Group({
+      shapes: this.shapes.map((s) => s.s),
+      ctx: this._board.ctx,
+      _board: this._board,
+    });
+    this._board.add(newGroup);
+    this._board.discardActiveShapes();
+    this._board.setActiveShape(newGroup);
   }
 
   clone(): Shape {

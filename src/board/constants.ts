@@ -19,10 +19,10 @@ const COLORS = [
   HoveredColor,
 ];
 const FONT_SIZES = [
-  { label: "Huge", size: 25 },
-  { label: "Large", size: 20 },
-  { label: "Medium", size: 18 },
-  { label: "Small", size: 15 },
+  { label: "XL", size: 25 },
+  { label: "L", size: 20 },
+  { label: "M", size: 18 },
+  { label: "S", size: 15 },
 ];
 
 const strokeSize = [2, 3, 5];
