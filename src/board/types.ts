@@ -26,6 +26,10 @@ export type ShapeEventData = {
   e: { point: Point };
 };
 
+export interface EventData {
+  e: { x?: number; y?: number; target: Shape[] | null };
+}
+
 export type ShapeEventCallback = (shape: Shape, data?: ShapeEventData) => void;
 
 export type ShapeProps = {
@@ -63,9 +67,9 @@ export type ToolCallback = (args: { mode: modes; submode: submodes }) => void;
 export type ToolEventData = { p: Point; e: MouseEvent | PointerEvent | WheelEvent | TouchEvent };
 
 export interface ToolInterface {
-  pointerDown(e: ToolEventData): void;
+  pointerDown(e: ToolEventData, callback: (e: EventData) => void): void;
   pointermove(e: ToolEventData): void;
-  pointerup(e: ToolEventData, cb?: ToolCallback): void;
+  pointerup(e: ToolEventData, cb?: ToolCallback, eventCallback?: (e: EventData) => void): void;
   dblClick(e: ToolEventData): void;
   onClick(e: ToolEventData): void;
   cleanUp(): void;
@@ -92,8 +96,9 @@ export interface BoardInterface {
   canvas: HTMLCanvasElement;
   ctx: CanvasRenderingContext2D;
   modes: { m: modes; sm: submodes | null };
-  onMouseMove?: () => void;
-  onMouseUp?: () => void;
+  onMouseMove?: (e: EventData) => void;
+  onMouseDown?: (e: EventData) => void;
+  onMouseUp?: (e: EventData) => void;
 }
 
 export type modes = "cursor" | "shape" | "line" | "draw" | "text" | "eraser";

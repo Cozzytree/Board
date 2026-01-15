@@ -252,10 +252,13 @@ function FillOption() {
     <Popover>
       <PopoverTrigger asChild>
         <button
+          style={{
+            background: activeShape?.get("fill") || "",
+          }}
           className={
             "py-[0.25em] text-sm px-[0.6em] rounded-sm hover:bg-foreground/10 flex justify-center items-center"
           }>
-          <PaintBucket fill={activeShape?.fill} className="w-3 md:w-4" />
+          <PaintBucket className="w-3 md:w-4" />
         </button>
       </PopoverTrigger>
       <PopoverContent

@@ -53,7 +53,6 @@ class TextTool implements ToolInterface {
 
   onkeydown(e: KeyboardEvent) {
     if (this.active) {
-      console.log("asdasd");
       if (
         e.key != "Escape" &&
         e.key !== "Shift" &&
@@ -72,15 +71,19 @@ class TextTool implements ToolInterface {
 
         this.draw();
       } else if (e.key === "Escape") {
-        this._board.add(
-          new Text({
-            left: this.clicked.x,
-            top: this.clicked.y,
-            ctx: this._board.ctx,
-            _board: this._board,
-            text: this.text,
-          }),
-        );
+        const t = new Text({
+          left: this.clicked.x,
+          top: this.clicked.y,
+          ctx: this._board.ctx,
+          _board: this._board,
+          text: this.text,
+        });
+        this._board.add(t);
+
+        this._board.fire("shape:created", {
+          e: { target: t, x: this.clicked.x, y: this.clicked.y },
+        });
+
         this._board.ctx2.clearRect(0, 0, this._board.canvas2.width, this._board.canvas2.height);
         this._board.render();
         this._board.setMode = { m: "cursor", sm: "free" };

@@ -20,7 +20,7 @@ import * as React from "react";
 import ShapeOptions from "./components/shapeoptions";
 import Toolbar from "./components/toolbar";
 import { Board, Shape } from "./index";
-import type { modes, submodes } from "./types";
+import type { EventData, modes, submodes } from "./types";
 import {
   ContextMenu,
   ContextMenuContent,
@@ -128,13 +128,8 @@ const BoardProvider = ({
   const canvasRef = React.useRef<HTMLCanvasElement>(null);
   const borderRef = React.useRef<Board>(null);
 
-  const onMouseUp = React.useCallback(() => {
-    const active = borderRef.current?.getActiveShapes();
-    if (active) {
-      setActiveShape(active);
-    } else {
-      setActiveShape(null);
-    }
+  const onMouseUp = React.useCallback((e: EventData) => {
+    console.log("mouseup", e);
   }, []);
 
   const onModeChange = React.useCallback((m: modes, sm: submodes) => {
@@ -153,7 +148,6 @@ const BoardProvider = ({
       onActiveShape: (ac) => {
         setActiveShape(ac);
       },
-      onMouseUp: onMouseUp,
       onZoom: (v) => {
         setZoom(v.scl * 100);
         setOffset([v.x, v.y]);
@@ -163,12 +157,21 @@ const BoardProvider = ({
         setZoom(v.scl * 100);
       },
     });
+
+    newBoard.on("mouseup", onMouseUp);
+    newBoard.on("mousedown", (e) => {
+      setActiveShape(e.e.target);
+    });
+    newBoard.on("shape:created", (e) => {
+      console.log("shape created", e);
+    });
+
     borderRef.current = newBoard;
 
     return () => {
       newBoard.clean();
     };
-  }, [width, height, isHover]);
+  }, [width, height, isHover, isSnap, onModeChange, onMouseUp]);
 
   React.useEffect(() => {
     if (!borderRef.current) return;

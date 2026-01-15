@@ -1,4 +1,4 @@
-import type { ToolCallback, ToolEventData } from "../types";
+import type { EventData, ToolCallback, ToolEventData } from "../types";
 
 import Tool from "./tool";
 import { AnchorLine, Box, LineCurve, PlainLine, Rect, type Board, type Line } from "@/board/index";
@@ -76,8 +76,6 @@ class LineTool extends Tool {
         top: p.y,
       });
     }
-
-    this.newLine.mousedown({ e: { point: p } });
   }
 
   pointermove({ p }: ToolEventData): void {
@@ -117,13 +115,16 @@ class LineTool extends Tool {
     }
   }
 
-  pointerup(e: ToolEventData, cb?: ToolCallback): void {
+  pointerup({ p }: ToolEventData, cb?: ToolCallback, ec?: (cb: EventData) => void): void {
     this.indicator.show = false;
     if (this.newLine) {
       this._board.add(this.newLine);
       this._board.render();
       this.newLine.setCoords();
-      this.newLine.mouseup({ e: { point: e.p } });
+      this.newLine.mouseup({ e: { point: p } });
+
+      ec?.({ e: { target: [this.newLine], x: p.x, y: p.y } });
+
       this.newLine = null;
     }
 

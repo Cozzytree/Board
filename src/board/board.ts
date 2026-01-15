@@ -1,8 +1,9 @@
 import type {
   BoardInterface,
+  EventData,
   modes,
   Point,
-  ShapeEventData,
+  ShapeEvent,
   submodes,
   ToolInterface,
 } from "./types";
@@ -26,7 +27,6 @@ type BoardProps = {
   width: number;
   height: number;
   onModeChange?: (m: modes, sm: submodes) => void;
-  onMouseUp?: (e: ShapeEventData) => void;
   scl?: number;
   hoverEffect?: boolean;
   snap?: boolean;
@@ -34,6 +34,8 @@ type BoardProps = {
   onZoom?: (n: view_t) => void;
   onScroll?: (view: view_t) => void;
 };
+
+type EventCallback = (e: EventData) => void;
 
 class Board implements BoardInterface {
   onZoomCallback: (n: view_t) => void;
@@ -72,6 +74,7 @@ class Board implements BoardInterface {
   declare canvas2: HTMLCanvasElement;
   declare ctx2: CanvasRenderingContext2D;
 
+  private events: Map<ShapeEvent, Set<EventCallback>>;
   // private pendingEvent: PointerEvent | null = null;
   private pendingEventScheduled: boolean = false;
   private handleDoubleClick: (e: PointerEvent | MouseEvent) => void;
@@ -85,7 +88,6 @@ class Board implements BoardInterface {
   canvas: HTMLCanvasElement;
   ctx: CanvasRenderingContext2D;
   modes: { m: modes; sm: submodes | null };
-  onMouseUpCallback?: (e: ShapeEventData) => void;
   onActiveShapeCallback?: (e: Shape | null) => void;
 
   constructor({
@@ -94,7 +96,6 @@ class Board implements BoardInterface {
     scl = 1,
     height,
     onModeChange,
-    onMouseUp,
     background,
     hoverEffect,
     snap,
@@ -134,6 +135,8 @@ class Board implements BoardInterface {
     }
 
     this.canvas2 = c2;
+    this.canvas2.width = width;
+    this.canvas2.height = height;
 
     // Ensure proper z-index layering
     this.canvas.style.position = "absolute";
@@ -165,8 +168,6 @@ class Board implements BoardInterface {
     this.handleWheel = this.onWheel.bind(this);
     this.handleDoubleClick = this.ondoubleclick.bind(this);
 
-    this.onMouseUpCallback = onMouseUp;
-
     this.canvas.addEventListener("touchmove", this.handlePointerMove);
     this.canvas.addEventListener("touchend", this.handlePointerUp);
 
@@ -179,6 +180,7 @@ class Board implements BoardInterface {
     this.canvas.addEventListener("dblclick", this.handleDoubleClick);
     window.addEventListener("wheel", this.handleWheel, { passive: false });
 
+    this.events = new Map();
     this.render();
   }
 
@@ -203,6 +205,14 @@ class Board implements BoardInterface {
   discardActiveShapes() {
     // this.shapeStore.setLastInserted = null;
     this.activeShapes = null;
+  }
+
+  on(event: ShapeEvent, cb: (e: EventData) => void) {
+    if (!this.events.has(event)) {
+      this.events.set(event, new Set());
+    }
+
+    this.events.get(event)?.add(cb);
   }
 
   setActiveShape(...shapes: Shape[]) {
@@ -264,6 +274,7 @@ class Board implements BoardInterface {
     this.adjustBox(shapes[shapes.length - 1]);
 
     this.discardActiveShapes();
+    this.fire("shape:created", { e: { target: shapes } });
     this.setActiveShape(...shapes);
   }
 
@@ -360,7 +371,11 @@ class Board implements BoardInterface {
       return;
     }
     const p = this.getTransFormedCoords(e);
-    this.currentTool.pointerDown({ e, p });
+    this.currentTool.pointerDown({ e, p }, (e) => {
+      this.events.get("mousedown")?.forEach((cb) => {
+        cb(e);
+      });
+    });
   }
 
   private onmousemove(e: PointerEvent | MouseEvent | TouchEvent) {
@@ -374,9 +389,17 @@ class Board implements BoardInterface {
 
   private onmouseup(e: PointerEvent | MouseEvent | TouchEvent) {
     const p = this.getTransFormedCoords(e);
-    this.currentTool.pointerup({ e, p }, (v) => {
-      this.setMode = { m: v.mode, sm: v.submode };
-    });
+    this.currentTool.pointerup(
+      { e, p },
+      (v) => {
+        this.setMode = { m: v.mode, sm: v.submode };
+      },
+      (e) => {
+        this.events.get("mouseup")?.forEach((cb) => {
+          cb(e);
+        });
+      },
+    );
   }
 
   private ondoubleclick(e: PointerEvent | MouseEvent) {
@@ -455,6 +478,10 @@ class Board implements BoardInterface {
     return { x: (rawX - this.view.x) / this.view.scl, y: (rawY - this.view.y) / this.view.scl };
   }
 
+  fire(e: ShapeEvent, d: EventData) {
+    this.events.get(e)?.forEach((cb) => cb(d));
+  }
+
   clean() {
     this.canvas.removeEventListener("touchmove", this.handlePointerMove);
     this.canvas.removeEventListener("touchend", this.handlePointerUp);
@@ -469,6 +496,9 @@ class Board implements BoardInterface {
     if (this.currentTool) {
       this.currentTool.cleanUp();
     }
+
+    this.canvas2.remove();
+    this.events.clear();
 
     this.shapeStore.forEach((s) => {
       s.clean();

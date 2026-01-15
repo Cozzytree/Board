@@ -1,5 +1,5 @@
 import { Board, Box, Ellipse, Path, Pointer, Rect, type Shape } from "../index";
-import type { submodes, ToolInterface, ToolCallback, ToolEventData } from "../types";
+import type { submodes, ToolInterface, ToolCallback, ToolEventData, EventData } from "../types";
 
 class ShapeTool implements ToolInterface {
   private _board: Board;
@@ -151,6 +151,7 @@ class ShapeTool implements ToolInterface {
         x2: this.newShape.left + this.newShape.width,
         y2: this.newShape.top + this.newShape.height,
       });
+      this._board.fire("shape:created", { e: { target: this.newShape, x: p.x, y: p.y } });
     }
   }
 
@@ -161,23 +162,23 @@ class ShapeTool implements ToolInterface {
     }
   }
 
-  pointerup({ p }: ToolEventData, cb?: ToolCallback): void {
+  pointerup({ p }: ToolEventData, cb?: ToolCallback, ec?: (d: EventData) => void): void {
     this._board.ctx2.clearRect(0, 0, this._board.canvas2.width, this._board.canvas2.height);
 
     if (this.newShape) {
       this.newShape.setCoords();
       /**/
-      this._board.shapeStore.pushUndo({
-        undoType: "create",
-        objects: [this.newShape.toObject()],
-      });
+      // this._board.shapeStore.pushUndo({
+      //   undoType: "create",
+      //   objects: [this.newShape.toObject()],
+      // });
 
+      ec?.({ e: { target: this.newShape, x: p.x, y: p.y } });
       this.newShape = null;
       cb?.({ mode: "cursor", submode: "free" });
+
       this._board.render();
     }
-
-    this._board.onMouseUpCallback?.({ e: { point: p } });
   }
 
   dblClick(): void {}
