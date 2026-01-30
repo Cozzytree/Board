@@ -29,6 +29,7 @@ const keysNotNeeded = ["ctx", "eventListeners"];
 
 abstract class Shape implements ShapeProps {
   padding = 4;
+  protected rotationPadding = 5; // Distance outside resize zone for rotation
 
   protected lastFlippedState: { x: boolean; y: boolean };
   declare type: shapeType;
@@ -151,7 +152,7 @@ abstract class Shape implements ShapeProps {
     };
   }
 
-  connectionEvent(_: connectionEventData) {}
+  connectionEvent(_: connectionEventData) { }
 
   remove() {
     this._board.removeShape(this);
@@ -260,6 +261,14 @@ abstract class Shape implements ShapeProps {
 
   mouseover(s: ShapeEventData): void {
     if (this._board.activeShapes?.ID() == this.ID()) {
+      // Check for rotation zone first
+      if (this.isRotating(s.e.point)) {
+        document.body.style.cursor = "grab";
+        console.log("mouse over ", this.ID());
+        this.emit("mouseover", s);
+        return;
+      }
+
       const r = resizeRect(
         s.e.point,
         new Box({
@@ -271,27 +280,9 @@ abstract class Shape implements ShapeProps {
         this.padding,
       );
       if (r) {
-        switch (r.rd) {
-          case "tl":
-          case "br":
-            document.body.style.cursor = "nwse-resize";
-            break;
-
-          case "tr":
-          case "bl":
-            document.body.style.cursor = "nesw-resize";
-            break;
-
-          case "t":
-          case "b":
-            document.body.style.cursor = "ns-resize";
-            break;
-
-          case "l":
-          case "r":
-            document.body.style.cursor = "ew-resize";
-            break;
-        }
+        // Calculate rotation-aware cursor
+        const cursor = this.getRotatedCursor(r.rd, this.rotate);
+        document.body.style.cursor = cursor;
       } else {
         document.body.style.cursor = "default";
       }
@@ -300,6 +291,51 @@ abstract class Shape implements ShapeProps {
     }
 
     this.emit("mouseover", s);
+  }
+
+  /**
+   * Get the appropriate cursor style for a resize direction considering rotation.
+   * The cursor rotates with the shape so it visually matches the resize direction.
+   */
+  private getRotatedCursor(direction: resizeDirection, rotation: number): string {
+    // Convert rotation from radians to degrees and normalize to 0-360
+    const degrees = ((rotation * 180) / Math.PI) % 360;
+    const normalizedDegrees = degrees < 0 ? degrees + 360 : degrees;
+
+    // Map each direction to its base angle (in degrees)
+    const directionAngles: Record<resizeDirection, number> = {
+      r: 0,      // right: 0°
+      br: 45,    // bottom-right: 45°
+      b: 90,     // bottom: 90°
+      bl: 135,   // bottom-left: 135°
+      l: 180,    // left: 180°
+      tl: 225,   // top-left: 225°
+      t: 270,    // top: 270°
+      tr: 315,   // top-right: 315°
+    };
+
+    // Calculate the effective angle (direction angle + rotation)
+    const effectiveAngle = (directionAngles[direction] + normalizedDegrees) % 360;
+
+    // Map angle ranges to cursor types
+    // Each cursor covers a 45° range centered on its primary direction
+    if (effectiveAngle >= 337.5 || effectiveAngle < 22.5) {
+      return "ew-resize"; // horizontal (→)
+    } else if (effectiveAngle >= 22.5 && effectiveAngle < 67.5) {
+      return "nwse-resize"; // diagonal (\)
+    } else if (effectiveAngle >= 67.5 && effectiveAngle < 112.5) {
+      return "ns-resize"; // vertical (↕)
+    } else if (effectiveAngle >= 112.5 && effectiveAngle < 157.5) {
+      return "nesw-resize"; // diagonal (/)
+    } else if (effectiveAngle >= 157.5 && effectiveAngle < 202.5) {
+      return "ew-resize"; // horizontal (←)
+    } else if (effectiveAngle >= 202.5 && effectiveAngle < 247.5) {
+      return "nwse-resize"; // diagonal (\)
+    } else if (effectiveAngle >= 247.5 && effectiveAngle < 292.5) {
+      return "ns-resize"; // vertical (↕)
+    } else {
+      return "nesw-resize"; // diagonal (/)
+    }
   }
 
   mousedown(s: ShapeEventData): void {
@@ -332,6 +368,35 @@ abstract class Shape implements ShapeProps {
         y2: this.top + this.height + this.padding * 2,
       }),
     });
+  }
+
+  /**
+   * Check if a point is in the rotation zone (outside resize zone but within rotation padding).
+   * The rotation zone is a ring around the shape that allows rotating without interfering
+   * with drag or resize operations.
+   */
+  isRotating(p: Point): boolean {
+    const outerPadding = this.padding + this.rotationPadding;
+
+    // Check if point is within outer rotation zone
+    const inOuterZone = IsIn({
+      inner: new Box({ x1: p.x, y1: p.y, x2: p.x + 1, y2: p.y + 1 }),
+      outer: new Box({
+        x1: this.left - outerPadding,
+        y1: this.top - outerPadding,
+        x2: this.left + this.width + outerPadding * 2,
+        y2: this.top + this.height + outerPadding * 2,
+      }),
+    });
+
+    // Check if point is NOT in resize zone (inner zone)
+    const inResizeZone = this.IsResizable(p) !== null;
+
+    // Check if point is NOT draggable (inside shape)
+    const isDraggable = this.IsDraggable(p);
+
+    // Rotation zone: outside shape, outside resize zone, but within outer padding
+    return inOuterZone && !inResizeZone && !isDraggable;
   }
 
   ID(): string {
@@ -392,7 +457,7 @@ abstract class Shape implements ShapeProps {
     return this[property as keyof this];
   }
 
-  setCoords() {}
+  setCoords() { }
 
   inAnchor(p: Point): { isin: boolean; side: Side; point: Point } {
     const inSetX = Math.floor(this.width * 0.2);

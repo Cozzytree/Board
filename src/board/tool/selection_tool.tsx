@@ -14,7 +14,8 @@ import type {
   ToolEventData,
   ToolInterface,
 } from "../types";
-import { generateShapeByShapeType, snapShape } from "../utils/utilfunc";
+import { generateShapeByShapeType } from "../utils/utilfunc";
+import { snapShape } from "../utils/snap";
 
 const textAreaId = "text-update";
 
@@ -40,6 +41,10 @@ class SelectionTool implements ToolInterface {
   private mouseDowmShapeState: Record<string, any>[] = [];
 
   private isGrabbing: boolean = false;
+  private isRotating: boolean = false;
+  private rotatingShape: Shape | null = null;
+  private rotationStartAngle: number = 0;
+  private rotationCenter: Point = new Pointer({ x: 0, y: 0 });
   private handleKeyDown: (e: KeyboardEvent) => void;
   private _board: Board;
   private draggedShape: Shape | null = null;
@@ -192,6 +197,28 @@ class SelectionTool implements ToolInterface {
         }
       }
 
+      // Check for rotation on active shape
+      if (currentActive && currentActive.isRotating && currentActive.isRotating(p)) {
+        callback?.({ e: { x: p.x, y: p.y, target: [currentActive] } });
+
+        this.isRotating = true;
+        this.rotatingShape = currentActive;
+        this.mouseDowmShapeState.push(currentActive.toObject());
+
+        // Calculate center and initial angle
+        this.rotationCenter = {
+          x: currentActive.left + currentActive.width / 2,
+          y: currentActive.top + currentActive.height / 2,
+        };
+
+        const dx = p.x - this.rotationCenter.x;
+        const dy = p.y - this.rotationCenter.y;
+        this.rotationStartAngle = Math.atan2(dy, dx) - currentActive.rotate;
+
+        document.body.style.cursor = "grabbing";
+        return;
+      }
+
       const drag = this._board.shapeStore.forEach((s) => {
         return s.IsDraggable(p);
       });
@@ -237,7 +264,7 @@ class SelectionTool implements ToolInterface {
     return false;
   }
 
-  pointermove({ p }: ToolEventData, cb: (e: EventData) => void): void {
+  pointermove({ p }: ToolEventData, _: (e: EventData) => void): void {
     this.hoveredShape = null;
 
     if (this.subMode === "grab" && this.isGrabbing) {
@@ -253,6 +280,20 @@ class SelectionTool implements ToolInterface {
     this._board._lastMousePosition = p;
 
     this.shouldDrag();
+
+    // Handle rotation
+    if (this.isRotating && this.rotatingShape) {
+      const dx = p.x - this.rotationCenter.x;
+      const dy = p.y - this.rotationCenter.y;
+      const currentAngle = Math.atan2(dy, dx);
+      const newRotation = currentAngle - this.rotationStartAngle;
+
+      this.rotatingShape.set({ rotate: newRotation });
+
+      this.draw(this.rotatingShape);
+      this._board.fire("mousemove", { e: { target: [this.rotatingShape], x: p.x, y: p.y } });
+      return;
+    }
 
     if (this.draggedShape != null && this.isDragging) {
       const shapes = this.draggedShape.dragging(new Pointer(this.lastPoint), new Pointer(p));
@@ -320,34 +361,59 @@ class SelectionTool implements ToolInterface {
       return;
     }
 
-    this._board.shapeStore.forEach((s) => {
-      if (s.isWithin(p) && !this.isGrabbing) {
-        if (this._board.hoverEffect && this.draggedShape == null && this.resizableShape == null) {
-          if (
-            this._board.activeShapes?.ID() !== s.ID() &&
-            this._board.shapeStore.getLastInsertedShape()?.type !== "selection"
-          ) {
-            /*
-                  TODO : need to fix cloning
-                  */
-            this.hoveredShape = s.clone();
-            this.hoveredShape.set({
-              fill: "transparent",
-              dash: [0, 0],
-              stroke: HoveredColor,
-              strokeWidth: 2,
-            });
-          }
-        }
-        s.mouseover({ e: { point: p } });
-        return true;
-      } else {
-        this.hoveredShape = null;
-      }
+    // Check for mouseover on shapes
+    let foundHoveredShape = false;
 
+    // First check if we're hovering over the active shape (for rotation/resize cursors)
+    const activeShape = this._board.getActiveShapes();
+    if (activeShape && !this.isGrabbing) {
+      // For active shapes, check rotation zone, resize zone, or draggable area
+      if (activeShape.isRotating && activeShape.isRotating(p)) {
+        activeShape.mouseover({ e: { point: p } });
+        foundHoveredShape = true;
+      } else if (activeShape.IsResizable(p)) {
+        activeShape.mouseover({ e: { point: p } });
+        foundHoveredShape = true;
+      } else if (activeShape.IsDraggable(p)) {
+        activeShape.mouseover({ e: { point: p } });
+        foundHoveredShape = true;
+      }
+    }
+
+    // If not hovering over active shape, check other shapes
+    if (!foundHoveredShape) {
+      this._board.shapeStore.forEach((s) => {
+        if (s.isWithin(p) && !this.isGrabbing) {
+          if (this._board.hoverEffect && this.draggedShape == null && this.resizableShape == null) {
+            if (
+              this._board.activeShapes?.ID() !== s.ID() &&
+              this._board.shapeStore.getLastInsertedShape()?.type !== "selection"
+            ) {
+              /*
+                    TODO : need to fix cloning
+                    */
+              this.hoveredShape = s.clone();
+              this.hoveredShape.set({
+                fill: "transparent",
+                dash: [0, 0],
+                stroke: HoveredColor,
+                strokeWidth: 2,
+              });
+            }
+          }
+          s.mouseover({ e: { point: p } });
+          foundHoveredShape = true;
+          return true;
+        }
+        return false;
+      });
+    }
+
+    // Only reset cursor if we're not hovering over any shape
+    if (!foundHoveredShape) {
+      this.hoveredShape = null;
       document.body.style.cursor = "default";
-      return false;
-    });
+    }
 
     if (this.hoveredShape) {
       this.draw(this.hoveredShape);
@@ -360,6 +426,18 @@ class SelectionTool implements ToolInterface {
 
   pointerup({ p }: ToolEventData, _: ToolCallback, eventCb: (e: EventData) => void): void {
     this.resetGrabState();
+
+    // Handle rotation end
+    if (this.isRotating && this.rotatingShape) {
+      eventCb({ e: { x: p.x, y: p.y, target: [this.rotatingShape] } });
+      this.rotatingShape.mouseup({ e: { point: p } });
+      this.isRotating = false;
+      this.rotatingShape = null;
+      document.body.style.cursor = "default";
+      this._board.render();
+      this.clearOverlay();
+      return;
+    }
 
     if (this.tryStartTextEdit(p)) {
       eventCb({ e: { x: p.x, y: p.y, target: null } });
@@ -460,7 +538,7 @@ class SelectionTool implements ToolInterface {
     }
   }
 
-  onClick(): void {}
+  onClick(): void { }
 
   cleanUp(): void {
     // this.snapLines = [];

@@ -1,6 +1,6 @@
 import { Box, Pointer, Shape } from "../index";
 import type { BoxInterface, Point, resizeDirection, ShapeEventData, ShapeProps } from "../types";
-import { resizeRect } from "../utils/resize";
+import { resizeRect, isDraggableWithRotation } from "../utils/resize";
 import { resizeWithRotation } from "../utils/resizeWithRotation";
 import { breakText, calcPointWithRotation } from "../utils/utilfunc";
 import type { DrawProps } from "./shape";
@@ -46,24 +46,35 @@ class Rect extends Shape {
   }
 
   IsDraggable(p: Pointer): boolean {
-    // Get center of the rectangle
-    const centerX = this.left + this.width / 2;
-    const centerY = this.top + this.height / 2;
+    // Use the rotation-aware draggable check utility
+    return isDraggableWithRotation({
+      point: p,
+      left: this.left,
+      top: this.top,
+      width: this.width,
+      height: this.height,
+      rotate: this.rotate,
+    });
 
-    const dx = p.x - centerX;
-    const dy = p.y - centerY;
-
-    const cos = Math.cos(-this.rotate);
-    const sin = Math.sin(-this.rotate);
-
-    const localX = dx * cos - dy * sin;
-    const localY = dx * sin + dy * cos;
-
-    // 3. Check against unrotated rect bounds
-    const halfW = this.width / 2;
-    const halfH = this.height / 2;
-
-    return localX > -halfW && localX < halfW && localY > -halfH && localY < halfH;
+    // Old implementation (commented out for reference)
+    // // Get center of the rectangle
+    // const centerX = this.left + this.width / 2;
+    // const centerY = this.top + this.height / 2;
+    //
+    // const dx = p.x - centerX;
+    // const dy = p.y - centerY;
+    //
+    // const cos = Math.cos(-this.rotate);
+    // const sin = Math.sin(-this.rotate);
+    //
+    // const localX = dx * cos - dy * sin;
+    // const localY = dx * sin + dy * cos;
+    //
+    // // 3. Check against unrotated rect bounds
+    // const halfW = this.width / 2;
+    // const halfH = this.height / 2;
+    //
+    // return localX > -halfW && localX < halfW && localY > -halfH && localY < halfH;
 
     // const condition =
     //    p.x > this.left &&
@@ -140,14 +151,15 @@ class Rect extends Shape {
 
     context.save();
 
+    // Get the current scale BEFORE applying rotation
+    const currentScale = context.getTransform().a;
+
     const centerX = this.left + this.width * 0.5;
     const centerY = this.top + this.height * 0.5;
     context.translate(centerX, centerY);
     context.rotate(this.rotate);
     context.translate(-centerX, -centerY);
     context.beginPath();
-
-    const currentScale = context.getTransform().a;
 
     if (resize) {
       context.globalAlpha = this.selectionAlpha;

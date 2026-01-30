@@ -33,4 +33,54 @@ function resizeRect(down: Point, box: Box, padding: number) {
    return sides.find((s) => s.c);
 }
 
-export { resizeRect };
+/**
+ * Check if a point is inside a rotated rectangle.
+ * 
+ * This function transforms the point from world space to the rectangle's local
+ * (unrotated) coordinate system and then performs a simple bounds check.
+ * 
+ * @param point - The point to check (in world space)
+ * @param left - Left position of the rectangle
+ * @param top - Top position of the rectangle
+ * @param width - Width of the rectangle
+ * @param height - Height of the rectangle
+ * @param rotate - Rotation angle in radians
+ * @returns true if the point is inside the rotated rectangle, false otherwise
+ */
+function isDraggableWithRotation({
+   point,
+   left,
+   top,
+   width,
+   height,
+   rotate,
+}: {
+   point: Point;
+   left: number;
+   top: number;
+   width: number;
+   height: number;
+   rotate: number;
+}): boolean {
+   // Calculate the center of the rectangle
+   const centerX = left + width / 2;
+   const centerY = top + height / 2;
+
+   // Translate point to origin (relative to center)
+   const dx = point.x - centerX;
+   const dy = point.y - centerY;
+
+   // Apply inverse rotation to transform point to local space
+   const cos = Math.cos(-rotate);
+   const sin = Math.sin(-rotate);
+   const localX = dx * cos - dy * sin;
+   const localY = dx * sin + dy * cos;
+
+   // Check against unrotated rectangle bounds (centered at origin)
+   const halfW = width / 2;
+   const halfH = height / 2;
+
+   return localX > -halfW && localX < halfW && localY > -halfH && localY < halfH;
+}
+
+export { resizeRect, isDraggableWithRotation };
