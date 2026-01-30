@@ -1,6 +1,7 @@
 import { Box, Pointer, Shape } from "../index";
 import type { BoxInterface, Point, resizeDirection, ShapeEventData, ShapeProps } from "../types";
 import { resizeRect } from "../utils/resize";
+import { resizeWithRotation } from "../utils/resizeWithRotation";
 import { breakText, calcPointWithRotation } from "../utils/utilfunc";
 import type { DrawProps } from "./shape";
 
@@ -15,6 +16,7 @@ class Rect extends Shape {
 
   constructor(props: ShapeProps & RectProps) {
     super({ ...props });
+    // this.rotate = 30;
     this.rx = props.rx || 0;
     this.ry = props.ry || 0;
 
@@ -188,126 +190,147 @@ class Rect extends Shape {
   }
 
   Resize(current: Point, old: BoxInterface, d: resizeDirection) {
-    switch (d) {
-      case "t":
-        if (current.y > old.y2) {
-          super.set({
-            top: old.y2,
-            height: this.adjustHeight(current.y - old.y2),
-          });
-        } else {
-          super.set({
-            top: current.y,
-            height: this.adjustHeight(old.y2 - current.y),
-          });
-        }
-        break;
-      case "b":
-        if (current.y > old.y1) {
-          super.set({
-            top: old.y1,
-            height: this.adjustHeight(current.y - old.y1),
-          });
-        } else {
-          super.set({
-            top: current.y,
-            height: this.adjustHeight(old.y2 - current.y),
-          });
-        }
-        break;
-      case "l":
-        if (current.x > old.x2) {
-          super.set({
-            left: old.x2,
-            width: current.x - old.x2,
-          });
-        } else {
-          super.set({
-            left: current.x,
-            width: old.x2 - current.x,
-          });
-        }
-        break;
-      case "r":
-        if (current.x > old.x1) {
-          super.set({
-            left: old.x1,
-            width: current.x - old.x1,
-          });
-        } else {
-          super.set({
-            left: current.x,
-            width: old.x1 - current.x,
-          });
-        }
-        break;
-      case "tl":
-        if (current.x > old.x2) {
-          this.left = old.x2;
-          this.width = current.x - old.x2;
-        } else {
-          this.left = current.x;
-          this.width = old.x2 - current.x;
-        }
+    // New rotation-aware resize logic
+    const newBounds = resizeWithRotation({
+      current,
+      old,
+      direction: d,
+      rotate: this.rotate,
+      minWidth: 20,
+      minHeight: 20,
+    });
 
-        if (current.y > old.y2) {
-          this.top = old.y2;
-          this.height = current.y - old.y2;
-        } else {
-          this.top = current.y;
-          this.height = this.adjustHeight(old.y2 - current.y);
-        }
-        break;
-      case "tr":
-        if (current.x < old.x1) {
-          this.left = current.x;
-          this.width = old.x1 - current.x;
-        } else {
-          this.left = old.x1;
-          this.width = current.x - old.x1;
-        }
+    // Adjust height for text if needed
+    const adjustedHeight = this.adjustHeight(newBounds.height);
 
-        if (current.y > old.y2) {
-          this.top = old.y2;
-          this.height = current.y - old.y2;
-        } else {
-          this.top = current.y;
-          this.height = this.adjustHeight(old.y2 - current.y);
-        }
-        break;
-      case "br":
-        if (current.x < old.x1) {
-          this.left = current.x;
-          this.width = old.x1 - current.x;
-        } else {
-          this.left = old.x1;
-          this.width = current.x - old.x1;
-        }
+    super.set({
+      left: newBounds.left,
+      top: newBounds.top,
+      width: newBounds.width,
+      height: adjustedHeight,
+    });
 
-        if (current.y > old.y1) {
-          this.top = old.y1;
-          this.height = this.adjustHeight(current.y - old.y1);
-        } else {
-          this.top = current.y;
-          this.height = this.adjustHeight(old.y1 - current.y);
-        }
-        break;
-      case "bl":
-        if (current.x > old.x2) {
-          this.left = old.x2;
-          this.width = current.x - old.x2;
-        } else {
-          this.left = current.x;
-          this.width = old.x2 - current.x;
-        }
-        if (current.y > old.y1) {
-          this.top = old.y1;
-          this.height = this.adjustHeight(current.y - old.y1);
-        } else {
-          this.top = current.y;
-          this.height = this.adjustHeight(old.y1 - current.y);
-        }
-    }
+    // Old resize logic (commented out for reference)
+    // switch (d) {
+    //   case "t":
+    //     if (current.y > old.y2) {
+    //       super.set({
+    //         top: old.y2,
+    //         height: this.adjustHeight(current.y - old.y2),
+    //       });
+    //     } else {
+    //       super.set({
+    //         top: current.y,
+    //         height: this.adjustHeight(old.y2 - current.y),
+    //       });
+    //     }
+    //     break;
+    //   case "b":
+    //     if (current.y > old.y1) {
+    //       super.set({
+    //         top: old.y1,
+    //         height: this.adjustHeight(current.y - old.y1),
+    //       });
+    //     } else {
+    //       super.set({
+    //         top: current.y,
+    //         height: this.adjustHeight(old.y2 - current.y),
+    //       });
+    //     }
+    //     break;
+    //   case "l":
+    //     if (current.x > old.x2) {
+    //       super.set({
+    //         left: old.x2,
+    //         width: current.x - old.x2,
+    //       });
+    //     } else {
+    //       super.set({
+    //         left: current.x,
+    //         width: old.x2 - current.x,
+    //       });
+    //     }
+    //     break;
+    //   case "r":
+    //     if (current.x > old.x1) {
+    //       super.set({
+    //         left: old.x1,
+    //         width: current.x - old.x1,
+    //       });
+    //     } else {
+    //       super.set({
+    //         left: current.x,
+    //         width: old.x1 - current.x,
+    //       });
+    //     }
+    //     break;
+    //   case "tl":
+    //     if (current.x > old.x2) {
+    //       this.left = old.x2;
+    //       this.width = current.x - old.x2;
+    //     } else {
+    //       this.left = current.x;
+    //       this.width = old.x2 - current.x;
+    //     }
+    //
+    //     if (current.y > old.y2) {
+    //       this.top = old.y2;
+    //       this.height = current.y - old.y2;
+    //     } else {
+    //       this.top = current.y;
+    //       this.height = this.adjustHeight(old.y2 - current.y);
+    //     }
+    //     break;
+    //   case "tr":
+    //     if (current.x < old.x1) {
+    //       this.left = current.x;
+    //       this.width = old.x1 - current.x;
+    //     } else {
+    //       this.left = old.x1;
+    //       this.width = current.x - old.x1;
+    //     }
+    //
+    //     if (current.y > old.y2) {
+    //       this.top = old.y2;
+    //       this.height = current.y - old.y2;
+    //     } else {
+    //       this.top = current.y;
+    //       this.height = this.adjustHeight(old.y2 - current.y);
+    //     }
+    //     break;
+    //   case "br":
+    //     if (current.x < old.x1) {
+    //       this.left = current.x;
+    //       this.width = old.x1 - current.x;
+    //     } else {
+    //       this.left = old.x1;
+    //       this.width = current.x - old.x1;
+    //     }
+    //
+    //     if (current.y > old.y1) {
+    //       this.top = old.y1;
+    //       this.height = this.adjustHeight(current.y - old.y1);
+    //     } else {
+    //       this.top = current.y;
+    //       this.height = this.adjustHeight(old.y1 - current.y);
+    //     }
+    //     break;
+    //   case "bl":
+    //     if (current.x > old.x2) {
+    //       this.left = old.x2;
+    //       this.width = current.x - old.x2;
+    //     } else {
+    //       this.left = current.x;
+    //       this.width = old.x2 - current.x;
+    //     }
+    //     if (current.y > old.y1) {
+    //       this.top = old.y1;
+    //       this.height = this.adjustHeight(current.y - old.y1);
+    //     } else {
+    //       this.top = current.y;
+    //       this.height = this.adjustHeight(old.y1 - current.y);
+    //     }
+    // }
 
     return super.Resize(current, old, d);
   }

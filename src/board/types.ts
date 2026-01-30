@@ -14,7 +14,7 @@ export type ShapeEvent =
   | "mousedown"
   | "mouseup"
   | "mouseover"
-  | "move"
+  | "mousemove"
   | "resize"
   | "shape:removed"
   | "shape:created"
@@ -68,7 +68,7 @@ export type ToolEventData = { p: Point; e: MouseEvent | PointerEvent | WheelEven
 
 export interface ToolInterface {
   pointerDown(e: ToolEventData, callback: (e: EventData) => void): void;
-  pointermove(e: ToolEventData): void;
+  pointermove(e: ToolEventData, callback: (e: EventData) => void): void;
   pointerup(e: ToolEventData, cb?: ToolCallback, eventCallback?: (e: EventData) => void): void;
   dblClick(e: ToolEventData): void;
   onClick(e: ToolEventData): void;

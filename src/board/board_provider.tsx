@@ -128,9 +128,7 @@ const BoardProvider = ({
   const canvasRef = React.useRef<HTMLCanvasElement>(null);
   const borderRef = React.useRef<Board>(null);
 
-  const onMouseUp = React.useCallback((e: EventData) => {
-    console.log("mouseup", e);
-  }, []);
+  const onMouseUp = React.useCallback((e: EventData) => {}, []);
 
   const onModeChange = React.useCallback((m: modes, sm: submodes) => {
     setMode({ m, sm });
@@ -160,11 +158,17 @@ const BoardProvider = ({
 
     newBoard.on("mouseup", onMouseUp);
     newBoard.on("mousedown", (e) => {
-      setActiveShape(e.e.target);
+      if (e.e.target?.length) {
+        setActiveShape(e.e.target[e.e.target.length - 1]);
+      }
     });
-    newBoard.on("shape:created", (e) => {
-      console.log("shape created", e);
-    });
+    newBoard.on("mousemove", function (e) {});
+
+    newBoard.on("shape:resize", function (e) {});
+
+    newBoard.on("shape:move", function (e) {});
+
+    newBoard.on("shape:created", (e) => {});
 
     borderRef.current = newBoard;
 

@@ -323,7 +323,9 @@ class Board implements BoardInterface {
     if (!this.pendingEventScheduled) {
       this.pendingEventScheduled = true;
       requestAnimationFrame(() => {
-        this.currentTool.pointermove({ e, p: mouse });
+        this.currentTool.pointermove({ e, p: mouse }, (e) => {
+          this.fire("mousemove", e);
+        });
         this.pendingEventScheduled = false;
       });
     }

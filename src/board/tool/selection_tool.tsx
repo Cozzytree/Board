@@ -237,7 +237,7 @@ class SelectionTool implements ToolInterface {
     return false;
   }
 
-  pointermove({ p }: ToolEventData): void {
+  pointermove({ p }: ToolEventData, cb: (e: EventData) => void): void {
     this.hoveredShape = null;
 
     if (this.subMode === "grab" && this.isGrabbing) {
@@ -272,6 +272,8 @@ class SelectionTool implements ToolInterface {
         this.draw(this.draggedShape, ...(shapes || []));
       }
 
+      this._board.fire("mousemove", { e: { target: [this.draggedShape], x: p.x, y: p.y } });
+      this._board.fire("shape:move", { e: { target: [this.draggedShape], x: p.x, y: p.y } });
       return;
     }
 
@@ -293,6 +295,8 @@ class SelectionTool implements ToolInterface {
         this.draw(this.resizableShape.s, ...(shapes || []));
       }
 
+      this._board.fire("mousemove", { e: { target: [this.resizableShape.s], x: p.x, y: p.y } });
+      this._board.fire("shape:resize", { e: { target: [this.resizableShape.s], x: p.x, y: p.y } });
       return;
     }
 
