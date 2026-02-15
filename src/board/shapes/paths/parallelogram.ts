@@ -1,4 +1,5 @@
-import { Path, Pointer } from "@/board/index";
+import Path from "./path";
+import Pointer from "../../utils/point";
 import type { ShapeProps } from "@/board/types";
 
 class Parallelogram extends Path {
@@ -17,6 +18,7 @@ class Parallelogram extends Path {
          }),
          new Pointer({ x: this.flipY ? inset : 0, y: this.height }),
       ];
+      this.lastPoints = this.points.map((p) => ({ x: p.x, y: p.y }));
    }
 }
 

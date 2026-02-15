@@ -2,8 +2,8 @@ import type { Point, ShapeProps } from "@/board/types";
 import Path, { type PathProps } from "./path";
 import type Shape from "../shape";
 import type { DrawProps } from "../shape";
-import Box from "@/board/utils/box";
-import { IsIn } from "@/board/utils/utilfunc";
+import getStroke from "perfect-freehand";
+import { isDraggableWithRotation } from "@/board/utils/resize";
 
 // flipX formula
 // left + width - this.left + p.x (flipped)
@@ -19,42 +19,30 @@ class SimplePath extends Path {
       return new SimplePath({ ...props, points: this.points });
    }
 
-   scaleShape(): void {}
+   scaleShape(): void { }
 
    draw({ ctx, resize }: DrawProps): void {
       const context = ctx || this.ctx;
 
       if (this.points.length < 2) return;
 
+      const currentScale = context.getTransform().a;
+
       context.save();
 
+      // Rotation logic
+      const centerX = this.left + this.width * 0.5;
+      const centerY = this.top + this.height * 0.5;
+      context.translate(centerX, centerY);
+      context.rotate(this.rotate);
+      context.translate(-centerX, -centerY);
+
       context.translate(this.left, this.top);
-      context.beginPath();
 
-      if (resize) {
-         context.strokeStyle = "#808080";
-         context.lineWidth = 3;
-      } else {
-         context.strokeStyle = this.stroke;
-         context.lineWidth = this.strokeWidth;
-      }
-
-      let startX = this.points[0].x;
-      let startY = this.points[0].y;
-
-      if (this.flipX) {
-         startX = this.width - startX;
-      }
-
-      if (this.flipY) {
-         startY = this.height - startY;
-      }
-
-      context.moveTo(startX, startY);
-
-      for (let i = 1; i < this.points.length - 1; i++) {
-         let x = this.points[i].x;
-         let y = this.points[i].y;
+      // Transform points based on flip settings
+      const transformedPoints = this.points.map((point) => {
+         let x = point.x;
+         let y = point.y;
 
          if (this.flipX) {
             x = this.width - x;
@@ -63,38 +51,65 @@ class SimplePath extends Path {
          if (this.flipY) {
             y = this.height - y;
          }
-         context.lineTo(x, y);
+
+         return [x, y, 0.5] as [number, number, number]; // [x, y, pressure]
+      });
+
+      // Get smooth stroke outline from perfect-freehand
+      const stroke = getStroke(transformedPoints, {
+         size: (resize ? 3 : this.strokeWidth) / currentScale,
+         thinning: 0.5,
+         smoothing: 0.5,
+         streamline: 0.5,
+         easing: (t) => t,
+         start: {
+            taper: 0,
+            cap: true,
+         },
+         end: {
+            taper: 0,
+            cap: true,
+         },
+      });
+
+      // Draw the smooth stroke
+      context.beginPath();
+
+      if (stroke.length > 0) {
+         context.moveTo(stroke[0][0], stroke[0][1]);
+
+         for (let i = 1; i < stroke.length; i++) {
+            context.lineTo(stroke[i][0], stroke[i][1]);
+         }
+
+         context.closePath();
       }
 
-      // for (let i = 1; i < this.points.length - 1; i++) {
-      //    const midX = (this.points[i].x + this.points[i + 1].x) / 2;
-      //    const midY = (this.points[i].y + this.points[i + 1].y) / 2;
-      //    context.quadraticCurveTo(
-      //       this.points[i].x,
-      //       this.points[i].y,
-      //       midX,
-      //       midY,
-      //    );
-      // }
-      // Draw last segment
-      // const last = this.points[this.points.length - 1];
-      // context.lineTo(last.x, last.y);
+      // Fill the stroke path with the stroke color
+      context.fillStyle = resize ? "#808080" : this.stroke;
+      context.fill();
 
-      context.stroke();
-      context.closePath();
       context.restore();
    }
 
    IsDraggable(p: Point): boolean {
-      return IsIn({
-         inner: new Box({ x1: p.x, y1: p.y, x2: p.x + 1, y2: p.y + 1 }),
-         outer: new Box({
-            x1: this.left,
-            y1: this.top,
-            x2: this.left + this.width,
-            y2: this.top + this.height,
-         }),
-      });
+      return isDraggableWithRotation({
+         point: p,
+         left: this.left,
+         top: this.top,
+         width: this.width,
+         height: this.height,
+         rotate: this.rotate,
+      })
+      // return IsIn({
+      //    inner: new Box({ x1: p.x, y1: p.y, x2: p.x + 1, y2: p.y + 1 }),
+      //    outer: new Box({
+      //       x1: this.left,
+      //       y1: this.top,
+      //       x2: this.left + this.width,
+      //       y2: this.top + this.height,
+      //    }),
+      // });
    }
 
    dragging(current: Point, prev: Point): void {

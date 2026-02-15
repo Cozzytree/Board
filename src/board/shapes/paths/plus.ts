@@ -1,4 +1,6 @@
-import { Path, Pointer, Shape } from "@/board/index";
+import Path from "./path";
+import Shape from "../shape";
+import Pointer from "../../utils/point";
 import type { ShapeProps } from "@/board/types";
 import type { PathProps } from "./path";
 

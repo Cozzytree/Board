@@ -1,4 +1,4 @@
-import { useBoard } from "../board_provider";
+import { useBoard } from "../board-context";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import type { LucideIcon } from "lucide-react";

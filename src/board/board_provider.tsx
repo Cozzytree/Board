@@ -14,13 +14,18 @@ import {
   Spline,
   TriangleIcon,
   TypeOutlineIcon,
+  Star,
+  Hexagon,
+  ArrowRight,
+  MessageSquare,
   type LucideIcon,
+  Cloud,
 } from "lucide-react";
 import * as React from "react";
 import ShapeOptions from "./components/shapeoptions";
 import Toolbar from "./components/toolbar";
 import { Board, Shape } from "./index";
-import type { EventData, modes, submodes } from "./types";
+import type { EventData, modes, submodes, CustomShapeDef } from "./types";
 import {
   ContextMenu,
   ContextMenuContent,
@@ -28,40 +33,32 @@ import {
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
 import { Button } from "@/components/ui/button";
+import CloudShape from "./shapes/paths/cloud_shape";
+import { BoardContext } from "./board-context";
 
-type ContextProps = {
-  mode: { m: modes; sm: submodes | null };
-  setMode: (m: modes, sm: submodes | null) => void;
-  tools: {
-    mode: modes;
-    I: LucideIcon | string;
-    subMode: { sm: submodes; I: LucideIcon | string }[];
-  }[];
-  activeShape: Shape | null;
-  canvas: Board | null;
-  setActiveShape: (v: Shape | null) => void;
-
-  snap: boolean;
-  hover: boolean;
-
-  setSnap: (s: boolean) => void;
-  setHover: (h: boolean) => void;
-};
-
-const BoardContext = React.createContext<ContextProps | undefined>(undefined);
+const DEFAULT_CUSTOM_SHAPES: CustomShapeDef[] = [
+  {
+    name: "custom:cloud",
+    icon: Cloud,
+    shape: CloudShape,
+  },
+];
 
 const BoardProvider = ({
   height = window.innerHeight,
   width = window.innerWidth,
+  customShapes = DEFAULT_CUSTOM_SHAPES,
 }: {
   width?: number;
   height?: number;
+  customShapes?: CustomShapeDef[];
 }) => {
   const [offset, setOffset] = React.useState([0, 0]);
   const [zoom, setZoom] = React.useState(100);
   const [activeShape, setActiveShape] = React.useState<Shape | null>(null);
   const [isSnap, setSnap] = React.useState(false);
   const [isHover, setHover] = React.useState(false);
+  const [, setVersion] = React.useState(0);
   const [tools, setTools] = React.useState<
     {
       mode: modes;
@@ -86,6 +83,14 @@ const BoardProvider = ({
         { sm: "path:pentagon", I: PentagonIcon },
         { sm: "path:triangle", I: TriangleIcon },
         { sm: "path:plus", I: PlusIcon },
+        { sm: "path:star", I: Star },
+        { sm: "path:hexagon", I: Hexagon },
+        { sm: "path:arrow", I: ArrowRight },
+        { sm: "path:message", I: MessageSquare },
+        ...customShapes.map((s) => ({
+          sm: s.name as submodes,
+          I: s.icon,
+        })),
         {
           sm: "path:diamond",
           I: DiamondIcon,
@@ -128,7 +133,7 @@ const BoardProvider = ({
   const canvasRef = React.useRef<HTMLCanvasElement>(null);
   const borderRef = React.useRef<Board>(null);
 
-  const onMouseUp = React.useCallback((e: EventData) => {}, []);
+  const onMouseUp = React.useCallback(() => { }, []);
 
   const onModeChange = React.useCallback((m: modes, sm: submodes) => {
     setMode({ m, sm });
@@ -154,6 +159,7 @@ const BoardProvider = ({
         setOffset([v.x, v.y]);
         setZoom(v.scl * 100);
       },
+      customShapes,
     });
 
     newBoard.on("mouseup", onMouseUp);
@@ -162,20 +168,17 @@ const BoardProvider = ({
         setActiveShape(e.e.target[e.e.target.length - 1]);
       }
     });
-    newBoard.on("mousemove", function (e) {});
-
-    newBoard.on("shape:resize", function (e) {});
-
-    newBoard.on("shape:move", function (e) {});
-
-    newBoard.on("shape:created", (e) => {});
+    newBoard.on("mousemove", () => { });
+    newBoard.on("shape:resize", () => { });
+    newBoard.on("shape:move", () => { });
+    newBoard.on("shape:created", () => { });
 
     borderRef.current = newBoard;
 
     return () => {
       newBoard.clean();
     };
-  }, [width, height, isHover, isSnap, onModeChange, onMouseUp]);
+  }, [width, height, isHover, isSnap, onModeChange, onMouseUp, customShapes]);
 
   React.useEffect(() => {
     if (!borderRef.current) return;
@@ -248,6 +251,9 @@ const BoardProvider = ({
           setSnap: (s) => {
             setSnap(s);
           },
+          update: () => {
+            setVersion((v) => v + 1);
+          },
         }}>
         <div className="w-32 bg-amber-100" />
 
@@ -306,10 +312,4 @@ const BoardProvider = ({
   );
 };
 
-const useBoard = () => {
-  const ctx = React.useContext(BoardContext);
-  if (!ctx) throw new Error("board ctx must be used within boadProvider");
-  return ctx;
-};
-
-export { BoardProvider, useBoard };
+export { BoardProvider };

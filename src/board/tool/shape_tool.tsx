@@ -1,4 +1,8 @@
 import { Board, Box, Ellipse, Path, Pointer, Rect, type Shape } from "../index";
+import Star from "../shapes/paths/star";
+import Hexagon from "../shapes/paths/hexagon";
+import Arrow from "../shapes/paths/arrow";
+import MessageBubble from "../shapes/paths/message_bubble";
 import type { submodes, ToolInterface, ToolCallback, ToolEventData, EventData } from "../types";
 
 class ShapeTool implements ToolInterface {
@@ -13,7 +17,7 @@ class ShapeTool implements ToolInterface {
     this.oldShapeProps = new Box({ x1: 0, y1: 0, y2: 0, x2: 0 });
   }
 
-  cleanUp(): void {}
+  cleanUp(): void { }
 
   pointerDown({ p }: ToolEventData): void {
     this._board.discardActiveShapes();
@@ -27,6 +31,21 @@ class ShapeTool implements ToolInterface {
     }
 
     const w = 4;
+
+    if (this._board.customShapes.has(this.submode)) {
+      const ShapeConstructor = this._board.customShapes.get(this.submode);
+      if (ShapeConstructor) {
+        this.newShape = new ShapeConstructor({
+          _board: this._board,
+          ctx: this._board.ctx,
+          width: w,
+          height: w,
+          left: p.x,
+          top: p.y,
+        });
+      }
+    }
+
     switch (this.submode) {
       case "path:diamond":
         this.newShape = new Path({
@@ -119,6 +138,46 @@ class ShapeTool implements ToolInterface {
           ],
         });
         break;
+      case "path:star":
+        this.newShape = new Star({
+          _board: this._board,
+          ctx: this._board.ctx,
+          width: w,
+          height: w,
+          left: p.x,
+          top: p.y,
+        });
+        break;
+      case "path:hexagon":
+        this.newShape = new Hexagon({
+          _board: this._board,
+          ctx: this._board.ctx,
+          width: w,
+          height: w,
+          left: p.x,
+          top: p.y,
+        });
+        break;
+      case "path:arrow":
+        this.newShape = new Arrow({
+          _board: this._board,
+          ctx: this._board.ctx,
+          width: w,
+          height: w,
+          left: p.x,
+          top: p.y,
+        });
+        break;
+      case "path:message":
+        this.newShape = new MessageBubble({
+          _board: this._board,
+          ctx: this._board.ctx,
+          width: w,
+          height: w,
+          left: p.x,
+          top: p.y,
+        });
+        break;
       case "rect":
         this.newShape = new Rect({
           ctx: this._board.ctx,
@@ -151,7 +210,7 @@ class ShapeTool implements ToolInterface {
         x2: this.newShape.left + this.newShape.width,
         y2: this.newShape.top + this.newShape.height,
       });
-      this._board.fire("shape:created", { e: { target: this.newShape, x: p.x, y: p.y } });
+      this._board.fire("shape:created", { e: { target: [this.newShape], x: p.x, y: p.y } });
     }
   }
 
@@ -173,7 +232,7 @@ class ShapeTool implements ToolInterface {
       //   objects: [this.newShape.toObject()],
       // });
 
-      ec?.({ e: { target: this.newShape, x: p.x, y: p.y } });
+      ec?.({ e: { target: [this.newShape], x: p.x, y: p.y } });
       this.newShape = null;
       cb?.({ mode: "cursor", submode: "free" });
 
@@ -181,9 +240,9 @@ class ShapeTool implements ToolInterface {
     }
   }
 
-  dblClick(): void {}
+  dblClick(): void { }
 
-  onClick(): void {}
+  onClick(): void { }
 
   private draw(...shapes: Shape[]) {
     const ctx = this._board.ctx2;

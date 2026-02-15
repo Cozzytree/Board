@@ -209,6 +209,18 @@ function flipXandYByDirection(
     fixedY = old.y1;
     flipX = wasFlippedX ? current.x < fixedX : current.x > fixedX;
     flipY = wasFlippedY ? current.y > fixedY : current.y < fixedY;
+  } else if (d === "l") {
+    fixedX = old.x2;
+    flipX = wasFlippedX ? current.x < fixedX : current.x > fixedX;
+  } else if (d === "r") {
+    // fixedX is passed as old.x1 by caller
+    flipX = wasFlippedX ? current.x > fixedX : current.x < fixedX;
+  } else if (d === "t") {
+    fixedY = old.y2;
+    flipY = wasFlippedY ? current.y < fixedY : current.y > fixedY;
+  } else if (d === "b") {
+    // fixedY is passed as old.y1 by caller
+    flipY = wasFlippedY ? current.y > fixedY : current.y < fixedY;
   }
 
   return { flipX, flipY };

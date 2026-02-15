@@ -20,7 +20,7 @@ function Index() {
     return () => {
       window.removeEventListener("resize", handleWindow);
     };
-  }, []);
+  }, [handleWindow]);
 
   return (
     <div className="w-full h-full">

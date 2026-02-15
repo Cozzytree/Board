@@ -10,6 +10,14 @@ export type ConnectionPoint = {
   position: () => Point;
 };
 
+export type ShapeConstructor = new (props: any) => Shape;
+
+export type CustomShapeDef = {
+  icon: any;
+  name: string;
+  shape: ShapeConstructor;
+};
+
 export type ShapeEvent =
   | "mousedown"
   | "mouseup"
@@ -110,9 +118,14 @@ export type submodeshape =
   | "circle"
   | "path:triangle"
   | "path:pentagon"
+  | "path:star"
+  | "path:hexagon"
+  | "path:arrow"
+  | "path:message"
   | "path:plus"
   | "path:diamond"
-  | "path:trapezoid";
+  | "path:trapezoid"
+  | (string & {});
 export type submodedraw = "pencil";
 
 export type submodes = submodecursor | submodeshape | submodedraw | submodeline;

@@ -1,5 +1,7 @@
 import type { ShapeProps } from "../../types";
-import { Path, Pointer, Shape } from "@/board/index";
+import Path from "./path";
+import Shape from "../shape";
+import Pointer from "../../utils/point";
 import type { PathProps } from "./path";
 
 class Pentagon extends Path {
@@ -34,7 +36,7 @@ class Pentagon extends Path {
             y: this.height,
          }), // P4 - bottom-left (inward from P0)
       ]);
-      this.lastPoints = this.points.map((p) => p);
+      this.lastPoints = this.points.map((p) => ({ x: p.x, y: p.y }));
    }
 }
 

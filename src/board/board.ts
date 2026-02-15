@@ -6,6 +6,8 @@ import type {
   ShapeEvent,
   submodes,
   ToolInterface,
+  CustomShapeDef,
+  ShapeConstructor,
 } from "./types";
 import {
   SelectionTool,
@@ -33,6 +35,7 @@ type BoardProps = {
   onActiveShape?: (e: Shape | null) => void;
   onZoom?: (n: view_t) => void;
   onScroll?: (view: view_t) => void;
+  customShapes?: CustomShapeDef[];
 };
 
 type EventCallback = (e: EventData) => void;
@@ -89,6 +92,7 @@ class Board implements BoardInterface {
   ctx: CanvasRenderingContext2D;
   modes: { m: modes; sm: submodes | null };
   onActiveShapeCallback?: (e: Shape | null) => void;
+  customShapes: Map<string, ShapeConstructor>;
 
   constructor({
     canvas,
@@ -102,7 +106,12 @@ class Board implements BoardInterface {
     onActiveShape,
     onZoom,
     onScroll,
+    customShapes = [],
   }: BoardProps) {
+    this.customShapes = new Map();
+    customShapes.forEach((s) => {
+      this.customShapes.set(s.name, s.shape);
+    });
     this.onZoomCallback = (n) => {
       onZoom?.(n);
     };
@@ -205,6 +214,7 @@ class Board implements BoardInterface {
   discardActiveShapes() {
     // this.shapeStore.setLastInserted = null;
     this.activeShapes = null;
+    this.onActiveShapeCallback?.(null);
   }
 
   on(event: ShapeEvent, cb: (e: EventData) => void) {
@@ -216,6 +226,10 @@ class Board implements BoardInterface {
   }
 
   setActiveShape(...shapes: Shape[]) {
+    if (shapes.length == 0) {
+      this.discardActiveShapes();
+      return;
+    }
     if (shapes.length == 1) {
       this.discardActiveShapes();
       this.activeShapes = shapes[0];
@@ -254,7 +268,7 @@ class Board implements BoardInterface {
       if (this.shapeStore.removeById(s.ID())) count++;
     });
 
-    this.activeShapes = null;
+    this.discardActiveShapes();
     this.shapeStore.setLastInserted = null;
     this.render();
 
@@ -316,9 +330,11 @@ class Board implements BoardInterface {
   }
 
   private throttledPointerMove = (e: PointerEvent | MouseEvent | TouchEvent) => {
+    const prevDx = this.evt.dx;
+    const prevDy = this.evt.dy;
     const mouse = this.getTransFormedCoords(e);
-    this.evt.dx = this.evt.x - this.evt.xi;
-    this.evt.dy = this.evt.y - this.evt.yi;
+    this.evt.dx = prevDx + (this.evt.x - this.evt.xi);
+    this.evt.dy = prevDy + (this.evt.y - this.evt.yi);
 
     if (!this.pendingEventScheduled) {
       this.pendingEventScheduled = true;
@@ -326,6 +342,8 @@ class Board implements BoardInterface {
         this.currentTool.pointermove({ e, p: mouse }, (e) => {
           this.fire("mousemove", e);
         });
+        this.evt.dx = 0;
+        this.evt.dy = 0;
         this.pendingEventScheduled = false;
       });
     }

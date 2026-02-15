@@ -1,8 +1,10 @@
 import type { BoxInterface, Point, resizeDirection, ShapeEventData, ShapeProps } from "../../types";
 import type { DrawProps } from "../shape";
-import { resizeRect } from "../../utils/resize";
-import { Box, Shape } from "../../index";
-import { IsIn, flipXandYByDirection, setCoords } from "@/board/utils/utilfunc";
+import { isDraggableWithRotation, resizeRect } from "../../utils/resize";
+import Box from "@/board/utils/box";
+import Shape from "@/board/shapes/shape";
+import { setCoords, calcPointWithRotation } from "@/board/utils/utilfunc";
+import { resizeWithRotationAndFlip } from "@/board/utils/resizeWithRotation";
 
 export type PathProps = {
   points?: Point[];
@@ -50,14 +52,13 @@ class Path extends Shape {
   }
 
   IsDraggable(p: Point): boolean {
-    return IsIn({
-      inner: new Box({ x1: p.x, y1: p.y, x2: p.x + 1, y2: p.y + 1 }),
-      outer: new Box({
-        x1: this.left,
-        y1: this.top,
-        x2: this.left + this.width,
-        y2: this.top + this.height,
-      }),
+    return isDraggableWithRotation({
+      point: p,
+      left: this.left,
+      top: this.top,
+      width: this.width,
+      height: this.height,
+      rotate: this.rotate,
     });
   }
 
@@ -65,10 +66,18 @@ class Path extends Shape {
     if (this.points.length < 2) return;
     const context = ctx || this.ctx;
 
-    context.save();
-    context.translate(this.left, this.top);
-
     const currentScale = context.getTransform().a;
+
+    context.save();
+
+    // Rotation logic
+    const centerX = this.left + this.width * 0.5;
+    const centerY = this.top + this.height * 0.5;
+    context.translate(centerX, centerY);
+    context.rotate(this.rotate);
+    context.translate(-centerX, -centerY);
+
+    context.translate(this.left, this.top);
 
     if (resize) {
       context.globalAlpha = this.selectionAlpha;
@@ -130,14 +139,19 @@ class Path extends Shape {
   }
 
   IsResizable(p: Point) {
+    const { height, width, top, left, rotate } = this;
+    const halfW = this.width / 2;
+    const halfH = this.height / 2;
+    const localBox = new Box({
+      x1: -halfW,
+      x2: halfW,
+      y1: -halfH,
+      y2: halfH,
+    });
+
     const rs = resizeRect(
-      p,
-      new Box({
-        x1: this.left,
-        y1: this.top,
-        x2: this.left + this.width,
-        y2: this.top + this.height,
-      }),
+      calcPointWithRotation({ height, width, left, point: p, rotate, top }),
+      localBox,
       this.padding,
     );
     if (rs) {
@@ -148,139 +162,69 @@ class Path extends Shape {
   }
 
   Resize(current: Point, old: BoxInterface, d: resizeDirection) {
-    let newWidth = this.width;
-    let newHeight = this.height;
+    const newBounds = resizeWithRotationAndFlip({
+      current,
+      old,
+      direction: d,
+      rotate: this.rotate,
+      minWidth: 20,
+      minHeight: 20
+    });
 
-    let fixedX: number = 0;
-    let fixedY: number = 0;
+    const newWidth = newBounds.width;
+    const newHeight = this.adjustHeight(newBounds.height);
+
+    const centerX = old.x1 + (old.x2 - old.x1) / 2;
+    const centerY = old.y1 + (old.y2 - old.y1) / 2;
+    const dx = current.x - centerX;
+    const dy = current.y - centerY;
+    const cos = Math.cos(-this.rotate);
+    const sin = Math.sin(-this.rotate);
+    const localX = dx * cos - dy * sin;
+    const localY = dx * sin + dy * cos;
+
+    // Local bounds of old shape
+    const halfW = (old.x2 - old.x1) / 2;
+    const halfH = (old.y2 - old.y1) / 2;
+
+    let flipX = this.lastFlippedState.x;
+    let flipY = this.lastFlippedState.y;
 
     switch (d) {
       case "l":
-        fixedX = old.x2;
-        if (current.x < old.x2) {
-          this.left = current.x;
-          newWidth = old.x2 - current.x;
-        } else {
-          this.left = old.x2;
-          newWidth = current.x - old.x2;
-        }
+      case "bl":
+      case "tl":
+        // Moving left handle. Fixed is right edge (halfW).
+        // If localX > halfW, we flipped.
+        flipX = this.lastFlippedState.x ? localX < halfW : localX > halfW;
         break;
       case "r":
-        fixedX = old.x1;
-        if (current.x > old.x1) {
-          newWidth = current.x - old.x1;
-        } else {
-          newWidth = old.x1 - current.x;
-          this.left = current.x;
-        }
-        break;
-      case "t":
-        fixedY = old.y2;
-        if (current.y < old.y2) {
-          this.top = current.y;
-          newHeight = old.y2 - current.y;
-        } else {
-          this.top = old.y2;
-          newHeight = current.y - old.y2;
-        }
-        break;
-      case "b":
-        fixedY = old.y1;
-        if (current.y > old.y1) {
-          newHeight = current.y - old.y1;
-        } else {
-          newHeight = old.y1 - current.y;
-          this.top = current.y;
-        }
-        break;
       case "br":
-        fixedX = old.x1;
-        fixedY = old.y1;
-
-        if (current.x > old.x1) {
-          newWidth = current.x - old.x1;
-        } else {
-          newWidth = old.x1 - current.x;
-          this.left = current.x;
-        }
-
-        if (current.y > old.y1) {
-          newHeight = current.y - old.y1;
-        } else {
-          newHeight = old.y1 - current.y;
-          this.top = current.y;
-        }
-        break;
-      case "tl":
-        fixedX = old.x2;
-        fixedY = old.y2;
-        if (current.x < old.x2) {
-          this.left = current.x;
-          newWidth = old.x2 - current.x;
-        } else {
-          this.left = old.x2;
-          newWidth = current.x - old.x2;
-        }
-
-        if (current.y < old.y2) {
-          this.top = current.y;
-          newHeight = old.y2 - current.y;
-        } else {
-          this.top = old.y2;
-          newHeight = current.y - old.y2;
-        }
-        break;
-      case "bl":
-        fixedX = old.x2;
-        fixedY = old.y1;
-        if (current.x < old.x2) {
-          this.left = current.x;
-          newWidth = old.x2 - current.x;
-        } else {
-          this.left = old.x2;
-          newWidth = current.x - old.x2;
-        }
-
-        if (current.y > old.y1) {
-          newHeight = current.y - old.y1;
-        } else {
-          newHeight = old.y1 - current.y;
-          this.top = current.y;
-        }
-        break;
       case "tr":
-        fixedX = old.x1;
-        fixedY = old.y2;
-        if (current.x > old.x1) {
-          newWidth = current.x - old.x1;
-        } else {
-          newWidth = old.x1 - current.x;
-          this.left = current.x;
-        }
-
-        if (current.y < old.y2) {
-          this.top = current.y;
-          newHeight = old.y2 - current.y;
-        } else {
-          this.top = old.y2;
-          newHeight = current.y - old.y2;
-        }
+        // Moving right handle. Fixed is left edge (-halfW).
+        // If localX < -halfW, we flipped.
+        flipX = this.lastFlippedState.x ? localX > -halfW : localX < -halfW;
+        break;
     }
 
-    const flip = flipXandYByDirection(
-      current,
-      fixedX,
-      fixedY,
-      this.lastFlippedState.x,
-      this.lastFlippedState.y,
-      d,
-      old,
-    );
+    switch (d) {
+      case "t":
+      case "tr":
+      case "tl":
+        // Moving top. Fixed is bottom (halfH).
+        flipY = this.lastFlippedState.y ? localY < halfH : localY > halfH;
+        break;
+      case "b":
+      case "br":
+      case "bl":
+        // Moving bottom. Fixed is top (-halfH).
+        flipY = this.lastFlippedState.y ? localY > -halfH : localY < -halfH;
+        break;
+    }
 
-    newWidth = Math.max(newWidth, 20);
-    newHeight = this.adjustHeight(Math.max(newHeight, 20));
     const oldWidth = old.x2 - old.x1;
     const oldHeight = old.y2 - old.y1;
+
     this.points.forEach((p, i) => {
       const original = this.lastPoints[i];
       // % within the box / newVal
@@ -289,11 +233,14 @@ class Path extends Shape {
       p.x = scaledX;
       p.y = scaledY;
     });
+
     super.set({
+      left: newBounds.left,
+      top: newBounds.top,
       width: newWidth,
       height: newHeight,
-      flipX: flip.flipX,
-      flipY: flip.flipY,
+      flipX,
+      flipY,
     });
 
     return super.Resize(current, old, d);

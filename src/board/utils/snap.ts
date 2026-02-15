@@ -9,12 +9,18 @@ import type { Point } from "../types";
 export function snapShape({
   shape,
   board,
+  x,
+  y,
 }: {
-  current: Point;
+  current?: Point;
   board: Board;
   shape: Shape;
+  x: number;
+  y: number;
 }): {
   lines: Shape[];
+  x: number;
+  y: number;
 } {
   const linesV: Shape[] = [];
   const linesH: Shape[] = [];
@@ -22,6 +28,9 @@ export function snapShape({
   // Track which axes have been snapped to prevent multiple snaps
   let snappedHorizontal = false;
   let snappedVertical = false;
+
+  let newX = x;
+  let newY = y;
 
   // Store potential snap positions with their distances
   const horizontalSnaps: {
@@ -62,19 +71,38 @@ export function snapShape({
   };
 
   // shape being moved
-  const sTop = shape.top;
-  const sLeft = shape.left;
+  // Use passed x/y instead of shape properties
+  const sTop = y;
+  const sLeft = x;
   const sRight = sLeft + shape.width;
   const sBottom = sTop + shape.height;
   const sMidX = sLeft + shape.width / 2;
   const sMidY = sTop + shape.height / 2;
 
-  const SNAP_TOLERANCE = 5;
-  const DEAD_ZONE = 0.5; // Pixels of movement needed to break snap
+  const SNAP_TOLERANCE = 10;
+  // Removed DEAD_ZONE as we are now using true position tracking
+
+  // Viewport bounds for optimization
+  const viewX = -board.view.x / board.view.scl;
+  const viewY = -board.view.y / board.view.scl;
+  const viewW = board.canvas.width / board.view.scl;
+  const viewH = board.canvas.height / board.view.scl;
 
   board.shapeStore.forEach((sha) => {
+    // Skip self
     if (shape.ID() === sha.ID()) return false;
+    // Skip shapes in selection
     if (sha.connections.forEach((c) => c.s.ID() == shape.ID())) return false;
+
+    // Optimization: Skip off-screen shapes (with margin)
+    if (
+      sha.left + sha.width < viewX - 100 ||
+      sha.left > viewX + viewW + 100 ||
+      sha.top + sha.height < viewY - 100 ||
+      sha.top > viewY + viewH + 100
+    ) {
+      return false;
+    }
 
     const top = sha.top;
     const left = sha.left;
@@ -247,12 +275,8 @@ export function snapShape({
     // Sort by distance and take the closest
     horizontalSnaps.sort((a, b) => a.distance - b.distance);
     const closest = horizontalSnaps[0];
-
-    // Only snap if we're not in the dead zone (prevents stickiness)
-    if (closest.distance > DEAD_ZONE) {
-      shape.set({ top: closest.position });
-      snappedHorizontal = true;
-    }
+    newY = closest.position;
+    snappedHorizontal = true;
 
     // Show deduplicated lines for the top 3 closest snaps
     const uniqueLines = deduplicateSnapLines(horizontalSnaps.slice(0, 3), "h");
@@ -265,18 +289,15 @@ export function snapShape({
     verticalSnaps.sort((a, b) => a.distance - b.distance);
     const closest = verticalSnaps[0];
 
-    // Only snap if we're not in the dead zone (prevents stickiness)
-    if (closest.distance > DEAD_ZONE) {
-      shape.set({ left: closest.position });
-      snappedVertical = true;
-    }
+    newX = closest.position;
+    snappedVertical = true;
 
     // Show deduplicated lines for the top 3 closest snaps
     const uniqueLines = deduplicateSnapLines(verticalSnaps.slice(0, 3), "v");
     uniqueLines.forEach((snap) => newLine(snap.line.p1, snap.line.p2, "v"));
   }
 
-  return { lines: [...linesH, ...linesV] };
+  return { lines: [...linesH, ...linesV], x: newX, y: newY };
 }
 
 /**
@@ -304,4 +325,25 @@ function deduplicateSnapLines(
   });
 
   return unique;
+}
+
+/**
+ * Snap a rotation angle to the nearest increment.
+ * @param angle The current rotation angle in radians.
+ * @param snapIncrement The snap increment in radians (default: 45 degrees = PI/4).
+ * @param tolerance The tolerance in radians (default: 5 degrees). If the angle is within this tolerance of a snap point, it snaps; otherwise, it returns the original angle.
+ * @returns The snapped or original angle in radians.
+ */
+export function snapRotation(
+  angle: number,
+  snapIncrement: number = Math.PI / 4,
+  tolerance: number = (5 * Math.PI) / 180,
+): number {
+  const snapped = Math.round(angle / snapIncrement) * snapIncrement;
+  const diff = Math.abs(angle - snapped);
+
+  if (diff <= tolerance) {
+    return snapped;
+  }
+  return angle;
 }

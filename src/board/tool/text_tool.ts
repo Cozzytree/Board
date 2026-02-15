@@ -2,161 +2,141 @@ import "../assets/index.css";
 
 import type { Board } from "@/board/index";
 import { Text } from "../../board/index";
-import type { Point, ToolEventData, ToolInterface } from "../types";
+import type { ToolEventData, ToolInterface } from "../types";
 
 class TextTool implements ToolInterface {
-  private clicked: Point;
   private id = "text-create";
-  private handleKeyDown: (e: KeyboardEvent) => void;
-  private text: string;
   _board: Board;
-  active = false;
+  private currentTextarea: HTMLTextAreaElement | null = null;
+  private currentPosition: { x: number; y: number } | null = null;
 
   constructor(board: Board) {
     this._board = board;
-    this.clicked = { x: 0, y: 0 };
-
-    this.handleKeyDown = this.onkeydown.bind(this);
-    this.text = "";
-
-    document.addEventListener("keydown", this.handleKeyDown);
   }
 
-  private draw() {
-    const { ctx2: context, view, canvas2: canvas } = this._board;
+  pointerDown(): void { }
 
-    context.setTransform(1, 0, 0, 1, 0, 0);
-    context.clearRect(0, 0, canvas.width, canvas.height);
+  pointermove(): void { }
 
-    const texts = this.text?.split("\n") || this.text.split("\n");
-    const fontSize = 25;
-    const lineHeight = fontSize * 1.1; // adjust multiplier as needed
-    let y = this.clicked.y;
-
-    context.save();
-    context.translate(view.x, view.y);
-    context.scale(view.scl, view.scl);
-
-    context.fillStyle = "white";
-
-    const font = `${fontSize}px system-ui`;
-    context.font = font;
-
-    texts.forEach((t) => {
-      context.fillText(t, this.clicked.x, y);
-      y += lineHeight;
-    });
-    context.fill();
-
-    context.restore();
-  }
-
-  onkeydown(e: KeyboardEvent) {
-    if (this.active) {
-      if (
-        e.key != "Escape" &&
-        e.key !== "Shift" &&
-        !e.ctrlKey &&
-        !e.altKey &&
-        !e.metaKey &&
-        e.key !== "CapsLock"
-      ) {
-        if (e.key == "Enter") {
-          this.text += "\n";
-        } else if (e.key == "Backspace") {
-          this.text = this.text.slice(0, this.text.length - 1);
-        } else {
-          this.text += e.key;
-        }
-
-        this.draw();
-      } else if (e.key === "Escape") {
-        const t = new Text({
-          left: this.clicked.x,
-          top: this.clicked.y,
-          ctx: this._board.ctx,
-          _board: this._board,
-          text: this.text,
-        });
-        this._board.add(t);
-
-        this._board.fire("shape:created", {
-          e: { target: t, x: this.clicked.x, y: this.clicked.y },
-        });
-
-        this._board.ctx2.clearRect(0, 0, this._board.canvas2.width, this._board.canvas2.height);
-        this._board.render();
-        this._board.setMode = { m: "cursor", sm: "free" };
-      }
-    }
-  }
-
-  pointerDown(): void {}
-
-  pointermove(): void {}
-
-  pointerup(): void {}
+  pointerup(): void { }
 
   onClick({ p }: ToolEventData): void {
-    this.clicked = p;
-    this.active = !this.active;
+    // If there's already an active textarea, finalize it first
+    if (this.currentTextarea && this.currentPosition) {
+      this.finalizeText(this.currentTextarea, this.currentPosition);
+    }
 
-    // const rect = this._board.canvas.getBoundingClientRect();
+    // Store current position
+    this.currentPosition = { x: p.x, y: p.y };
 
-    // document.getElementById(this.id)?.remove();
+    const rect = this._board.canvas.getBoundingClientRect();
 
-    // const div = document.createElement("div");
-    // div.setAttribute("id", this.id);
-    // div.classList.add("input-container");
-    // div.style.position = "absolute";
-    // div.style.left = rect.left + p.x + this._board.view.x + "px";
-    // div.style.top = rect.top + p.y + this._board.view.y + "px";
+    // Create container div
+    const div = document.createElement("div");
+    div.setAttribute("id", this.id);
+    div.classList.add("input-container");
+    div.style.position = "absolute";
+    div.style.left = rect.left + p.x * this._board.view.scl + this._board.view.x + "px";
+    div.style.top = rect.top + p.y * this._board.view.scl + this._board.view.y + "px";
+    div.style.zIndex = "1000";
 
-    // const text = document.createElement("textarea");
-    // text.placeholder = "new text";
+    // Create textarea
+    const textarea = document.createElement("textarea");
+    textarea.placeholder = "Enter text...";
+    textarea.style.minWidth = "200px";
+    textarea.style.minHeight = "50px";
+    textarea.style.fontSize = "16px"; // Prevents zoom on iOS
+    textarea.style.padding = "8px";
+    textarea.style.outline = "none";
+    textarea.style.resize = "both";
+    textarea.style.fontFamily = "system-ui";
+    textarea.style.color = "white";
 
-    // div.append(text);
-    // document.body.append(div);
+    div.append(textarea);
+    document.body.append(div);
 
-    // text.focus();
+    // Store reference to current textarea
+    this.currentTextarea = textarea;
 
-    // text.addEventListener("input", () => {
-    //   this.text = text.value;
-    // });
+    // Focus the textarea (this will trigger mobile keyboard)
+    setTimeout(() => textarea.focus(), 0);
 
-    // text.addEventListener("blur", () => {
-    //   const value = text.value;
-    //   const maxStr = value
-    //     .split("\n")
-    //     .map((a) => a)
-    //     .reduce((as, bs) => (as.length > bs.length ? as : bs));
+    // Flag to prevent blur after Escape
+    let escapedPressed = false;
 
-    //   const newText = new Text({
-    //     _board: this._board,
-    //     ctx: this._board.ctx,
-    //     left: p.x,
-    //     top: p.y,
-    //     text: text.value || "",
-    //     fontSize: 15,
-    //     verticalAlign: "top",
-    //     textAlign: "left",
-    //     width: maxStr.length * (15 * 0.5),
-    //     height: value.split("\n").length * (15 * 1.5),
-    //   });
-    //   if (newText.text.length > 0) {
-    //     this._board.add(newText);
-    //     this._board.setMode = { m: "cursor", sm: "free" };
-    //     this._board.render();
-    //   }
-    //   div.remove();
-    // });
+    // Handle Escape key to cancel
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        escapedPressed = true;
+        div.remove();
+        this._board.setMode = { m: "cursor", sm: "free" };
+      }
+    };
+    textarea.addEventListener("keydown", handleKeyDown);
+
+    // Handle blur (when user clicks outside or finishes)
+    const handleBlur = () => {
+      // Don't process blur if Escape was pressed
+      if (escapedPressed) {
+        return;
+      }
+
+      if (this.currentPosition) {
+        this.finalizeText(textarea, this.currentPosition);
+      }
+    };
+    textarea.addEventListener("blur", handleBlur);
   }
 
-  dblClick(): void {}
+  private finalizeText(textarea: HTMLTextAreaElement, position: { x: number; y: number }): void {
+    const value = textarea.value.trim();
+
+    if (value.length > 0) {
+      const lines = value.split("\n");
+      const maxStr = lines.reduce((as, bs) => (as.length > bs.length ? as : bs), "");
+      const fontSize = 25;
+
+      const newText = new Text({
+        _board: this._board,
+        ctx: this._board.ctx,
+        left: position.x,
+        top: position.y,
+        text: value,
+        fontSize: fontSize,
+        verticalAlign: "top",
+        textAlign: "left",
+        width: Math.max(maxStr.length * (fontSize * 0.6), 100),
+        height: lines.length * (fontSize * 1.2),
+      });
+
+      this._board.add(newText);
+      this._board.fire("shape:created", { e: { target: [newText], x: position.x, y: position.y } });
+      this._board.render();
+    }
+
+    // Clean up
+    const div = document.getElementById(this.id);
+    if (div) {
+      div.remove();
+    }
+    this.currentTextarea = null;
+    this.currentPosition = null;
+    this._board.setMode = { m: "cursor", sm: "free" };
+  }
+
+  dblClick(): void { }
 
   cleanUp(): void {
-    document.removeEventListener("keydown", this.handleKeyDown);
-    this.text = "";
+    // Finalize any active text input before cleanup
+    if (this.currentTextarea && this.currentPosition) {
+      this.finalizeText(this.currentTextarea, this.currentPosition);
+    }
+
+    // Clean up any existing text input
+    document.getElementById(this.id)?.remove();
+    this.currentTextarea = null;
+    this.currentPosition = null;
   }
 }
 

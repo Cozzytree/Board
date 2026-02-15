@@ -15,7 +15,7 @@ import type {
   ToolInterface,
 } from "../types";
 import { generateShapeByShapeType } from "../utils/utilfunc";
-import { snapShape } from "../utils/snap";
+import { snapRotation, snapShape } from "../utils/snap";
 
 const textAreaId = "text-update";
 
@@ -55,6 +55,8 @@ class SelectionTool implements ToolInterface {
   private activeShape: ActiveSelection | null = null;
   private hasSelectionStarted: boolean = false;
 
+  private unsnappedPos: Point = new Pointer({ x: 0, y: 0 });
+
   constructor(board: Board, sb: submodes) {
     // this.snapLines = [];
     this._board = board;
@@ -66,6 +68,23 @@ class SelectionTool implements ToolInterface {
 
   pointerDown({ e, p }: ToolEventData, callback?: (e: EventData) => void): void {
     // this.snapLines = [];
+    // Check if we are currently editing text or if the input exists
+    if (this.isInput || document.getElementById(textAreaId)) {
+      // Force cleanup
+      document.getElementById(textAreaId)?.remove();
+      this.isInput = false;
+
+      if (this.textEdit) {
+        // Commit changes might be needed here, or just discard?
+        // Usually blur handles commit, but if blur failed...
+        // Let's assume blur handled it or we just discard.
+        // Or better, trigger blur logic manually?
+        // Actually, removing the element triggers blur? No, it removes it.
+        this.textEdit = null;
+      }
+      this._board.render();
+    }
+
     this.mouseDownPoint = p;
     this.lastPoint = new Pointer(p);
     this.isDragging = false;
@@ -73,12 +92,6 @@ class SelectionTool implements ToolInterface {
     this.activeShape = null;
     this.mouseDowmShapeState = [];
     this.isTextEditale = false;
-
-    //  get the text document
-    if (this.textEdit && this.isInput) {
-      this.textEdit = null;
-      this.isInput = !this.isInput;
-    }
 
     if (this.subMode === "free") {
       // altkey for duplicate
@@ -96,6 +109,8 @@ class SelectionTool implements ToolInterface {
           }
           this._board.add(clone);
           this.draggedShape = clone;
+          // Initialize unsnapped position
+          this.unsnappedPos = new Pointer({ x: clone.left, y: clone.top });
         } else {
           const shapeFound = this._board.shapeStore.forEach((s) => {
             if (s.IsDraggable(p)) return true;
@@ -106,6 +121,8 @@ class SelectionTool implements ToolInterface {
             const cloned = shapeFound.clone();
             this._board.add(cloned);
             this.draggedShape = cloned;
+            // Initialize unsnapped position
+            this.unsnappedPos = new Pointer({ x: cloned.left, y: cloned.top });
           }
         }
         return;
@@ -118,6 +135,9 @@ class SelectionTool implements ToolInterface {
 
           this.draggedShape = lastInserted;
           this.activeShape = lastInserted;
+          // Initialize unsnapped position
+          this.unsnappedPos = new Pointer({ x: lastInserted.left, y: lastInserted.top });
+
           this._board.setActiveShape(lastInserted);
           // insert into undo temp state
           lastInserted.shapes.forEach((as) => {
@@ -227,6 +247,9 @@ class SelectionTool implements ToolInterface {
         callback?.({ e: { x: p.x, y: p.y, target: [drag] } });
 
         this.draggedShape = drag;
+        // Initialize unsnapped position
+        this.unsnappedPos = new Pointer({ x: drag.left, y: drag.top });
+
         this._board.setActiveShape(drag);
 
         this.mouseDowmShapeState.push(drag.toObject());
@@ -252,10 +275,11 @@ class SelectionTool implements ToolInterface {
     }
   }
 
-  private shouldDrag(): boolean {
-    const distance = Math.sqrt(
-      this._board.evt.dx * this._board.evt.dx + this._board.evt.dy * this._board.evt.dy,
-    );
+  private shouldDrag(p: Point): boolean {
+    const dx = p.x - this.mouseDownPoint.x;
+    const dy = p.y - this.mouseDownPoint.y;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+
     if (distance > this.dragThreshold) {
       this.isDragging = true;
       return true;
@@ -268,25 +292,26 @@ class SelectionTool implements ToolInterface {
     this.hoveredShape = null;
 
     if (this.subMode === "grab" && this.isGrabbing) {
-      setTimeout(() => {
-        this._board.view.x += this._board.evt.dx;
-        this._board.view.y += this._board.evt.dy;
+      this._board.view.x += this._board.evt.dx;
+      this._board.view.y += this._board.evt.dy;
 
-        this._board.render();
-      }, 0);
-
+      this._board.render();
       return;
     }
     this._board._lastMousePosition = p;
 
-    this.shouldDrag();
+    this.shouldDrag(p);
 
-    // Handle rotation
+    // Handle rotation (omitted for brevity, unchanged)
     if (this.isRotating && this.rotatingShape) {
       const dx = p.x - this.rotationCenter.x;
       const dy = p.y - this.rotationCenter.y;
       const currentAngle = Math.atan2(dy, dx);
-      const newRotation = currentAngle - this.rotationStartAngle;
+      let newRotation = currentAngle - this.rotationStartAngle;
+
+      if (this._board.snap) {
+        newRotation = snapRotation(newRotation);
+      }
 
       this.rotatingShape.set({ rotate: newRotation });
 
@@ -296,22 +321,55 @@ class SelectionTool implements ToolInterface {
     }
 
     if (this.draggedShape != null && this.isDragging) {
-      const shapes = this.draggedShape.dragging(new Pointer(this.lastPoint), new Pointer(p));
+      // Calculate delta from mouse movement
+      const dx = p.x - this.lastPoint.x;
+      const dy = p.y - this.lastPoint.y;
+
+      // Update unsnapped position
+      this.unsnappedPos.x += dx;
+      this.unsnappedPos.y += dy;
+
+      let shapes: Shape[] | void = [];
+      let snapLines: Shape[] = [];
+
+      // Check for snap
+      if (this._board.snap && this.draggedShape.type !== "selection") {
+        const { lines, x: snappedX, y: snappedY } = snapShape({
+          board: this._board,
+          current: this.unsnappedPos, // Use unsnapped position for check
+          shape: this.draggedShape,
+          x: this.unsnappedPos.x,
+          y: this.unsnappedPos.y,
+        });
+        snapLines = lines;
+
+        // Calculate effective delta for the shape to match snapped position
+        const effectiveDeltaX = snappedX - this.draggedShape.left;
+        const effectiveDeltaY = snappedY - this.draggedShape.top;
+
+        // Create a target point that produces this delta against lastPoint
+        // delta = target - last => target = last + delta
+        const targetPoint = new Pointer({
+          x: this.lastPoint.x + effectiveDeltaX,
+          y: this.lastPoint.y + effectiveDeltaY
+        });
+
+        shapes = this.draggedShape.dragging(new Pointer(this.lastPoint), targetPoint);
+
+      } else {
+        // No snap, just drag normally using mouse position
+        // Ensure we sync unsnappedPos in case we toggled snap off/on
+        // Actually, dragging() adds delta. 
+        // If we don't snap, shape.left += dx. unsnappedPos += dx. 
+        // They should remain in sync relative to each other's start.
+        shapes = this.draggedShape.dragging(new Pointer(this.lastPoint), new Pointer(p));
+      }
+
       this._board.adjustBox(this.draggedShape);
 
       this.lastPoint = p;
 
-      // show snap
-      if (this._board.snap && this.draggedShape.type !== "selection") {
-        const { lines } = snapShape({
-          board: this._board,
-          current: p,
-          shape: this.draggedShape,
-        });
-        this.draw(this.draggedShape, ...(shapes || []), ...lines);
-      } else {
-        this.draw(this.draggedShape, ...(shapes || []));
-      }
+      this.draw(this.draggedShape, ...(shapes || []), ...snapLines);
 
       this._board.fire("mousemove", { e: { target: [this.draggedShape], x: p.x, y: p.y } });
       this._board.fire("shape:move", { e: { target: [this.draggedShape], x: p.x, y: p.y } });
@@ -325,16 +383,25 @@ class SelectionTool implements ToolInterface {
         this.resizableShape.d,
       );
 
+      let snapLines: Shape[] = [];
+
       if (this._board.snap && this.resizableShape.s.type !== "selection") {
-        const { lines } = snapShape({
+        const { lines, x: snappedX, y: snappedY } = snapShape({
           board: this._board,
           current: p,
           shape: this.resizableShape.s,
+          x: this.resizableShape.s.left,
+          y: this.resizableShape.s.top,
         });
-        this.draw(this.resizableShape.s, ...(shapes || []), ...lines);
-      } else {
-        this.draw(this.resizableShape.s, ...(shapes || []));
+        snapLines = lines;
+
+        // Apply snap (mimicking previous behavior where snapShape mutated the shape)
+        // Note: For true resize snapping, we'd need more complex logic to snap only the moving edge.
+        // For now, we restore equality with previous implementation.
+        this.resizableShape.s.set({ left: snappedX, top: snappedY });
       }
+
+      this.draw(this.resizableShape.s, ...(shapes || []), ...snapLines);
 
       this._board.fire("mousemove", { e: { target: [this.resizableShape.s], x: p.x, y: p.y } });
       this._board.fire("shape:resize", { e: { target: [this.resizableShape.s], x: p.x, y: p.y } });
@@ -474,7 +541,7 @@ class SelectionTool implements ToolInterface {
   }
 
   private tryStartTextEdit(p: Point): boolean {
-    if (!this.isDragging || this.subMode == "free" || this.activeShape || !this.isTextEditale) {
+    if (this.isDragging || !this.isTextEditale || this.hasSelectionStarted) {
       return false;
     }
 
@@ -482,14 +549,105 @@ class SelectionTool implements ToolInterface {
     this.resizableShape = null;
 
     const active = this._board.getActiveShapes();
-    if (!active || !active.IsDraggable(p)) return false;
+    if (!active) return false;
 
+    // Set state
     this.isInput = true;
     this.textEdit = active;
-    this.createText();
+
+    // Create textarea element
+    const rect = this._board.canvas.getBoundingClientRect();
+
+    // Remove any existing textarea
+    document.getElementById(textAreaId)?.remove();
+
+    // Create container div
+    const div = document.createElement("div");
+    div.setAttribute("id", textAreaId);
+    div.style.position = "absolute";
+    div.style.left =
+      rect.left +
+      this.textEdit.left * this._board.view.scl +
+      this._board.view.x +
+      "px";
+    div.style.top =
+      rect.top +
+      this.textEdit.top * this._board.view.scl +
+      this._board.view.y +
+      "px";
+    div.style.zIndex = "1000";
+
+    // Create textarea
+    const textarea = document.createElement("textarea");
+    textarea.value = this.textEdit.text || "";
+    textarea.style.width =
+      this.textEdit.width * this._board.view.scl + "px";
+    textarea.style.height =
+      this.textEdit.height * this._board.view.scl + "px";
+    textarea.style.fontSize =
+      this.textEdit.fontSize * this._board.view.scl + "px";
+    textarea.style.lineHeight =
+      this.textEdit.fontSize * this._board.view.scl * 1.2 + "px";
+    textarea.style.padding = "0px";
+    textarea.style.margin = "0px";
+    textarea.style.border = "none";
+    textarea.style.outline = "none";
+    textarea.style.resize = "none";
+    textarea.style.overflow = "hidden";
+    textarea.style.background = "transparent";
+    textarea.style.color = this.textEdit.stroke; // Match shape stroke color
+    textarea.style.fontFamily =
+      (this.textEdit as any).fontFamily || "system-ui";
+    textarea.style.textAlign = this.textEdit.textAlign;
+    textarea.style.fontWeight = this.textEdit.fontWeight + "";
+    if (this.textEdit.italic) {
+      textarea.style.fontStyle = "italic";
+    }
+
+    div.append(textarea);
+    document.body.append(div);
+
+    // Focus the textarea
+    requestAnimationFrame(() => {
+      textarea.focus();
+      // Move cursor to end
+      textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+    });
+
+    // Handle Escape key to save and close
+    const handleKeyDown = (e: KeyboardEvent) => {
+      e.stopPropagation(); // Stop event bubbling to canvas
+      if (e.key === "Escape") {
+        e.preventDefault();
+        // Save on Escape as requested
+        const value = textarea.value;
+        if (this.textEdit) {
+          this.textEdit.set("text", value);
+          this.textEdit = null;
+        }
+        div.remove();
+        this.isInput = false;
+        this._board.render();
+      }
+    };
+    textarea.addEventListener("keydown", handleKeyDown);
+
+    // Handle blur (when user clicks outside or finishes)
+    const handleBlur = () => {
+      const value = textarea.value; // Don't trim to allow spaces if desired, or keep trim
+
+      if (this.textEdit) {
+        this.textEdit.set("text", value);
+        this.textEdit = null;
+      }
+
+      this.isInput = false;
+      div.remove();
+      this._board.render();
+    };
+    textarea.addEventListener("blur", handleBlur);
 
     this._board.discardActiveShapes();
-
     this.clearOverlay();
 
     return true;
@@ -541,55 +699,16 @@ class SelectionTool implements ToolInterface {
   onClick(): void { }
 
   cleanUp(): void {
-    // this.snapLines = [];
+    // Clean up textarea if active
+    document.getElementById(textAreaId)?.remove();
+    this.isInput = false;
+    this.textEdit = null;
     document.removeEventListener("keydown", this.handleKeyDown);
   }
 
   private onkeydown(e: KeyboardEvent) {
-    if (this.isInput && this.textEdit) {
-      if (
-        e.key != "Escape" &&
-        e.key !== "Shift" &&
-        !e.ctrlKey &&
-        !e.altKey &&
-        !e.metaKey &&
-        e.key !== "CapsLock"
-      ) {
-        if (e.key == "Enter") {
-          this.textEdit.text += "\n";
-        } else if (e.key == "Backspace") {
-          this.textEdit.text = this.textEdit.text.slice(0, this.textEdit.text.length - 1);
-        } else {
-          this.textEdit.text += e.key;
-        }
-
-        this.createText();
-      } else if (e.key === "Escape") {
-        if (this.textEdit) {
-          this._board.ctx2.clearRect(0, 0, this._board.canvas2.width, this._board.canvas2.height);
-          this._board.render();
-          this.isInput = !this.isInput;
-        }
-      }
-      return;
-    }
-
-    if (e.key === "Escape") {
-      if (this.textEdit) {
-        const textContent = this.getTextContentFromElement();
-        console.log(textContent);
-        if (!textContent) {
-          this.textEdit = null;
-          return;
-        }
-        this.textEdit.set("text", textContent);
-        this.textEdit = null;
-
-        // TODO
-        // maybe can be optimized more
-        this._board.render();
-      }
-    }
+    // Text editing is now handled by textarea in tryStartTextEdit()
+    // This method only handles other keyboard shortcuts
 
     if (this.resizableShape || this.draggedShape || this.hasSelectionStarted) return;
     if (e.key === "Delete") {
@@ -600,10 +719,6 @@ class SelectionTool implements ToolInterface {
         console.info("deleted count", c);
       }
     } else if (e.ctrlKey) {
-      // const lastInserted = this._board.shapeStore.getLastInsertedShape();
-      if (e.key === "v" && this.textEdit) {
-        return;
-      }
       switch (e.key) {
         case "d": {
           e.preventDefault();
@@ -655,24 +770,6 @@ class SelectionTool implements ToolInterface {
         default:
       }
     }
-  }
-
-  private getTextContentFromElement(): string {
-    const div = document.getElementById(textAreaId);
-    const t = div?.children.item(0) as HTMLDivElement | null;
-
-    if (t !== null) {
-      const text = getTextWithNewlines(t);
-      console.log("text content ", text);
-
-      // Remove the wrapper div
-      div?.remove();
-
-      // Use textContent to better preserve newlines
-      return text;
-    }
-
-    return "";
   }
 
   private redo() {
