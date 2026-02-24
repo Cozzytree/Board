@@ -736,8 +736,9 @@ class SelectionTool implements ToolInterface {
               s.s.set({ left: s.s.left + 10, top: s.s.top + 10 });
               newShapes.push(s.s);
             });
+          } else {
+            newShapes.push(clone);
           }
-          newShapes.push(clone);
           this._board.add(...newShapes);
           this._board.setActiveShape(clone);
           this._board.render();
@@ -910,13 +911,18 @@ class SelectionTool implements ToolInterface {
           sa.s.top = this._board._lastMousePosition.y + (sa?.offset?.y || 0) - cloned.height * 0.5;
           s.push(sa.s);
         });
+
+        cloned.left = this._board._lastMousePosition.x - cloned.width * 0.5;
+        cloned.top = this._board._lastMousePosition.y - cloned.height * 0.5;
+
         this._board.add(...s);
+        this._board.setActiveShape(cloned);
+      } else {
+        cloned.left = this._board._lastMousePosition.x - cloned.width * 0.5;
+        cloned.top = this._board._lastMousePosition.y - cloned.height * 0.5;
+
+        this._board.add(cloned);
       }
-
-      cloned.left = this._board._lastMousePosition.x - cloned.width * 0.5;
-      cloned.top = this._board._lastMousePosition.y - cloned.height * 0.5;
-
-      this._board.add(cloned);
     }
 
     this._board.render();

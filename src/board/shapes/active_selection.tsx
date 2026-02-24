@@ -1,7 +1,9 @@
 import type { ActiveSelectionShape } from "./shape_types";
 import { Box, Ellipse, Line, Path, Shape } from "../index";
 import type { BoxInterface, Point, resizeDirection, ShapeEventData, ShapeProps } from "../types";
-import { resizeRect } from "../utils/resize";
+import { resizeRect, isDraggableWithRotation } from "../utils/resize";
+import { resizeWithRotation } from "../utils/resizeWithRotation";
+import { calcPointWithRotation } from "../utils/utilfunc";
 import Group from "./group";
 
 export type ActiveSeletionProps = {
@@ -62,7 +64,7 @@ class ActiveSelection extends Shape {
     if (!this.shapes.length) return;
 
     const newGroup = new Group({
-      shapes: this.shapes.map((s) => s.s),
+      shapes: this.shapes.map((s) => ({ s: s.s, oldProps: s.oldProps })),
       ctx: this._board.ctx,
       _board: this._board,
     });
@@ -86,26 +88,29 @@ class ActiveSelection extends Shape {
   }
 
   IsDraggable(p: Point): boolean {
-    const condition =
-      p.x > this.left &&
-      p.x < this.left + this.width &&
-      p.y > this.top &&
-      p.y < this.top + this.height;
-    if (condition) {
-      return true;
-    }
-    return false;
+    return isDraggableWithRotation({
+      point: p,
+      left: this.left,
+      top: this.top,
+      width: this.width,
+      height: this.height,
+      rotate: this.rotate,
+    });
   }
 
   IsResizable(p: Point): resizeDirection | null {
+    const { height, width, top, left, rotate } = this;
+    const halfW = this.width / 2;
+    const halfH = this.height / 2;
+    const localBox = new Box({
+      x1: -halfW,
+      x2: halfW,
+      y1: -halfH,
+      y2: halfH,
+    });
     const d = resizeRect(
-      p,
-      new Box({
-        x1: this.left,
-        x2: this.left + this.width,
-        y1: this.top,
-        y2: this.top + this.height,
-      }),
+      calcPointWithRotation({ height, width, left, point: p, rotate, top }),
+      localBox,
       this.padding,
     );
     if (d) {
@@ -138,78 +143,32 @@ class ActiveSelection extends Shape {
 
   draw(options: { active: boolean; ctx?: CanvasRenderingContext2D; addStyles?: boolean }): void {
     const context = options.ctx || this.ctx;
+    context.save();
+
+    const centerX = this.left + this.width * 0.5;
+    const centerY = this.top + this.height * 0.5;
+    context.translate(centerX, centerY);
+    context.rotate(this.rotate);
+    context.translate(-centerX, -centerY);
+
     this.activeRect(context);
+    context.restore();
   }
 
   Resize(current: Point, old: BoxInterface, d: resizeDirection): Shape[] | void {
-    switch (d) {
-      case "tl":
-        if (current.x > old.x2) {
-          this.left = old.x2;
-          this.width = current.x - old.x2;
-        } else {
-          this.left = current.x;
-          this.width = old.x2 - current.x;
-        }
+    const newBounds = resizeWithRotation({
+      current,
+      old,
+      direction: d,
+      rotate: this.rotate,
+      minWidth: 20,
+      minHeight: 20,
+    });
 
-        if (current.y > old.y2) {
-          this.top = old.y2;
-          this.height = current.y - old.y2;
-        } else {
-          this.top = current.y;
-          this.height = old.y2 - current.y;
-        }
-        break;
-      case "tr":
-        if (current.x < old.x1) {
-          this.left = current.x;
-          this.width = old.x1 - current.x;
-        } else {
-          this.left = old.x1;
-          this.width = current.x - old.x1;
-        }
-
-        if (current.y > old.y2) {
-          this.top = old.y2;
-          this.height = current.y - old.y2;
-        } else {
-          this.top = current.y;
-          this.height = old.y2 - current.y;
-        }
-        break;
-      case "br":
-        if (current.x < old.x1) {
-          this.left = current.x;
-          this.width = old.x1 - current.x;
-        } else {
-          this.left = old.x1;
-          this.width = current.x - old.x1;
-        }
-
-        if (current.y > old.y1) {
-          this.top = old.y1;
-          this.height = current.y - old.y1;
-        } else {
-          this.top = current.y;
-          this.height = old.y1 - current.y;
-        }
-        break;
-      case "bl":
-        if (current.x > old.x2) {
-          this.left = old.x2;
-          this.width = current.x - old.x2;
-        } else {
-          this.left = current.x;
-          this.width = old.x2 - current.x;
-        }
-        if (current.y > old.y1) {
-          this.top = old.y1;
-          this.height = current.y - old.y1;
-        } else {
-          this.top = current.y;
-          this.height = old.y1 - current.y;
-        }
-    }
+    this.left = newBounds.left;
+    this.top = newBounds.top;
+    this.width = newBounds.width;
+    this.height = newBounds.height;
 
     const oldWidth = old.x2 - old.x1;
     const oldHeight = old.y2 - old.y1;

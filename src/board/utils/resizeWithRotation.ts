@@ -62,33 +62,75 @@ export function resizeWithRotation({
   // Update bounds based on resize direction
   switch (direction) {
     case "tl":
-      localLeft = Math.min(localX, localRight - minWidth);
-      localTop = Math.min(localY, localBottom - minHeight);
+      localLeft = localX;
+      localTop = localY;
       break;
     case "tr":
-      localRight = Math.max(localX, localLeft + minWidth);
-      localTop = Math.min(localY, localBottom - minHeight);
+      localRight = localX;
+      localTop = localY;
       break;
     case "bl":
-      localLeft = Math.min(localX, localRight - minWidth);
-      localBottom = Math.max(localY, localTop + minHeight);
+      localLeft = localX;
+      localBottom = localY;
       break;
     case "br":
-      localRight = Math.max(localX, localLeft + minWidth);
-      localBottom = Math.max(localY, localTop + minHeight);
+      localRight = localX;
+      localBottom = localY;
       break;
     case "l":
-      localLeft = Math.min(localX, localRight - minWidth);
+      localLeft = localX;
       break;
     case "r":
-      localRight = Math.max(localX, localLeft + minWidth);
+      localRight = localX;
       break;
     case "t":
-      localTop = Math.min(localY, localBottom - minHeight);
+      localTop = localY;
       break;
     case "b":
-      localBottom = Math.max(localY, localTop + minHeight);
+      localBottom = localY;
       break;
+  }
+
+  let isFlippedX = false;
+  let isFlippedY = false;
+
+  if (localLeft > localRight) {
+    [localLeft, localRight] = [localRight, localLeft];
+    isFlippedX = true;
+  }
+  if (localTop > localBottom) {
+    [localTop, localBottom] = [localBottom, localTop];
+    isFlippedY = true;
+  }
+
+  if (localRight - localLeft < minWidth) {
+    const movingLeft = direction.includes("l") ? !isFlippedX : isFlippedX;
+    const movingRight = direction.includes("r") ? !isFlippedX : isFlippedX;
+
+    if (movingLeft && !movingRight) {
+      localLeft = localRight - minWidth;
+    } else if (movingRight && !movingLeft) {
+      localRight = localLeft + minWidth;
+    } else {
+      const center = (localLeft + localRight) / 2;
+      localLeft = center - minWidth / 2;
+      localRight = center + minWidth / 2;
+    }
+  }
+
+  if (localBottom - localTop < minHeight) {
+    const movingTop = direction.includes("t") ? !isFlippedY : isFlippedY;
+    const movingBottom = direction.includes("b") ? !isFlippedY : isFlippedY;
+
+    if (movingTop && !movingBottom) {
+      localTop = localBottom - minHeight;
+    } else if (movingBottom && !movingTop) {
+      localBottom = localTop + minHeight;
+    } else {
+      const center = (localTop + localBottom) / 2;
+      localTop = center - minHeight / 2;
+      localBottom = center + minHeight / 2;
+    }
   }
 
   // Calculate new dimensions
