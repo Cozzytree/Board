@@ -450,8 +450,8 @@ class SelectionTool implements ToolInterface {
     // If not hovering over active shape, check other shapes
     if (!foundHoveredShape) {
       this._board.shapeStore.forEach((s) => {
-        if (s.isWithin(p) && !this.isGrabbing) {
-          if (this._board.hoverEffect && this.draggedShape == null && this.resizableShape == null) {
+        if (s.IsDraggable(p) && !this.isGrabbing) {
+          if (this._board.hoverEffect && this.draggedShape === null && this.resizableShape === null) {
             if (
               this._board.activeShapes?.ID() !== s.ID() &&
               this._board.shapeStore.getLastInsertedShape()?.type !== "selection"

@@ -117,7 +117,7 @@ abstract class Shape implements ShapeProps {
     this.fontWeight = 500;
     this.textAlign = textAlign || "left";
     this.connections = connections instanceof Connections ? connections : new Connections();
-    this.id = uuidv4();
+    this.id = (arguments[0] as any)?.id || uuidv4();
     this.selectionColor = selectionColor || HoveredColor;
     this.selectionStrokeWidth = selectionStrokeWidth || 2;
     this.selectionAlpha = selectionAlpha || 0.4;
@@ -412,10 +412,37 @@ abstract class Shape implements ShapeProps {
     };
   }
 
+  private static readonly _transientKeys = new Set([
+    "lastPoints", "indicator", "lastFlippedState",
+  ]);
+
   toObject(): Identity<Shape> {
     const obj = {} as { [K in keyof this]: this[K] };
     for (const key of Object.keys(this) as Array<keyof this>) {
-      if (!String(key).startsWith("_") && !keysNotNeeded.includes(String(key))) {
+      const keyStr = String(key);
+      if (keyStr.startsWith("_") || keysNotNeeded.includes(keyStr) || Shape._transientKeys.has(keyStr)) {
+        continue;
+      }
+      if (keyStr === "connections") {
+        // Serialize connections with shape IDs instead of live references
+        const serialized: { shapeId: string; connected: "s" | "e"; anchor?: string; coords?: { x: number; y: number } }[] = [];
+        this.connections.forEach((c) => {
+          serialized.push({
+            shapeId: c.s.ID(),
+            connected: c.connected,
+            anchor: c.anchor,
+            coords: c.coords,
+          });
+          return false;
+        });
+        (obj as any).connections = serialized;
+      } else if (keyStr === "points") {
+        // Deep-clone points as plain {x, y} objects
+        const pts = (this as any).points;
+        if (Array.isArray(pts)) {
+          (obj as any).points = pts.map((p: { x: number; y: number }) => ({ x: p.x, y: p.y }));
+        }
+      } else {
         obj[key] = this[key];
       }
     }

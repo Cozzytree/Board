@@ -12,6 +12,9 @@ import {
   Path,
   SvgShape,
   ImageShape,
+  PlainLine,
+  AnchorLine,
+  LineCurve,
 } from "../index";
 import type { ActiveSeletionProps } from "../shapes/active_selection";
 import type { PathProps } from "../shapes/paths/path";
@@ -163,6 +166,12 @@ function generateShapeByShapeType(
         _board: board,
       });
     }
+    // Fallback: restore as base Path (pentagon, triangle, star, etc.)
+    return new Path({
+      ...val,
+      ctx,
+      _board: board,
+    });
   } else if (val.type === "ellipse") {
     return new Ellipse({
       ...val,
@@ -170,7 +179,32 @@ function generateShapeByShapeType(
       ctx: ctx,
     });
   } else if (val.type === "line") {
-    //
+    const lineType = (val as any).lineType || "straight";
+    if (lineType === "anchor") {
+      return new AnchorLine({
+        ...val,
+        _board: board,
+        ctx,
+        points: (val as any).points,
+        lineType: "anchor",
+      });
+    } else if (lineType === "curve") {
+      return new LineCurve({
+        ...val,
+        _board: board,
+        ctx,
+        points: (val as any).points,
+        lineType: "curve",
+      });
+    } else {
+      return new PlainLine({
+        ...val,
+        _board: board,
+        ctx,
+        points: (val as any).points,
+        lineType: "straight",
+      });
+    }
   } else if (val.type === "text") {
     return new Text({
       ...val,

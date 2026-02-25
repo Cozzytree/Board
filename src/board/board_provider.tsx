@@ -65,7 +65,7 @@ const BoardProvider = ({
     try { return localStorage.getItem("board_snap") === "true"; } catch { return false; }
   });
   const [isHover, setHoverState] = React.useState(() => {
-    try { return localStorage.getItem("board_hover") === "true"; } catch { return false; }
+    try { return localStorage.getItem("board_hover") === "true"; } catch { return true; }
   });
 
   const setSnap = React.useCallback((v: boolean | ((prev: boolean) => boolean)) => {
@@ -218,6 +218,26 @@ const BoardProvider = ({
       if (restored.length > 0) {
         // Use shapeStore.insert directly to avoid re-triggering shape:created
         board.shapeStore.insert(...restored);
+
+        // Second pass: rebuild connections from serialized { shapeId, connected, anchor, coords }
+        for (const obj of data) {
+          if (!obj.id || !Array.isArray(obj.connections) || obj.connections.length === 0) continue;
+          const shape = board.shapeStore.get(obj.id);
+          if (!shape) continue;
+
+          for (const conn of obj.connections) {
+            if (!conn.shapeId) continue;
+            const targetShape = board.shapeStore.get(conn.shapeId);
+            if (!targetShape) continue;
+            shape.connections.add({
+              s: targetShape,
+              connected: conn.connected,
+              anchor: conn.anchor,
+              coords: conn.coords,
+            });
+          }
+        }
+
         board.render();
         return true;
       }
@@ -523,6 +543,12 @@ const BoardProvider = ({
             setMinimal((prev) => !prev);
           }}>
           {isMinimal ? "show UI" : "minimal mode"}
+        </ContextMenuItem>
+        <ContextMenuItem
+          onClick={() => {
+            setHover((prev) => !prev);
+          }}>
+          hover {isHover ? "off" : "on"}
         </ContextMenuItem>
       </ContextMenuContent>
     </ContextMenu>
