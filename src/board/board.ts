@@ -81,8 +81,9 @@ class Board implements BoardInterface {
   declare ctx2: CanvasRenderingContext2D;
 
   private events: Map<ShapeEvent, Set<EventCallback>>;
-  // private pendingEvent: PointerEvent | null = null;
   private pendingEventScheduled: boolean = false;
+  private _renderDirty: boolean = false;
+  private _renderRafId: number = 0;
   private handleDoubleClick: (e: PointerEvent | MouseEvent) => void;
   private handleClick: (e: PointerEvent | MouseEvent | TouchEvent) => void;
   private handlePointerDown: (e: PointerEvent | MouseEvent | TouchEvent) => void;
@@ -376,10 +377,29 @@ class Board implements BoardInterface {
   };
 
   render() {
+    if (this._renderDirty) return; // Already scheduled
+    this._renderDirty = true;
+    this._renderRafId = requestAnimationFrame(() => {
+      this._renderDirty = false;
+      this._drawFrame();
+    });
+  }
+
+  /** Force an immediate synchronous render (used by wheel/zoom where latency matters) */
+  renderImmediate() {
+    if (this._renderDirty) {
+      cancelAnimationFrame(this._renderRafId);
+      this._renderDirty = false;
+    }
+    this._drawFrame();
+  }
+
+  /** Internal: actual draw logic */
+  private _drawFrame() {
     const { ctx, canvas, view, shapeStore, activeShapes } = this;
 
-    this.ctx.setTransform(1, 0, 0, 1, 0, 0);
-    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     // Compute world-space viewport
     const viewLeft = -view.x / view.scl;
@@ -388,17 +408,15 @@ class Board implements BoardInterface {
     const viewBottom = viewTop + canvas.height / view.scl;
 
     ctx.save();
-    ctx.translate(this.view.x, this.view.y);
-    ctx.scale(this.view.scl, this.view.scl);
-    // ctx.translate(offset.x, offset.y);
-    // ctx.scale(scale, scale);
+    ctx.translate(view.x, view.y);
+    ctx.scale(view.scl, view.scl);
 
     shapeStore.forEach((s) => {
       const { x, y, width, height } = s.getBounds();
 
-      // Check AABB intersection
+      // AABB viewport culling
       if (x + width < viewLeft || x > viewRight || y + height < viewTop || y > viewBottom) {
-        return false; // entirely off-screen, skip draw
+        return false;
       }
 
       s.draw({});
@@ -408,7 +426,7 @@ class Board implements BoardInterface {
     if (activeShapes) {
       activeShapes.activeRect(ctx);
     }
-    this.ctx.restore();
+    ctx.restore();
   }
 
   private onmousedown(e: PointerEvent | MouseEvent | TouchEvent) {
@@ -560,6 +578,9 @@ class Board implements BoardInterface {
 
     this.canvas2.remove();
     this.events.clear();
+    if (this._renderDirty) {
+      cancelAnimationFrame(this._renderRafId);
+    }
 
     this.shapeStore.forEach((s) => {
       s.clean();
@@ -591,7 +612,7 @@ class Board implements BoardInterface {
       this.view.scl *= this.evt.dscl;
       this.onZoomCallback(this.view);
     }
-    this.render();
+    this.renderImmediate();
     this.onScroll(this.view);
   }
 }
