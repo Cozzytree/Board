@@ -107,9 +107,11 @@ export interface BoardInterface {
   onMouseMove?: (e: EventData) => void;
   onMouseDown?: (e: EventData) => void;
   onMouseUp?: (e: EventData) => void;
+  registerCustomShape(def: CustomShapeDef): void;
+  registerSvgIcon(name: string, svgString: string): boolean;
 }
 
-export type modes = "cursor" | "shape" | "line" | "draw" | "text" | "eraser";
+export type modes = "cursor" | "shape" | "line" | "draw" | "text" | "eraser" | "image";
 
 export type submodeline = "line:straight" | "line:anchor" | "line:curve";
 export type submodecursor = "grab" | "free";
@@ -130,7 +132,7 @@ export type submodedraw = "pencil";
 
 export type submodes = submodecursor | submodeshape | submodedraw | submodeline;
 
-export type shapeType = "path" | "rect" | "ellipse" | "text" | "selection" | "line" | "group";
+export type shapeType = "path" | "rect" | "ellipse" | "text" | "selection" | "line" | "group" | "svg" | "excalidraw" | "image";
 
 export interface BoxInterface {
   x1: number;

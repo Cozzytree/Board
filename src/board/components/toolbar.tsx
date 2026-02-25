@@ -2,6 +2,7 @@ import { useBoard } from "../board-context";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import type { LucideIcon } from "lucide-react";
+import React from "react";
 
 export default function Toolbar() {
   const { mode, setMode, tools } = useBoard();
@@ -48,12 +49,22 @@ export default function Toolbar() {
           </Popover>
         </div>
       ))}
+
     </div>
   );
 }
 
 function ShowIcon({ I }: { I: LucideIcon | string }) {
   if (typeof I == "string") {
+    // Check if it's an SVG string
+    if (I.trim().startsWith("<svg")) {
+      return (
+        <span
+          className="w-4 h-4 flex items-center justify-center [&>svg]:w-full [&>svg]:h-full"
+          dangerouslySetInnerHTML={{ __html: I }}
+        />
+      );
+    }
     return <img src={I} alt={I} loading="lazy" width={18} />;
   } else {
     return <I className="w-3 md:w-4" />;

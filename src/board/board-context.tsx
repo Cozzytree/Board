@@ -21,6 +21,7 @@ export type ContextProps = {
   setSnap: (s: boolean) => void;
   setHover: (h: boolean) => void;
   update: () => void;
+  importLibrary: (library: any) => void;
 };
 
 export const BoardContext = createContext<ContextProps | undefined>(undefined);

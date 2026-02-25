@@ -20,7 +20,9 @@ import {
   TextTool,
 } from "./index";
 import EraserTool from "./tool/eraser_tool";
-
+import ImageTool from "./tool/image_tool";
+import { parseSvgToShapeProps } from "./utils/svg_parser";
+import SvgShape from "./shapes/svg_shape";
 type view_t = { x: number; y: number; scl: number };
 
 type BoardProps = {
@@ -36,6 +38,7 @@ type BoardProps = {
   onZoom?: (n: view_t) => void;
   onScroll?: (view: view_t) => void;
   customShapes?: CustomShapeDef[];
+  onImageUpload?: (file: File) => Promise<string>;
 };
 
 type EventCallback = (e: EventData) => void;
@@ -93,6 +96,7 @@ class Board implements BoardInterface {
   modes: { m: modes; sm: submodes | null };
   onActiveShapeCallback?: (e: Shape | null) => void;
   customShapes: Map<string, ShapeConstructor>;
+  onImageUpload?: (file: File) => Promise<string>;
 
   constructor({
     canvas,
@@ -107,11 +111,13 @@ class Board implements BoardInterface {
     onZoom,
     onScroll,
     customShapes = [],
+    onImageUpload,
   }: BoardProps) {
     this.customShapes = new Map();
     customShapes.forEach((s) => {
       this.customShapes.set(s.name, s.shape);
     });
+    this.onImageUpload = onImageUpload;
     this.onZoomCallback = (n) => {
       onZoom?.(n);
     };
@@ -191,6 +197,26 @@ class Board implements BoardInterface {
 
     this.events = new Map();
     this.render();
+  }
+
+  registerCustomShape(def: CustomShapeDef) {
+    this.customShapes.set(def.name, def.shape);
+  }
+
+  registerSvgIcon(name: string, svgString: string) {
+    const props = parseSvgToShapeProps(svgString);
+    if (!props) return false;
+
+    this.registerCustomShape({
+      name,
+      icon: svgString, // Save the raw SVG string so Toolbar can render it as a button
+      shape: (class extends SvgShape {
+        constructor(baseProps: any) {
+          super({ ...baseProps, ...props });
+        }
+      }) as unknown as ShapeConstructor
+    });
+    return true;
   }
 
   set setCanvasWidth(width: number) {
@@ -447,9 +473,24 @@ class Board implements BoardInterface {
       this.setTool(new TextTool(this));
     } else if (m === "eraser") {
       this.setTool(new EraserTool(this));
+    } else if (m === "image") {
+      this.setTool(new ImageTool(this, this.onImageUpload));
     }
 
     this.modes = { m, sm };
+
+    // Update cursor to reflect active mode
+    const cursorMap: Record<string, string> = {
+      cursor: sm === "grab" ? "grab" : "default",
+      shape: "crosshair",
+      draw: "crosshair",
+      line: "crosshair",
+      text: "text",
+      eraser: "cell",
+      image: "copy",
+    };
+    this.canvas.style.cursor = cursorMap[m] || "default";
+
     if (!originUi) {
       this.onModeChange?.(m, sm || "free");
     }

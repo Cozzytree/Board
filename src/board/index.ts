@@ -22,6 +22,9 @@ import LineCurve from "./shapes/line/line-curve";
 import AnchorLine from "@/board/shapes/line/line-anchor";
 import TextTool from "./tool/text_tool";
 import Text from "./shapes/text";
+import SvgShape from "./shapes/svg_shape";
+import ExcalidrawShape from "./shapes/excalidraw_shape";
+import ImageShape from "./shapes/image_shape";
 
 export {
    Pointer,
@@ -48,4 +51,7 @@ export {
    TextTool,
    LineCurve,
    Text,
+   SvgShape,
+   ExcalidrawShape,
+   ImageShape,
 };

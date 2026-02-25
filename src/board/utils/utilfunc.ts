@@ -10,6 +10,8 @@ import {
   Ellipse,
   Text,
   Path,
+  SvgShape,
+  ImageShape,
 } from "../index";
 import type { ActiveSeletionProps } from "../shapes/active_selection";
 import type { PathProps } from "../shapes/paths/path";
@@ -171,6 +173,18 @@ function generateShapeByShapeType(
     //
   } else if (val.type === "text") {
     return new Text({
+      ...val,
+      _board: board,
+      ctx: ctx,
+    });
+  } else if (val.type === "svg") {
+    return new SvgShape({
+      ...val,
+      _board: board,
+      ctx: ctx,
+    });
+  } else if (val.type === "image") {
+    return new ImageShape({
       ...val,
       _board: board,
       ctx: ctx,

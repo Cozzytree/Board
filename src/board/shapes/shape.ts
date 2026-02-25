@@ -116,7 +116,7 @@ abstract class Shape implements ShapeProps {
     this.verticalAlign = verticalAlign || "center";
     this.fontWeight = 500;
     this.textAlign = textAlign || "left";
-    this.connections = connections || new Connections();
+    this.connections = connections instanceof Connections ? connections : new Connections();
     this.id = uuidv4();
     this.selectionColor = selectionColor || HoveredColor;
     this.selectionStrokeWidth = selectionStrokeWidth || 2;
