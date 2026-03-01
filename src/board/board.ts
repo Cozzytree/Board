@@ -477,6 +477,12 @@ class Board implements BoardInterface {
     this.currentTool.onClick({ e, p });
   }
 
+  setCursor(cursor: string) {
+    this.canvas.style.cursor = cursor;
+    this.canvas2.style.cursor = cursor;
+    document.body.style.cursor = cursor;
+  }
+
   set setMode({ m, sm, originUi = false }: { m: modes; sm: submodes | null; originUi?: boolean }) {
     if (m === "cursor") {
       this.setTool(new SelectionTool(this, sm || "free"));
@@ -507,7 +513,7 @@ class Board implements BoardInterface {
       eraser: "cell",
       image: "copy",
     };
-    this.canvas.style.cursor = cursorMap[m] || "default";
+    this.setCursor(cursorMap[m] || "default");
 
     if (!originUi) {
       this.onModeChange?.(m, sm || "free");

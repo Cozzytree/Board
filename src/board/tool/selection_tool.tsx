@@ -235,7 +235,7 @@ class SelectionTool implements ToolInterface {
         const dy = p.y - this.rotationCenter.y;
         this.rotationStartAngle = Math.atan2(dy, dx) - currentActive.rotate;
 
-        document.body.style.cursor = "grabbing";
+        this._board.setCursor("grabbing");
         return;
       }
 
@@ -479,7 +479,7 @@ class SelectionTool implements ToolInterface {
     // Only reset cursor if we're not hovering over any shape
     if (!foundHoveredShape) {
       this.hoveredShape = null;
-      document.body.style.cursor = "default";
+      this._board.setCursor("default");
     }
 
     if (this.hoveredShape) {
@@ -500,7 +500,7 @@ class SelectionTool implements ToolInterface {
       this.rotatingShape.mouseup({ e: { point: p } });
       this.isRotating = false;
       this.rotatingShape = null;
-      document.body.style.cursor = "default";
+      this._board.setCursor("default");
       this._board.render();
       this.clearOverlay();
       return;

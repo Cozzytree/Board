@@ -263,7 +263,7 @@ abstract class Shape implements ShapeProps {
     if (this._board.activeShapes?.ID() == this.ID()) {
       // Check for rotation zone first
       if (this.isRotating(s.e.point)) {
-        document.body.style.cursor = "grab";
+        this._board.setCursor("grab");
         console.log("mouse over ", this.ID());
         this.emit("mouseover", s);
         return;
@@ -282,12 +282,12 @@ abstract class Shape implements ShapeProps {
       if (r) {
         // Calculate rotation-aware cursor
         const cursor = this.getRotatedCursor(r.rd, this.rotate);
-        document.body.style.cursor = cursor;
+        this._board.setCursor(cursor);
       } else {
-        document.body.style.cursor = "default";
+        this._board.setCursor("default");
       }
     } else {
-      document.body.style.cursor = "default";
+      this._board.setCursor("default");
     }
 
     this.emit("mouseover", s);

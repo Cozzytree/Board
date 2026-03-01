@@ -109,22 +109,22 @@ class Ellipse extends Shape {
       switch (r.rd) {
         case "tl":
         case "br":
-          document.body.style.cursor = "nwse-resize";
+          this._board.setCursor("nwse-resize");
           break;
 
         case "tr":
         case "bl":
-          document.body.style.cursor = "nesw-resize";
+          this._board.setCursor("nesw-resize");
           break;
 
         case "t":
         case "b":
-          document.body.style.cursor = "ns-resize";
+          this._board.setCursor("ns-resize");
           break;
 
         case "l":
         case "r":
-          document.body.style.cursor = "ew-resize";
+          this._board.setCursor("ew-resize");
           break;
       }
     }

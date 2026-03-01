@@ -210,7 +210,7 @@ abstract class Line extends Shape {
 
   mouseover(s: ShapeEventData): void {
     if (this.IsDraggable(s.e.point)) {
-      document.body.style.cursor = "pointer";
+      this._board.setCursor("pointer");
     }
     super.emit("mouseover", s);
   }

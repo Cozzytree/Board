@@ -62,33 +62,57 @@ const BoardProvider = ({
   const [zoom, setZoom] = React.useState(100);
   const [activeShape, setActiveShape] = React.useState<Shape | null>(null);
   const [isSnap, setSnapState] = React.useState(() => {
-    try { return localStorage.getItem("board_snap") === "true"; } catch { return false; }
+    try {
+      return localStorage.getItem("board_snap") === "true";
+    } catch {
+      return false;
+    }
   });
   const [isHover, setHoverState] = React.useState(() => {
-    try { return localStorage.getItem("board_hover") === "true"; } catch { return true; }
+    try {
+      return localStorage.getItem("board_hover") === "true";
+    } catch {
+      return true;
+    }
   });
 
   const setSnap = React.useCallback((v: boolean | ((prev: boolean) => boolean)) => {
     setSnapState((prev) => {
       const next = typeof v === "function" ? v(prev) : v;
-      try { localStorage.setItem("board_snap", String(next)); } catch { }
+      try {
+        localStorage.setItem("board_snap", String(next));
+      } catch (err) {
+        console.error(err);
+      }
       return next;
     });
   }, []);
   const setHover = React.useCallback((v: boolean | ((prev: boolean) => boolean)) => {
     setHoverState((prev) => {
       const next = typeof v === "function" ? v(prev) : v;
-      try { localStorage.setItem("board_hover", String(next)); } catch { }
+      try {
+        localStorage.setItem("board_hover", String(next));
+      } catch (err) {
+        console.error(err);
+      }
       return next;
     });
   }, []);
   const [isMinimal, setMinimalState] = React.useState(() => {
-    try { return localStorage.getItem("board_minimal") === "true"; } catch { return false; }
+    try {
+      return localStorage.getItem("board_minimal") === "true";
+    } catch {
+      return false;
+    }
   });
   const setMinimal = React.useCallback((v: boolean | ((prev: boolean) => boolean)) => {
     setMinimalState((prev) => {
       const next = typeof v === "function" ? v(prev) : v;
-      try { localStorage.setItem("board_minimal", String(next)); } catch { }
+      try {
+        localStorage.setItem("board_minimal", String(next));
+      } catch (err) {
+        console.error(err);
+      }
       return next;
     });
   }, []);
@@ -185,13 +209,16 @@ const BoardProvider = ({
     });
     try {
       const seen = new WeakSet();
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(shapes, (_key, value) => {
-        if (typeof value === "object" && value !== null) {
-          if (seen.has(value)) return undefined;
-          seen.add(value);
-        }
-        return value;
-      }));
+      localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify(shapes, (_key, value) => {
+          if (typeof value === "object" && value !== null) {
+            if (seen.has(value)) return undefined;
+            seen.add(value);
+          }
+          return value;
+        }),
+      );
     } catch (err) {
       console.error("Failed to save shapes to localStorage", err);
     }
@@ -209,7 +236,25 @@ const BoardProvider = ({
       const restored: Shape[] = [];
 
       for (const obj of data) {
-        const shape = generateShapeByShapeType(obj as any, board, board.ctx);
+        const normalized = { ...obj } as Record<string, any>;
+
+        // Backward compatibility: older Text shapes were saved without `type`.
+        if (
+          !normalized.type &&
+          typeof normalized.text === "string" &&
+          typeof normalized.fontSize === "number" &&
+          typeof normalized.left === "number" &&
+          typeof normalized.top === "number" &&
+          typeof normalized.width === "number" &&
+          typeof normalized.height === "number" &&
+          !Array.isArray(normalized.points) &&
+          !normalized.svgPath &&
+          !normalized.imageSrc
+        ) {
+          normalized.type = "text";
+        }
+
+        const shape = generateShapeByShapeType(normalized as any, board, board.ctx);
         if (shape) {
           restored.push(shape);
         }
@@ -247,7 +292,7 @@ const BoardProvider = ({
     return false;
   }, []);
 
-  const onMouseUp = React.useCallback(() => { }, []);
+  const onMouseUp = React.useCallback(() => {}, []);
 
   const onModeChange = React.useCallback((m: modes, sm: submodes) => {
     setMode({ m, sm });
@@ -286,9 +331,9 @@ const BoardProvider = ({
         setActiveShape(e.e.target[e.e.target.length - 1]);
       }
     });
-    newBoard.on("mousemove", () => { });
-    newBoard.on("shape:resize", () => { });
-    newBoard.on("shape:move", () => { });
+    newBoard.on("mousemove", () => {});
+    newBoard.on("shape:resize", () => {});
+    newBoard.on("shape:move", () => {});
     newBoard.on("shape:created", () => {
       saveShapesToStorage(newBoard);
     });
@@ -323,7 +368,17 @@ const BoardProvider = ({
       document.removeEventListener("keydown", handleKeyDown);
       newBoard.clean();
     };
-  }, [width, height, isHover, isSnap, onModeChange, onMouseUp, customShapes, saveShapesToStorage, loadShapesFromStorage]);
+  }, [
+    width,
+    height,
+    isHover,
+    isSnap,
+    onModeChange,
+    onMouseUp,
+    customShapes,
+    saveShapesToStorage,
+    loadShapesFromStorage,
+  ]);
 
   React.useEffect(() => {
     if (!borderRef.current) return;
@@ -372,7 +427,8 @@ const BoardProvider = ({
 
     const handleShortcut = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement)?.tagName;
-      if (tag === "INPUT" || tag === "TEXTAREA" || (e.target as HTMLElement)?.isContentEditable) return;
+      if (tag === "INPUT" || tag === "TEXTAREA" || (e.target as HTMLElement)?.isContentEditable)
+        return;
       if (e.ctrlKey || e.metaKey || e.altKey) return;
 
       const key = e.key.toLowerCase();

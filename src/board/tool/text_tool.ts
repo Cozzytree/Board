@@ -9,6 +9,12 @@ class TextTool implements ToolInterface {
   _board: Board;
   private currentTextarea: HTMLTextAreaElement | null = null;
   private currentPosition: { x: number; y: number } | null = null;
+  private outsidePointerHandler: ((e: PointerEvent) => void) | null = null;
+  private readonly baseFontSize = 25;
+  private readonly minWidth = 120;
+  private readonly minHeight = 36;
+  private readonly paddingX = 8;
+  private readonly paddingY = 6;
 
   constructor(board: Board) {
     this._board = board;
@@ -23,7 +29,7 @@ class TextTool implements ToolInterface {
   onClick({ p }: ToolEventData): void {
     // If there's already an active textarea, finalize it first
     if (this.currentTextarea && this.currentPosition) {
-      this.finalizeText(this.currentTextarea, this.currentPosition);
+      this.commitEditor();
     }
 
     // Store current position
@@ -39,18 +45,33 @@ class TextTool implements ToolInterface {
     div.style.left = rect.left + p.x * this._board.view.scl + this._board.view.x + "px";
     div.style.top = rect.top + p.y * this._board.view.scl + this._board.view.y + "px";
     div.style.zIndex = "1000";
+    div.style.padding = "0";
 
     // Create textarea
     const textarea = document.createElement("textarea");
-    textarea.placeholder = "Enter text...";
-    textarea.style.minWidth = "200px";
-    textarea.style.minHeight = "50px";
-    textarea.style.fontSize = "16px"; // Prevents zoom on iOS
-    textarea.style.padding = "8px";
+    const editorFontSize = this.baseFontSize * this._board.view.scl;
+
+    textarea.placeholder = "Type...";
+    textarea.spellcheck = true;
+    textarea.autocomplete = "off";
+    textarea.autocorrect = "on";
+    textarea.setAttribute("autocapitalize", "sentences");
+    textarea.setAttribute("inputmode", "text");
+    textarea.style.minWidth = `${this.minWidth * this._board.view.scl}px`;
+    textarea.style.minHeight = `${this.minHeight * this._board.view.scl}px`;
+    textarea.style.fontSize = `${editorFontSize}px`; // Prevents iOS zoom and matches canvas scale
+    textarea.style.lineHeight = `${editorFontSize * 1.2}px`;
+    textarea.style.padding = `${this.paddingY * this._board.view.scl}px ${this.paddingX * this._board.view.scl}px`;
     textarea.style.outline = "none";
-    textarea.style.resize = "both";
+    textarea.style.resize = "none";
+    textarea.style.overflow = "hidden";
+    textarea.style.touchAction = "manipulation";
     textarea.style.fontFamily = "system-ui";
     textarea.style.color = "white";
+    textarea.style.background = "transparent";
+    textarea.style.border = "1px solid rgba(255,255,255,0.2)";
+    textarea.style.borderRadius = `${6 * this._board.view.scl}px`;
+    textarea.style.caretColor = "white";
 
     div.append(textarea);
     document.body.append(div);
@@ -58,44 +79,110 @@ class TextTool implements ToolInterface {
     // Store reference to current textarea
     this.currentTextarea = textarea;
 
-    // Focus the textarea (this will trigger mobile keyboard)
-    setTimeout(() => textarea.focus(), 0);
+    // Focus the textarea (this triggers mobile keyboard)
+    requestAnimationFrame(() => {
+      textarea.focus();
+      this.autoSizeTextarea(textarea);
+    });
 
-    // Flag to prevent blur after Escape
-    let escapedPressed = false;
-
-    // Handle Escape key to cancel
+    // Handle keyboard shortcuts
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.isComposing) return;
+
       if (e.key === "Escape") {
         e.preventDefault();
-        escapedPressed = true;
-        div.remove();
-        this._board.setMode = { m: "cursor", sm: "free" };
-      }
-    };
-    textarea.addEventListener("keydown", handleKeyDown);
-
-    // Handle blur (when user clicks outside or finishes)
-    const handleBlur = () => {
-      // Don't process blur if Escape was pressed
-      if (escapedPressed) {
+        this.commitEditor();
         return;
       }
 
-      if (this.currentPosition) {
-        this.finalizeText(textarea, this.currentPosition);
+      if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+        e.preventDefault();
+        this.commitEditor();
       }
     };
+    textarea.addEventListener("keydown", handleKeyDown);
+    textarea.addEventListener("input", () => {
+      this.autoSizeTextarea(textarea);
+    });
+
+    // Handle blur (when user clicks outside or finishes)
+    const handleBlur = () => {
+      this.commitEditor();
+    };
     textarea.addEventListener("blur", handleBlur);
+
+    // Tap/click outside should commit text. Use pointerdown so touch works reliably.
+    this.outsidePointerHandler = (event: PointerEvent) => {
+      const target = event.target as Node | null;
+      if (!target || div.contains(target)) return;
+      this.commitEditor();
+    };
+
+    setTimeout(() => {
+      if (this.outsidePointerHandler) {
+        document.addEventListener("pointerdown", this.outsidePointerHandler, true);
+      }
+    }, 0);
+  }
+
+  private autoSizeTextarea(textarea: HTMLTextAreaElement): void {
+    const scale = this._board.view.scl || 1;
+    const fontSize = this.baseFontSize * scale;
+    const lineHeight = fontSize * 1.2;
+    const widthPadding = this.paddingX * 2 * scale;
+    const heightPadding = this.paddingY * 2 * scale;
+
+    const measureCanvas = document.createElement("canvas");
+    const measureCtx = measureCanvas.getContext("2d");
+    if (!measureCtx) return;
+    measureCtx.font = `${fontSize}px system-ui`;
+
+    const lines = (textarea.value || "").split("\n");
+    const longest = lines.reduce((max, line) => {
+      const candidate = line.length ? line : " ";
+      return Math.max(max, measureCtx.measureText(candidate).width);
+    }, 0);
+
+    const width = Math.max(this.minWidth * scale, Math.ceil(longest + widthPadding));
+    const lineCount = Math.max(lines.length, 1);
+    const height = Math.max(this.minHeight * scale, Math.ceil(lineCount * lineHeight + heightPadding));
+
+    textarea.style.width = `${width}px`;
+    textarea.style.height = `${height}px`;
+  }
+
+  private commitEditor(): void {
+    if (!this.currentTextarea || !this.currentPosition) return;
+    this.finalizeText(this.currentTextarea, this.currentPosition);
+  }
+
+  private cancelEditor(): void {
+    const div = document.getElementById(this.id);
+    div?.remove();
+    this.detachOutsidePointerHandler();
+    this.currentTextarea = null;
+    this.currentPosition = null;
+    this._board.setMode = { m: "cursor", sm: "free" };
+  }
+
+  private detachOutsidePointerHandler(): void {
+    if (this.outsidePointerHandler) {
+      document.removeEventListener("pointerdown", this.outsidePointerHandler, true);
+      this.outsidePointerHandler = null;
+    }
   }
 
   private finalizeText(textarea: HTMLTextAreaElement, position: { x: number; y: number }): void {
-    const value = textarea.value.trim();
+    const rawValue = textarea.value.replace(/\r/g, "");
+    const value = rawValue;
 
-    if (value.length > 0) {
+    if (value.trim().length > 0) {
       const lines = value.split("\n");
-      const maxStr = lines.reduce((as, bs) => (as.length > bs.length ? as : bs), "");
-      const fontSize = 25;
+      const widthPx = parseFloat(textarea.style.width || "0");
+      const heightPx = parseFloat(textarea.style.height || "0");
+      const scale = this._board.view.scl || 1;
+      const width = Math.max(this.minWidth, widthPx / scale);
+      const height = Math.max(lines.length * (this.baseFontSize * 1.2), heightPx / scale);
 
       const newText = new Text({
         _board: this._board,
@@ -103,11 +190,11 @@ class TextTool implements ToolInterface {
         left: position.x,
         top: position.y,
         text: value,
-        fontSize: fontSize,
+        fontSize: this.baseFontSize,
         verticalAlign: "top",
         textAlign: "left",
-        width: Math.max(maxStr.length * (fontSize * 0.6), 100),
-        height: lines.length * (fontSize * 1.2),
+        width,
+        height,
       });
 
       this._board.add(newText);
@@ -120,6 +207,7 @@ class TextTool implements ToolInterface {
     if (div) {
       div.remove();
     }
+    this.detachOutsidePointerHandler();
     this.currentTextarea = null;
     this.currentPosition = null;
     this._board.setMode = { m: "cursor", sm: "free" };
@@ -130,11 +218,12 @@ class TextTool implements ToolInterface {
   cleanUp(): void {
     // Finalize any active text input before cleanup
     if (this.currentTextarea && this.currentPosition) {
-      this.finalizeText(this.currentTextarea, this.currentPosition);
+      this.commitEditor();
     }
 
     // Clean up any existing text input
     document.getElementById(this.id)?.remove();
+    this.detachOutsidePointerHandler();
     this.currentTextarea = null;
     this.currentPosition = null;
   }

@@ -6,6 +6,7 @@ import { resizeRect } from "@/board/utils/resize";
 class Text extends Shape {
   constructor(props: ShapeProps) {
     super(props);
+    this.type = "text";
   }
 
   clone(): Shape {
@@ -33,6 +34,12 @@ class Text extends Shape {
     }
 
     context.save();
+
+    const centerX = this.left + this.width * 0.5;
+    const centerY = this.top + this.height * 0.5;
+    context.translate(centerX, centerY);
+    context.rotate(this.rotate);
+    context.translate(-centerX, -centerY);
     context.beginPath();
 
     const maxWidth = this.width;
