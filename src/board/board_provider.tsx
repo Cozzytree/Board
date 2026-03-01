@@ -29,6 +29,7 @@ import { LibrarySidebar } from "./components/library_sidebar";
 import { Board, Rect, Shape } from "./index";
 import type { EventData, modes, submodes, CustomShapeDef } from "./types";
 import { generateShapeByShapeType } from "./utils/utilfunc";
+import { saveLibraryItems } from "./utils/library_db";
 import {
   ContextMenu,
   ContextMenuContent,
@@ -515,6 +516,61 @@ const BoardProvider = ({
     }
   }, []);
 
+  const exportBoardAsLibrary = React.useCallback(async () => {
+    if (!borderRef.current) return;
+
+    const board = borderRef.current;
+    const elements: Record<string, any>[] = [];
+
+    board.shapeStore.forEach((shape) => {
+      if (shape.type !== "selection") {
+        elements.push(shape.toObject());
+      }
+      return false;
+    });
+
+    if (elements.length === 0) {
+      console.warn("Nothing to export: board has no shapes.");
+      return;
+    }
+
+    const created = Date.now();
+    const item = {
+      id: `board-${created}`,
+      status: "published",
+      created,
+      name: `Board ${new Date(created).toLocaleString()}`,
+      elements,
+    };
+
+    const payload = {
+      type: "board-library",
+      version: 1,
+      source: "Board",
+      libraryItems: [item],
+    };
+
+    try {
+      await saveLibraryItems(item);
+    } catch (err) {
+      console.error("Failed to save board library item locally", err);
+    }
+
+    try {
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `board-library-${created}.json`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error("Failed to download board library file", err);
+    }
+  }, []);
+
   return (
     <ContextMenu>
       <BoardContext.Provider
@@ -605,6 +661,12 @@ const BoardProvider = ({
             setHover((prev) => !prev);
           }}>
           hover {isHover ? "off" : "on"}
+        </ContextMenuItem>
+        <ContextMenuItem
+          onClick={() => {
+            void exportBoardAsLibrary();
+          }}>
+          make board library
         </ContextMenuItem>
       </ContextMenuContent>
     </ContextMenu>

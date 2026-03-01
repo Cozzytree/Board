@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Library, Upload, Shapes } from "lucide-react";
 import { type LibraryItem, getAllLibraryItems, saveLibraryItems } from "../utils/library_db";
 import { useBoard } from "../board-context";
+import { generateShapeByShapeType } from "../utils/utilfunc";
+import type Shape from "../shapes/shape";
 
 export function LibrarySidebar() {
   const [items, setItems] = useState<LibraryItem[]>([]);
@@ -14,7 +16,7 @@ export function LibrarySidebar() {
     const dbItems = await getAllLibraryItems();
     setItems(dbItems);
 
-    // Register loaded shapes onto the canvas
+    // Register loaded SVG shapes onto the canvas
     if (canvas && dbItems.length > 0) {
       for (const item of dbItems) {
         // board-library format: item has a raw `svg` string
@@ -24,12 +26,6 @@ export function LibrarySidebar() {
             console.error("Failed to register SVG for library item:", item.name);
           }
           continue;
-        }
-
-        // excalidrawlib format: item has `elements` array — skip for now
-        // (would require excalidraw's exportToSvg, which is heavy)
-        if (item.elements && item.elements.length > 0) {
-          console.warn("Excalidraw element-based library items are not yet supported:", item.id);
         }
       }
     }
@@ -62,6 +58,53 @@ export function LibrarySidebar() {
     reader.readAsText(file);
   };
 
+  const insertElementsLibraryItem = (item: LibraryItem) => {
+    if (!canvas || !Array.isArray(item.elements) || item.elements.length === 0) return;
+
+    const generated: Shape[] = [];
+    for (const element of item.elements) {
+      const shape = generateShapeByShapeType(element as any, canvas, canvas.ctx);
+      if (shape) {
+        generated.push(shape);
+      }
+    }
+
+    if (generated.length === 0) {
+      console.warn("No supported shapes to insert from library item:", item.id);
+      return;
+    }
+
+    let minX = Number.POSITIVE_INFINITY;
+    let minY = Number.POSITIVE_INFINITY;
+    let maxX = Number.NEGATIVE_INFINITY;
+    let maxY = Number.NEGATIVE_INFINITY;
+
+    for (const shape of generated) {
+      minX = Math.min(minX, shape.left);
+      minY = Math.min(minY, shape.top);
+      maxX = Math.max(maxX, shape.left + shape.width);
+      maxY = Math.max(maxY, shape.top + shape.height);
+    }
+
+    const centerX = minX + (maxX - minX) * 0.5;
+    const centerY = minY + (maxY - minY) * 0.5;
+    const targetPoint = canvas._lastMousePosition || { x: canvas.canvas.width * 0.5, y: canvas.canvas.height * 0.5 };
+
+    const dx = targetPoint.x - centerX;
+    const dy = targetPoint.y - centerY;
+
+    generated.forEach((shape) => {
+      shape.set({
+        left: shape.left + dx,
+        top: shape.top + dy,
+      });
+    });
+
+    canvas.add(...generated);
+    canvas.fire("shape:created", { e: { target: generated, x: targetPoint.x, y: targetPoint.y } });
+    canvas.render();
+  };
+
   return (
     <Sheet>
       <SheetTrigger asChild>
@@ -89,7 +132,16 @@ export function LibrarySidebar() {
                 <div
                   key={item.id}
                   className="aspect-video max-h-24 border rounded cursor-pointer hover:bg-accent flex flex-col items-center justify-center p-2 text-muted-foreground group"
-                  onClick={() => setMode("shape", shapeKey as any)}
+                  onClick={() => {
+                    if (item.svg) {
+                      setMode("shape", shapeKey as any);
+                      return;
+                    }
+
+                    if (item.elements && item.elements.length > 0) {
+                      insertElementsLibraryItem(item);
+                    }
+                  }}
                 >
                   {item.svg ? (
                     <div
