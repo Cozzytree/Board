@@ -1,3 +1,22 @@
+# @dhrubojyotiboro/board
+
+## Usage
+
+Import the board styles once in your app entry, then render `BoardProvider`.
+
+```tsx
+import "@dhrubojyotiboro/board/styles.css";
+import { BoardProvider } from "@dhrubojyotiboro/board";
+
+export function App() {
+  return <BoardProvider width={1200} height={800} />;
+}
+```
+
+Without the stylesheet import, board UI classes (icons, colors, spacing, positioning) will not be applied.
+
+---
+
 # React + TypeScript + Vite
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.

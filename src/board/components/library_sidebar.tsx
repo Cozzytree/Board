@@ -7,6 +7,7 @@ import { useBoard } from "../board-context";
 import { generateShapeByShapeType } from "../utils/utilfunc";
 import type Shape from "../shapes/shape";
 
+export { LibrarySidebar as BoardLibrarySidebar };
 export function LibrarySidebar() {
   const [items, setItems] = useState<LibraryItem[]>([]);
   const { setMode, canvas } = useBoard();

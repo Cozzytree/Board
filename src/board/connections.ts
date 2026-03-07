@@ -39,13 +39,9 @@ class Connections implements ConnectionInterface {
    }
 
    delete(id: string) {
-      const i = this.shapes.findIndex((s) => id == s.s.ID());
-      if (i == -1) return;
-      if (this.shapes.length == 1) {
-         this.shapes = [];
-      } else {
-         this.shapes.splice(i, 1);
-      }
+      // Remove all references to the target shape id.
+      // A line can be connected to the same shape on both ends, so single delete is unsafe.
+      this.shapes = this.shapes.filter((s) => id != s.s.ID());
    }
 
    clear(ct: "s" | "e", id?: string) {

@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import type { LucideIcon } from "lucide-react";
 import React from "react";
 
+export { Toolbar as BoardToolbar };
 export default function Toolbar() {
   const { mode, setMode, tools } = useBoard();
 

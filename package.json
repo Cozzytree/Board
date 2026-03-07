@@ -1,11 +1,30 @@
 {
-  "name": "border",
-  "private": true,
-  "version": "0.0.0",
+  "name": "@dhrubojyotiboro/board",
+  "private": false,
+  "version": "0.1.1",
   "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/types/lib.d.ts",
+  "style": "./dist/board.css",
+  "exports": {
+    ".": {
+      "types": "./dist/types/lib.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./styles.css": "./dist/board.css",
+    "./board.css": "./dist/board.css"
+  },
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
+    "build:app": "tsc && vite build",
+    "build:lib": "rm -rf dist && vite build --config vite.lib.config.ts && tsc -p tsconfig.lib.json",
+    "prepublishOnly": "pnpm run build:lib",
     "lint": "eslint .",
     "preview": "vite preview"
   },

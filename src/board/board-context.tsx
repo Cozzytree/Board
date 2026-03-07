@@ -1,4 +1,4 @@
-import { createContext, useContext } from "react";
+import { createContext, useContext, type RefObject } from "react";
 import type { LucideIcon } from "lucide-react";
 import { Board, Shape } from "./index";
 import type { modes, submodes } from "./types";
@@ -22,12 +22,24 @@ export type ContextProps = {
   setHover: (h: boolean) => void;
   update: () => void;
   importLibrary: (library: any) => void;
+
+  // Composable UI state
+  zoom: number;
+  offset: [number, number];
+  isMinimal: boolean;
+  setMinimal: (v: boolean | ((prev: boolean) => boolean)) => void;
+  handleZoom: (zoomIn: boolean) => void;
+  handleCenter: () => void;
+  exportBoardAsLibrary: () => void;
+  canvasRef: RefObject<HTMLCanvasElement | null>;
+  width: number;
+  height: number;
 };
 
 export const BoardContext = createContext<ContextProps | undefined>(undefined);
 
 export const useBoard = () => {
   const ctx = useContext(BoardContext);
-  if (!ctx) throw new Error("board ctx must be used within boadProvider");
+  if (!ctx) throw new Error("board ctx must be used within BoardProvider");
   return ctx;
 };

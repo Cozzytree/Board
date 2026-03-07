@@ -728,4 +728,5 @@ function VerticalAlignOptions() {
   );
 }
 
+export { ShapeOptions as BoardShapeOptions };
 export default ShapeOptions;

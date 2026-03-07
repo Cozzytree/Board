@@ -285,14 +285,42 @@ class Board implements BoardInterface {
   }
 
   removeShape(...shapes: Shape[]): number {
-    let count = 0;
+    const idsToRemove = new Set<string>();
+    const targets: Shape[] = [];
+
+    const collect = (shape: Shape) => {
+      if (idsToRemove.has(shape.ID())) return;
+      idsToRemove.add(shape.ID());
+      targets.push(shape);
+    };
+
     shapes.forEach((s) => {
       if (s instanceof ActiveSelection && s.type === "selection") {
-        s.shapes.forEach((as) => {
-          if (this.shapeStore.removeById(as.s.ID())) count++;
-        });
+        s.shapes.forEach((as) => collect(as.s));
       }
-      if (this.shapeStore.removeById(s.ID())) count++;
+      collect(s);
+    });
+
+    // First detach both directions from each target's known connections.
+    targets.forEach((shape) => {
+      shape.connections?.forEach((conn) => {
+        conn.s.connections?.delete(shape.ID());
+        return false;
+      });
+      shape.connections?.delete(shape.ID());
+    });
+
+    // Defensive cleanup: if any remaining shapes still reference removed ids, drop them.
+    this.shapeStore.forEach((shape) => {
+      idsToRemove.forEach((id) => {
+        shape.connections?.delete(id);
+      });
+      return false;
+    });
+
+    let count = 0;
+    idsToRemove.forEach((id) => {
+      if (this.shapeStore.removeById(id)) count++;
     });
 
     this.discardActiveShapes();

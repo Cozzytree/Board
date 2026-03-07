@@ -150,7 +150,15 @@ abstract class Line extends Shape {
   }
 
   IsResizable(p: Point): resizeDirection | null {
-    for (let i = 0; i < this.points.length; i++) {
+    if (!this.points.length) return null;
+
+    // Only expose resize handles on the two edge endpoints.
+    // Intermediate routing/control points are internal and should not be draggable.
+    const first = 0;
+    const last = this.points.length - 1;
+    const candidates = [first, last];
+
+    for (const i of candidates) {
       const dx = Math.abs(this.points[i].x + this.left - p.x);
       const dy = Math.abs(this.points[i].y + this.top - p.y);
       if (dx < this.padding && dy < this.padding) {
@@ -306,6 +314,7 @@ abstract class Line extends Shape {
     const drawShapes: Shape[] = [];
     const index = d === "br" ? this.points.length - 1 : this.resizeIndex;
     if (index === null || index < 0 || index > this.points.length - 1) return;
+    if (index !== 0 && index !== this.points.length - 1) return;
 
     this.resizeIndex = index;
 

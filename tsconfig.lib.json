@@ -1,0 +1,14 @@
+{
+  "extends": "./tsconfig.app.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "declaration": true,
+    "emitDeclarationOnly": true,
+    "declarationMap": true,
+    "outDir": "./dist/types",
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "noUncheckedSideEffectImports": false
+  },
+  "include": ["src/lib.ts", "src/vite-env.d.ts", "src/board/**/*", "src/components/**/*", "src/hooks/**/*", "src/lib/**/*"]
+}

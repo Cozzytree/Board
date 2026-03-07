@@ -23,9 +23,6 @@ import {
   ImageIcon,
 } from "lucide-react";
 import * as React from "react";
-import ShapeOptions from "./components/shapeoptions";
-import Toolbar from "./components/toolbar";
-import { LibrarySidebar } from "./components/library_sidebar";
 import { Board, Rect, Shape } from "./index";
 import type { EventData, modes, submodes, CustomShapeDef } from "./types";
 import { generateShapeByShapeType } from "./utils/utilfunc";
@@ -36,9 +33,9 @@ import {
   ContextMenuItem,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
-import { Button } from "@/components/ui/button";
 import CloudShape from "./shapes/paths/cloud_shape";
 import { BoardContext } from "./board-context";
+type Theme = "dark" | "light";
 
 const DEFAULT_CUSTOM_SHAPES: CustomShapeDef[] = [
   {
@@ -53,13 +50,19 @@ const BoardProvider = ({
   width = window.innerWidth,
   customShapes = DEFAULT_CUSTOM_SHAPES,
   onImageUpload,
+  theme,
+  children,
 }: {
+  theme?: Theme;
   width?: number;
   height?: number;
   customShapes?: CustomShapeDef[];
   onImageUpload?: (file: File) => Promise<string>;
+  children?: React.ReactNode;
 }) => {
-  const [offset, setOffset] = React.useState([0, 0]);
+  const [background, setBackground] = React.useState(theme === "dark" ? "#181818" : "#efefef");
+  const [foreground, setForeground] = React.useState("");
+  const [offset, setOffset] = React.useState<[number, number]>([0, 0]);
   const [zoom, setZoom] = React.useState(100);
   const [activeShape, setActiveShape] = React.useState<Shape | null>(null);
   const [isSnap, setSnapState] = React.useState(() => {
@@ -293,7 +296,7 @@ const BoardProvider = ({
     return false;
   }, []);
 
-  const onMouseUp = React.useCallback(() => {}, []);
+  const onMouseUp = React.useCallback(() => { }, []);
 
   const onModeChange = React.useCallback((m: modes, sm: submodes) => {
     setMode({ m, sm });
@@ -332,9 +335,9 @@ const BoardProvider = ({
         setActiveShape(e.e.target[e.e.target.length - 1]);
       }
     });
-    newBoard.on("mousemove", () => {});
-    newBoard.on("shape:resize", () => {});
-    newBoard.on("shape:move", () => {});
+    newBoard.on("mousemove", () => { });
+    newBoard.on("shape:resize", () => { });
+    newBoard.on("shape:move", () => { });
     newBoard.on("shape:created", () => {
       saveShapesToStorage(newBoard);
     });
@@ -476,13 +479,13 @@ const BoardProvider = ({
     borderRef.current.render();
   }, []);
 
-  const handleCenter = () => {
+  const handleCenter = React.useCallback(() => {
     if (!borderRef.current) return;
 
     [borderRef.current.view.x, borderRef.current.view.y] = [0, 0];
     borderRef.current.render();
     setOffset([0, 0]);
-  };
+  }, []);
 
   const importLibrary = React.useCallback((library: any) => {
     if (library?.type !== "board-library" || !Array.isArray(library.libraryItems)) {
@@ -596,52 +599,25 @@ const BoardProvider = ({
             setVersion((v) => v + 1);
           },
           importLibrary,
-        }}>
-        <div className="w-32 bg-amber-100" />
 
+          // Composable UI state
+          zoom,
+          offset,
+          isMinimal,
+          setMinimal,
+          handleZoom,
+          handleCenter,
+          exportBoardAsLibrary,
+          canvasRef,
+          width,
+          height,
+        }}>
         <ContextMenuTrigger>
           <canvas ref={canvasRef} style={{ width: width + "px", height: height + "px" }} />
         </ContextMenuTrigger>
-        <div className="pointer-events-auto z-50 fixed left-1/2 -translate-x-1/2 bottom-4 flex justify-center">
-          {!isMinimal && <Toolbar />}
-        </div>
-        {!isMinimal && <LibrarySidebar />}
 
-        <div className="fixed w-fit z-50 md:left-5 md:top-5 right-15 bottom-5">
-          {(Math.abs(offset[0]) > 100 || Math.abs(offset[1]) > 100) && (
-            <Button
-              className="cursor-pointer"
-              onClick={handleCenter}
-              variant={"secondary"}
-              size={"xs"}>
-              <ArrowLeft width={10} /> <span className="hidden md:block">Back to center</span>
-            </Button>
-          )}
-        </div>
+        {children}
 
-        <div className="z-50 fixed left-4 bottom-5 flex items-center gap-2">
-          <Button
-            onClick={() => {
-              handleZoom(true);
-            }}
-            variant={"secondary"}
-            size={"xs"}
-            className="cursor-pointer">
-            <PlusIcon />
-          </Button>
-          <span className="text-sm">{zoom.toFixed(0)} %</span>
-          <Button
-            onClick={() => {
-              handleZoom(false);
-            }}
-            variant={"secondary"}
-            size={"xs"}
-            className="cursor-pointer">
-            <MinusIcon />
-          </Button>
-        </div>
-
-        {!isMinimal && activeShape && <ShapeOptions />}
       </BoardContext.Provider>
       <ContextMenuContent>
         <ContextMenuItem
