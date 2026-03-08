@@ -201,6 +201,7 @@ const BoardProvider = ({
   const borderRef = React.useRef<Board>(null);
 
   const STORAGE_KEY = "board_shapes";
+  const VIEW_STORAGE_KEY = "board_view";
 
   /** Serialize all shapes in the store to localStorage */
   const saveShapesToStorage = React.useCallback((board: Board) => {
@@ -225,6 +226,29 @@ const BoardProvider = ({
       );
     } catch (err) {
       console.error("Failed to save shapes to localStorage", err);
+    }
+  }, []);
+
+  const saveViewToStorage = React.useCallback((board: Board) => {
+    try {
+      localStorage.setItem(VIEW_STORAGE_KEY, JSON.stringify(board.view));
+    } catch (err) {
+      console.error("Failed to save view to localStorage", err);
+    }
+  }, []);
+
+  const loadViewFromStorage = React.useCallback((board: Board) => {
+    try {
+      const raw = localStorage.getItem(VIEW_STORAGE_KEY);
+      if (!raw) return;
+      const view = JSON.parse(raw);
+      if (typeof view.x === "number" && typeof view.y === "number" && typeof view.scl === "number") {
+        board.view.x = view.x;
+        board.view.y = view.y;
+        board.view.scl = view.scl;
+      }
+    } catch (err) {
+      console.error("Failed to load view from localStorage", err);
     }
   }, []);
 
@@ -317,10 +341,12 @@ const BoardProvider = ({
       onZoom: (v) => {
         setZoom(v.scl * 100);
         setOffset([v.x, v.y]);
+        saveViewToStorage(newBoard);
       },
       onScroll: (v) => {
         setOffset([v.x, v.y]);
         setZoom(v.scl * 100);
+        saveViewToStorage(newBoard);
       },
       customShapes,
       onImageUpload,
@@ -343,6 +369,7 @@ const BoardProvider = ({
     });
 
     // Load saved shapes or create a default one
+    loadViewFromStorage(newBoard);
     const loaded = loadShapesFromStorage(newBoard);
     if (!loaded) {
       // Create a default rect so the canvas isn't empty
@@ -466,6 +493,32 @@ const BoardProvider = ({
     document.addEventListener("keydown", handleShortcut);
     return () => document.removeEventListener("keydown", handleShortcut);
   }, [mode, tools, handleModeChange]);
+
+  // Space held -> grab mode (only from cursor mode); release -> back to cursor
+  React.useEffect(() => {
+    if (mode.m !== "cursor") return;
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.code !== "Space" || e.repeat) return;
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || (e.target as HTMLElement)?.isContentEditable) return;
+      if (mode.sm === "grab") return;
+      e.preventDefault();
+      handleModeChange("cursor", "grab");
+    };
+
+    const onKeyUp = (e: KeyboardEvent) => {
+      if (e.code !== "Space") return;
+      handleModeChange("cursor", "free");
+    };
+
+    document.addEventListener("keydown", onKeyDown);
+    document.addEventListener("keyup", onKeyUp);
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      document.removeEventListener("keyup", onKeyUp);
+    };
+  }, [mode, handleModeChange]);
 
   const handleZoom = React.useCallback((v: boolean) => {
     if (!borderRef.current) return;
