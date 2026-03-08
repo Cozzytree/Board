@@ -20,11 +20,11 @@ class TextTool implements ToolInterface {
     this._board = board;
   }
 
-  pointerDown(): void { }
+  pointerDown(): void {}
 
-  pointermove(): void { }
+  pointermove(): void {}
 
-  pointerup(): void { }
+  pointerup(): void {}
 
   onClick({ p }: ToolEventData): void {
     // If there's already an active textarea, finalize it first
@@ -54,7 +54,6 @@ class TextTool implements ToolInterface {
     textarea.placeholder = "Type...";
     textarea.spellcheck = true;
     textarea.autocomplete = "off";
-    textarea.autocorrect = "on";
     textarea.setAttribute("autocapitalize", "sentences");
     textarea.setAttribute("inputmode", "text");
     textarea.style.minWidth = `${this.minWidth * this._board.view.scl}px`;
@@ -145,7 +144,10 @@ class TextTool implements ToolInterface {
 
     const width = Math.max(this.minWidth * scale, Math.ceil(longest + widthPadding));
     const lineCount = Math.max(lines.length, 1);
-    const height = Math.max(this.minHeight * scale, Math.ceil(lineCount * lineHeight + heightPadding));
+    const height = Math.max(
+      this.minHeight * scale,
+      Math.ceil(lineCount * lineHeight + heightPadding),
+    );
 
     textarea.style.width = `${width}px`;
     textarea.style.height = `${height}px`;
@@ -213,7 +215,7 @@ class TextTool implements ToolInterface {
     this._board.setMode = { m: "cursor", sm: "free" };
   }
 
-  dblClick(): void { }
+  dblClick(): void {}
 
   cleanUp(): void {
     // Finalize any active text input before cleanup
