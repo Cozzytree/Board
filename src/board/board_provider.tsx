@@ -1,12 +1,10 @@
 import {
-  ArrowLeft,
   BoxIcon,
   CircleIcon,
   DiamondIcon,
   EraserIcon,
   GrabIcon,
   Minus,
-  MinusIcon,
   MousePointer,
   PencilIcon,
   PentagonIcon,
@@ -24,7 +22,7 @@ import {
 } from "lucide-react";
 import * as React from "react";
 import { Board, Rect, Shape } from "./index";
-import type { EventData, modes, submodes, CustomShapeDef } from "./types";
+import type { modes, submodes, CustomShapeDef } from "./types";
 import { generateShapeByShapeType } from "./utils/utilfunc";
 import { saveLibraryItems } from "./utils/library_db";
 import {
@@ -242,7 +240,11 @@ const BoardProvider = ({
       const raw = localStorage.getItem(VIEW_STORAGE_KEY);
       if (!raw) return;
       const view = JSON.parse(raw);
-      if (typeof view.x === "number" && typeof view.y === "number" && typeof view.scl === "number") {
+      if (
+        typeof view.x === "number" &&
+        typeof view.y === "number" &&
+        typeof view.scl === "number"
+      ) {
         board.view.x = view.x;
         board.view.y = view.y;
         board.view.scl = view.scl;
@@ -306,10 +308,20 @@ const BoardProvider = ({
               s: targetShape,
               connected: conn.connected,
               anchor: conn.anchor,
-              coords: conn.coords,
+              coords: conn.coords
+                ? { x: conn.coords.x ?? 50, y: conn.coords.y ?? 50 }
+                : { x: 50, y: 50 },
             });
           }
         }
+
+        // Force connectionEvent refresh so line endpoints snap to current shape edges
+        restored.forEach((shape) => {
+          if (shape.type !== "line" && shape.connections.size() > 0) {
+            const p = { x: shape.left, y: shape.top };
+            shape.dragging(p, p);
+          }
+        });
 
         board.render();
         return true;
@@ -320,7 +332,7 @@ const BoardProvider = ({
     return false;
   }, []);
 
-  const onMouseUp = React.useCallback(() => { }, []);
+  const onMouseUp = React.useCallback(() => {}, []);
 
   const onModeChange = React.useCallback((m: modes, sm: submodes) => {
     setMode({ m, sm });
@@ -361,9 +373,9 @@ const BoardProvider = ({
         setActiveShape(e.e.target[e.e.target.length - 1]);
       }
     });
-    newBoard.on("mousemove", () => { });
-    newBoard.on("shape:resize", () => { });
-    newBoard.on("shape:move", () => { });
+    newBoard.on("mousemove", () => {});
+    newBoard.on("shape:resize", () => {});
+    newBoard.on("shape:move", () => {});
     newBoard.on("shape:created", () => {
       saveShapesToStorage(newBoard);
     });
@@ -501,7 +513,8 @@ const BoardProvider = ({
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.code !== "Space" || e.repeat) return;
       const tag = (e.target as HTMLElement)?.tagName;
-      if (tag === "INPUT" || tag === "TEXTAREA" || (e.target as HTMLElement)?.isContentEditable) return;
+      if (tag === "INPUT" || tag === "TEXTAREA" || (e.target as HTMLElement)?.isContentEditable)
+        return;
       if (mode.sm === "grab") return;
       e.preventDefault();
       handleModeChange("cursor", "grab");
@@ -670,7 +683,6 @@ const BoardProvider = ({
         </ContextMenuTrigger>
 
         {children}
-
       </BoardContext.Provider>
       <ContextMenuContent>
         <ContextMenuItem

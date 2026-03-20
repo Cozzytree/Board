@@ -90,6 +90,7 @@ class Board implements BoardInterface {
   private handlePointerMove: (e: PointerEvent | MouseEvent | TouchEvent) => void;
   private handlePointerUp: (e: PointerEvent | MouseEvent | TouchEvent) => void;
   private handleWheel: (e: WheelEvent) => void;
+  private handleTouchStart: (e: TouchEvent) => void;
   declare onModeChange?: (m: modes, sm: submodes) => void;
 
   canvas: HTMLCanvasElement;
@@ -183,7 +184,9 @@ class Board implements BoardInterface {
     this.handlePointerUp = this.onmouseup.bind(this);
     this.handleWheel = this.onWheel.bind(this);
     this.handleDoubleClick = this.ondoubleclick.bind(this);
+    this.handleTouchStart = this.ontouchstart.bind(this);
 
+    this.canvas.addEventListener("touchstart", this.handleTouchStart, { passive: false });
     this.canvas.addEventListener("touchmove", this.handlePointerMove);
     this.canvas.addEventListener("touchend", this.handlePointerUp);
 
@@ -470,16 +473,33 @@ class Board implements BoardInterface {
     });
   }
 
+  private ontouchstart(e: TouchEvent) {
+    if (e.touches.length >= 2) {
+      e.preventDefault();
+    }
+    if (this.currentTool && typeof (this.currentTool as any).touchStart === "function") {
+      (this.currentTool as any).touchStart(e);
+    }
+  }
+
   private onmousemove(e: PointerEvent | MouseEvent | TouchEvent) {
     e.preventDefault();
-    // const p = this.getTransFormedCoords(e);
-    // this.evt.dy = this.evt.y - this.evt.yi;
-    // this.evt.dx = this.evt.x - this.evt.xi;
-    // this.currentTool.pointermove({ e, p });
+    if (e instanceof TouchEvent && e.touches.length >= 2) {
+      if (typeof (this.currentTool as any).touchMove === "function") {
+        (this.currentTool as any).touchMove(e);
+        return;
+      }
+    }
     this.throttledPointerMove(e);
   }
 
   private onmouseup(e: PointerEvent | MouseEvent | TouchEvent) {
+    if (e instanceof TouchEvent) {
+      if (typeof (this.currentTool as any).touchEnd === "function") {
+        (this.currentTool as any).touchEnd(e);
+      }
+      if (e.touches.length >= 1) return; // still multi-touch in progress
+    }
     const p = this.getTransFormedCoords(e);
     this.currentTool.pointerup(
       { e, p },
@@ -596,6 +616,7 @@ class Board implements BoardInterface {
   }
 
   clean() {
+    this.canvas.removeEventListener("touchstart", this.handleTouchStart);
     this.canvas.removeEventListener("touchmove", this.handlePointerMove);
     this.canvas.removeEventListener("touchend", this.handlePointerUp);
 

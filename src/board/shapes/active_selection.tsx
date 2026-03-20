@@ -3,7 +3,7 @@ import { Box, Ellipse, Line, Path, Shape } from "../index";
 import type { BoxInterface, Point, resizeDirection, ShapeEventData, ShapeProps } from "../types";
 import { resizeRect, isDraggableWithRotation } from "../utils/resize";
 import { resizeWithRotation } from "../utils/resizeWithRotation";
-import { calcPointWithRotation } from "../utils/utilfunc";
+import { calcPointWithRotation, rotatePoint } from "../utils/utilfunc";
 import Group from "./group";
 
 export type ActiveSeletionProps = {
@@ -117,6 +117,31 @@ class ActiveSelection extends Shape {
       return d.rd;
     }
     return null;
+  }
+
+  set(key: string | Record<string, any>, value?: any): this {
+    const props: Record<string, any> = typeof key === "object" ? key : { [key]: value };
+
+    if ("rotate" in props && props.rotate !== undefined) {
+      const delta = props.rotate - this.rotate;
+      if (delta !== 0) {
+        const selCenter = { x: this.left + this.width / 2, y: this.top + this.height / 2 };
+        this.shapes.forEach(({ s }) => {
+          const newCenter = rotatePoint(
+            { x: s.left + s.width / 2, y: s.top + s.height / 2 },
+            selCenter,
+            delta,
+          );
+          s.set({
+            left: newCenter.x - s.width / 2,
+            top: newCenter.y - s.height / 2,
+            rotate: s.rotate + delta,
+          });
+        });
+      }
+    }
+
+    return super.set(props);
   }
 
   dragging(prev: Point, current: Point) {

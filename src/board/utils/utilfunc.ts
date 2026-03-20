@@ -1522,14 +1522,31 @@ function helperEvent(e: React.MouseEvent, attrName: string, fn: (v: any) => void
   }
 }
 
+/**
+ * Rotate a point around a center by the given angle (radians).
+ * Pass a negative angle to inverse-rotate (world → local).
+ */
+function rotatePoint(point: Point, center: Point, angle: number): Point {
+  if (angle === 0) return { x: point.x, y: point.y };
+  const cos = Math.cos(angle);
+  const sin = Math.sin(angle);
+  const dx = point.x - center.x;
+  const dy = point.y - center.y;
+  return {
+    x: center.x + dx * cos - dy * sin,
+    y: center.y + dx * sin + dy * cos,
+  };
+}
+
 function getAnchorPoint(conn: connection) {
   return {
-    x: conn.s.left + ((conn.coords?.x ?? 0) / 100) * conn.s.width,
-    y: conn.s.top + ((conn.coords?.y ?? 0) / 100) * conn.s.height,
+    x: conn.s.left + ((conn.coords?.x ?? 50) / 100) * conn.s.width,
+    y: conn.s.top + ((conn.coords?.y ?? 50) / 100) * conn.s.height,
   };
 }
 
 export {
+  rotatePoint,
   getAnchorPoint,
   snapShape,
   helperEvent,

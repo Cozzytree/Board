@@ -3,6 +3,7 @@ import type Shape from "../shape";
 import type { DrawProps } from "../shape";
 import type { connectionEventData, LineProps } from "../shape_types";
 import type { BoxInterface, Point, resizeDirection, ShapeProps } from "@/board/types";
+import { rotatePoint } from "@/board/utils/utilfunc";
 
 class LineAnchor extends Line {
   constructor(props: ShapeProps & LineProps) {
@@ -22,6 +23,30 @@ class LineAnchor extends Line {
     this.points[3] = p2;
   }
 
+  setCoords(): void {
+    super.setCoords();
+    if (this.connections.size() > 0 && this.points.length >= 4) {
+      const p0 = this.points[0];
+      const pLast = this.points[this.points.length - 1];
+      const maxX = Math.max(p0.x, pLast.x);
+      const minX = Math.min(p0.x, pLast.x);
+      const maxY = Math.max(p0.y, pLast.y);
+      const minY = Math.min(p0.y, pLast.y);
+      const width = maxX - minX;
+      const height = maxY - minY;
+      const midWidth = width / 2;
+      const midHeight = height / 2;
+      this.points[1] = {
+        x: height > 200 ? p0.x : minX + midWidth,
+        y: height > 200 ? minY + midHeight : p0.y,
+      };
+      this.points[2] = {
+        x: height > 200 ? pLast.x : minX + midWidth,
+        y: height > 200 ? minY + midHeight : pLast.y,
+      };
+    }
+  }
+
   clone(): Shape {
     const props = super.cloneProps();
     return new LineAnchor({ ...props, points: this.points });
@@ -30,6 +55,12 @@ class LineAnchor extends Line {
   draw({ ctx, resize }: DrawProps): void {
     const context = ctx || this.ctx;
     context.save();
+
+    const centerX = this.left + this.width * 0.5;
+    const centerY = this.top + this.height * 0.5;
+    context.translate(centerX, centerY);
+    context.rotate(this.rotate);
+    context.translate(-centerX, -centerY);
     context.translate(this.left, this.top);
 
     if (resize) {
@@ -93,11 +124,18 @@ class LineAnchor extends Line {
     const b = super.connectionEvent({ c, s, p });
     if (b) {
       const { left, top, width, height } = s;
-      const start = { x: this.left + this.points[0].x, y: this.top + this.points[0].y };
-      const end = {
-        x: this.left + this.points[this.points.length - 1].x,
-        y: this.top + this.points[this.points.length - 1].y,
-      };
+
+      const center = { x: this.left + this.width / 2, y: this.top + this.height / 2 };
+      const start = rotatePoint(
+        { x: this.left + this.points[0].x, y: this.top + this.points[0].y },
+        center,
+        this.rotate,
+      );
+      const end = rotatePoint(
+        { x: this.left + this.points[this.points.length - 1].x, y: this.top + this.points[this.points.length - 1].y },
+        center,
+        this.rotate,
+      );
 
       let xAlign, yAlign: boolean;
       if (c.connected === "s") {

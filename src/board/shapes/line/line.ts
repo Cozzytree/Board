@@ -6,6 +6,7 @@ import { Box, Pointer, Rect, Shape } from "@/board/index";
 import {
   intersectLineWithBox,
   isPointNearSegment,
+  rotatePoint,
   routeOrthogonalRobustDynamic,
   setCoords,
 } from "@/board/utils/utilfunc";
@@ -152,15 +153,16 @@ abstract class Line extends Shape {
   IsResizable(p: Point): resizeDirection | null {
     if (!this.points.length) return null;
 
+    const center = { x: this.left + this.width / 2, y: this.top + this.height / 2 };
+    const testP: Point = this.rotate !== 0 ? rotatePoint(p, center, -this.rotate) : p;
+
     // Only expose resize handles on the two edge endpoints.
     // Intermediate routing/control points are internal and should not be draggable.
-    const first = 0;
-    const last = this.points.length - 1;
-    const candidates = [first, last];
+    const candidates = [0, this.points.length - 1];
 
     for (const i of candidates) {
-      const dx = Math.abs(this.points[i].x + this.left - p.x);
-      const dy = Math.abs(this.points[i].y + this.top - p.y);
+      const dx = Math.abs(this.points[i].x + this.left - testP.x);
+      const dy = Math.abs(this.points[i].y + this.top - testP.y);
       if (dx < this.padding && dy < this.padding) {
         this.resizeIndex = i;
         return "b";
@@ -171,6 +173,9 @@ abstract class Line extends Shape {
   }
 
   setCoords(): void {
+    if (this.connections.size() > 0) {
+      this.rotate = 0;
+    }
     const { box, points } = setCoords(this.points, this.left, this.top);
 
     // Step 3: Set the new bounding box and points
@@ -184,6 +189,8 @@ abstract class Line extends Shape {
   }
 
   IsDraggable(p: Point): boolean {
+    const center = { x: this.left + this.width / 2, y: this.top + this.height / 2 };
+    const testP: Point = this.rotate !== 0 ? rotatePoint(p, center, -this.rotate) : p;
     for (let i = 0; i < this.points.length - 1; i++) {
       const a = this.points[i];
       const b = this.points[i + 1];
@@ -197,7 +204,7 @@ abstract class Line extends Shape {
             x: b.x + this.left - this.padding,
             y: b.y + this.top - this.padding,
           }),
-          c: p,
+          c: testP,
           padding: this.padding,
         })
       ) {
@@ -214,6 +221,12 @@ abstract class Line extends Shape {
 
     this.left -= dx;
     this.top -= dy;
+  }
+
+  protected worldToLocal(wx: number, wy: number): { x: number; y: number } {
+    const center = { x: this.left + this.width / 2, y: this.top + this.height / 2 };
+    const rotated = rotatePoint({ x: wx, y: wy }, center, -this.rotate);
+    return { x: rotated.x - this.left, y: rotated.y - this.top };
   }
 
   mouseover(s: ShapeEventData): void {
@@ -393,7 +406,9 @@ abstract class Line extends Shape {
         };
       }
     } else {
-      this.points[index] = { x: current.x - this.left, y: current.y - this.top };
+      const center = { x: this.left + this.width / 2, y: this.top + this.height / 2 };
+      const adjustedCurrent = this.rotate !== 0 ? rotatePoint(current, center, -this.rotate) : current;
+      this.points[index] = { x: adjustedCurrent.x - this.left, y: adjustedCurrent.y - this.top };
     }
 
     return this.indicator.show ? drawShapes : undefined;

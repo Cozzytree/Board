@@ -96,6 +96,7 @@ abstract class Shape implements ShapeProps {
     selectionFill,
     selectionStrokeWidth,
     italic,
+    id,
   }: ShapeProps) {
     this.fill = fill || "#00000000";
     this.height = height || 100;
@@ -117,7 +118,7 @@ abstract class Shape implements ShapeProps {
     this.fontWeight = 500;
     this.textAlign = textAlign || "left";
     this.connections = connections instanceof Connections ? connections : new Connections();
-    this.id = (arguments[0] as any)?.id || uuidv4();
+    this.id = id || uuidv4();
     this.selectionColor = selectionColor || HoveredColor;
     this.selectionStrokeWidth = selectionStrokeWidth || 2;
     this.selectionAlpha = selectionAlpha || 0.4;
@@ -152,7 +153,7 @@ abstract class Shape implements ShapeProps {
     };
   }
 
-  connectionEvent(_: connectionEventData) { }
+  connectionEvent(_: connectionEventData) {}
 
   remove() {
     this._board.removeShape(this);
@@ -304,14 +305,14 @@ abstract class Shape implements ShapeProps {
 
     // Map each direction to its base angle (in degrees)
     const directionAngles: Record<resizeDirection, number> = {
-      r: 0,      // right: 0°
-      br: 45,    // bottom-right: 45°
-      b: 90,     // bottom: 90°
-      bl: 135,   // bottom-left: 135°
-      l: 180,    // left: 180°
-      tl: 225,   // top-left: 225°
-      t: 270,    // top: 270°
-      tr: 315,   // top-right: 315°
+      r: 0, // right: 0°
+      br: 45, // bottom-right: 45°
+      b: 90, // bottom: 90°
+      bl: 135, // bottom-left: 135°
+      l: 180, // left: 180°
+      tl: 225, // top-left: 225°
+      t: 270, // top: 270°
+      tr: 315, // top-right: 315°
     };
 
     // Calculate the effective angle (direction angle + rotation)
@@ -376,6 +377,7 @@ abstract class Shape implements ShapeProps {
    * with drag or resize operations.
    */
   isRotating(p: Point): boolean {
+    // if (this.type === "line") return false;
     const outerPadding = this.padding + this.rotationPadding;
 
     // Check if point is within outer rotation zone
@@ -412,20 +414,27 @@ abstract class Shape implements ShapeProps {
     };
   }
 
-  private static readonly _transientKeys = new Set([
-    "lastPoints", "indicator", "lastFlippedState",
-  ]);
+  private static readonly _transientKeys = new Set(["lastPoints", "indicator", "lastFlippedState"]);
 
   toObject(): Identity<Shape> {
     const obj = {} as { [K in keyof this]: this[K] };
     for (const key of Object.keys(this) as Array<keyof this>) {
       const keyStr = String(key);
-      if (keyStr.startsWith("_") || keysNotNeeded.includes(keyStr) || Shape._transientKeys.has(keyStr)) {
+      if (
+        keyStr.startsWith("_") ||
+        keysNotNeeded.includes(keyStr) ||
+        Shape._transientKeys.has(keyStr)
+      ) {
         continue;
       }
       if (keyStr === "connections") {
         // Serialize connections with shape IDs instead of live references
-        const serialized: { shapeId: string; connected: "s" | "e"; anchor?: string; coords?: { x: number; y: number } }[] = [];
+        const serialized: {
+          shapeId: string;
+          connected: "s" | "e";
+          anchor?: string;
+          coords?: { x: number; y: number };
+        }[] = [];
         this.connections.forEach((c) => {
           serialized.push({
             shapeId: c.s.ID(),
@@ -484,7 +493,7 @@ abstract class Shape implements ShapeProps {
     return this[property as keyof this];
   }
 
-  setCoords() { }
+  setCoords() {}
 
   inAnchor(p: Point): { isin: boolean; side: Side; point: Point } {
     const inSetX = Math.floor(this.width * 0.2);

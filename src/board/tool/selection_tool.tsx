@@ -57,6 +57,11 @@ class SelectionTool implements ToolInterface {
 
   private unsnappedPos: Point = new Pointer({ x: 0, y: 0 });
 
+  private isTouchGesture: boolean = false;
+  private touchStartDist: number = 0;
+  private touchStartMidpoint: { x: number; y: number } = { x: 0, y: 0 };
+  private touchStartView: { x: number; y: number; scl: number } | null = null;
+
   constructor(board: Board, sb: submodes) {
     // this.snapLines = [];
     this._board = board;
@@ -66,7 +71,50 @@ class SelectionTool implements ToolInterface {
     document.addEventListener("keydown", this.handleKeyDown);
   }
 
+  touchStart(e: TouchEvent) {
+    if (e.touches.length < 2) return;
+    this.isTouchGesture = true;
+    const t0 = e.touches[0],
+      t1 = e.touches[1];
+    this.touchStartDist = Math.hypot(t1.clientX - t0.clientX, t1.clientY - t0.clientY);
+    this.touchStartMidpoint = {
+      x: (t0.clientX + t1.clientX) / 2,
+      y: (t0.clientY + t1.clientY) / 2,
+    };
+    const v = this._board.view;
+    this.touchStartView = { x: v.x, y: v.y, scl: v.scl };
+  }
+
+  touchMove(e: TouchEvent) {
+    if (e.touches.length < 2 || !this.touchStartView) return;
+    e.preventDefault();
+    const t0 = e.touches[0],
+      t1 = e.touches[1];
+    const newDist = Math.hypot(t1.clientX - t0.clientX, t1.clientY - t0.clientY);
+    const midX = (t0.clientX + t1.clientX) / 2;
+    const midY = (t0.clientY + t1.clientY) / 2;
+    const scaleRatio = newDist / this.touchStartDist;
+    const sv = this.touchStartView;
+    this._board.view.scl = sv.scl * scaleRatio;
+    this._board.view.x =
+      midX + scaleRatio * (sv.x - this.touchStartMidpoint.x) + (midX - this.touchStartMidpoint.x);
+    this._board.view.y =
+      midY + scaleRatio * (sv.y - this.touchStartMidpoint.y) + (midY - this.touchStartMidpoint.y);
+    this._board.evt.eps = 1 / this._board.view.scl;
+    this._board.renderImmediate();
+    this._board.onZoomCallback(this._board.view);
+    this._board.onScroll(this._board.view);
+  }
+
+  touchEnd(e: TouchEvent) {
+    if (e.touches.length < 2) {
+      this.isTouchGesture = false;
+      this.touchStartView = null;
+    }
+  }
+
   pointerDown({ e, p }: ToolEventData, callback?: (e: EventData) => void): void {
+    if (this.isTouchGesture) return;
     // this.snapLines = [];
     // Check if we are currently editing text or if the input exists
     if (this.isInput || document.getElementById(textAreaId)) {
@@ -289,6 +337,7 @@ class SelectionTool implements ToolInterface {
   }
 
   pointermove({ p }: ToolEventData, _: (e: EventData) => void): void {
+    if (this.isTouchGesture) return;
     this.hoveredShape = null;
 
     if (this.subMode === "grab" && this.isGrabbing) {
@@ -315,7 +364,8 @@ class SelectionTool implements ToolInterface {
 
       this.rotatingShape.set({ rotate: newRotation });
 
-      this.draw(this.rotatingShape);
+      this._board.renderImmediate();
+      // this.draw(this.rotatingShape);
       this._board.fire("mousemove", { e: { target: [this.rotatingShape], x: p.x, y: p.y } });
       return;
     }
@@ -334,7 +384,11 @@ class SelectionTool implements ToolInterface {
 
       // Check for snap
       if (this._board.snap && this.draggedShape.type !== "selection") {
-        const { lines, x: snappedX, y: snappedY } = snapShape({
+        const {
+          lines,
+          x: snappedX,
+          y: snappedY,
+        } = snapShape({
           board: this._board,
           current: this.unsnappedPos, // Use unsnapped position for check
           shape: this.draggedShape,
@@ -351,16 +405,15 @@ class SelectionTool implements ToolInterface {
         // delta = target - last => target = last + delta
         const targetPoint = new Pointer({
           x: this.lastPoint.x + effectiveDeltaX,
-          y: this.lastPoint.y + effectiveDeltaY
+          y: this.lastPoint.y + effectiveDeltaY,
         });
 
         shapes = this.draggedShape.dragging(new Pointer(this.lastPoint), targetPoint);
-
       } else {
         // No snap, just drag normally using mouse position
         // Ensure we sync unsnappedPos in case we toggled snap off/on
-        // Actually, dragging() adds delta. 
-        // If we don't snap, shape.left += dx. unsnappedPos += dx. 
+        // Actually, dragging() adds delta.
+        // If we don't snap, shape.left += dx. unsnappedPos += dx.
         // They should remain in sync relative to each other's start.
         shapes = this.draggedShape.dragging(new Pointer(this.lastPoint), new Pointer(p));
       }
@@ -386,7 +439,11 @@ class SelectionTool implements ToolInterface {
       let snapLines: Shape[] = [];
 
       if (this._board.snap && this.resizableShape.s.type !== "selection") {
-        const { lines, x: snappedX, y: snappedY } = snapShape({
+        const {
+          lines,
+          x: snappedX,
+          y: snappedY,
+        } = snapShape({
           board: this._board,
           current: p,
           shape: this.resizableShape.s,
@@ -451,7 +508,11 @@ class SelectionTool implements ToolInterface {
     if (!foundHoveredShape) {
       this._board.shapeStore.forEach((s) => {
         if (s.IsDraggable(p) && !this.isGrabbing) {
-          if (this._board.hoverEffect && this.draggedShape === null && this.resizableShape === null) {
+          if (
+            this._board.hoverEffect &&
+            this.draggedShape === null &&
+            this.resizableShape === null
+          ) {
             if (
               this._board.activeShapes?.ID() !== s.ID() &&
               this._board.shapeStore.getLastInsertedShape()?.type !== "selection"
@@ -521,7 +582,7 @@ class SelectionTool implements ToolInterface {
     this.hasSelectionStarted = false;
 
     if (this.activeShape) {
-      if (!this.draggedShape && !this.resizableShape) {
+      if (!this.draggedShape && !this.resizableShape && this.isDragging) {
         this.activeShape.mouseup({ e: { point: p } });
       }
       this.activeShape = null;
@@ -566,28 +627,17 @@ class SelectionTool implements ToolInterface {
     div.setAttribute("id", textAreaId);
     div.style.position = "absolute";
     div.style.left =
-      rect.left +
-      this.textEdit.left * this._board.view.scl +
-      this._board.view.x +
-      "px";
-    div.style.top =
-      rect.top +
-      this.textEdit.top * this._board.view.scl +
-      this._board.view.y +
-      "px";
+      rect.left + this.textEdit.left * this._board.view.scl + this._board.view.x + "px";
+    div.style.top = rect.top + this.textEdit.top * this._board.view.scl + this._board.view.y + "px";
     div.style.zIndex = "1000";
 
     // Create textarea
     const textarea = document.createElement("textarea");
     textarea.value = this.textEdit.text || "";
-    textarea.style.width =
-      this.textEdit.width * this._board.view.scl + "px";
-    textarea.style.height =
-      this.textEdit.height * this._board.view.scl + "px";
-    textarea.style.fontSize =
-      this.textEdit.fontSize * this._board.view.scl + "px";
-    textarea.style.lineHeight =
-      this.textEdit.fontSize * this._board.view.scl * 1.2 + "px";
+    textarea.style.width = this.textEdit.width * this._board.view.scl + "px";
+    textarea.style.height = this.textEdit.height * this._board.view.scl + "px";
+    textarea.style.fontSize = this.textEdit.fontSize * this._board.view.scl + "px";
+    textarea.style.lineHeight = this.textEdit.fontSize * this._board.view.scl * 1.2 + "px";
     textarea.style.padding = "0px";
     textarea.style.margin = "0px";
     textarea.style.border = "none";
@@ -596,8 +646,7 @@ class SelectionTool implements ToolInterface {
     textarea.style.overflow = "hidden";
     textarea.style.background = "transparent";
     textarea.style.color = this.textEdit.stroke; // Match shape stroke color
-    textarea.style.fontFamily =
-      (this.textEdit as any).fontFamily || "system-ui";
+    textarea.style.fontFamily = (this.textEdit as any).fontFamily || "system-ui";
     textarea.style.textAlign = this.textEdit.textAlign;
     textarea.style.fontWeight = this.textEdit.fontWeight + "";
     if (this.textEdit.italic) {
@@ -696,7 +745,7 @@ class SelectionTool implements ToolInterface {
     }
   }
 
-  onClick(): void { }
+  onClick(): void {}
 
   cleanUp(): void {
     // Clean up textarea if active

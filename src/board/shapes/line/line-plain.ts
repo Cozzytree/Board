@@ -76,14 +76,8 @@ class PlainLine extends Line {
 
       // Rebuild points from scratch
       this.points = [
-        {
-          x: startHit[0][0] - this.left,
-          y: startHit[0][1] - this.top,
-        },
-        {
-          x: endHit[0][0] - this.left,
-          y: endHit[0][1] - this.top,
-        },
+        { x: startHit[0][0] - this.left, y: startHit[0][1] - this.top },
+        { x: endHit[0][0] - this.left, y: endHit[0][1] - this.top },
       ];
 
       return true;
@@ -111,15 +105,9 @@ class PlainLine extends Line {
             x: s.left + ((c.coords?.x ?? 0) / 100) * s.width - this.left,
             y: s.top + ((c.coords?.y ?? 0) / 100) * s.height - this.top,
           };
-          this.points[1] = {
-            x: points[0][0] - this.left,
-            y: points[0][1] - this.top,
-          };
+          this.points[1] = { x: points[0][0] - this.left, y: points[0][1] - this.top };
         } else {
-          this.points[changeIndex] = {
-            x: points[0][0] - this.left,
-            y: points[0][1] - this.top,
-          };
+          this.points[changeIndex] = { x: points[0][0] - this.left, y: points[0][1] - this.top };
         }
       }
     }
@@ -166,7 +154,12 @@ class PlainLine extends Line {
     const context = ctx || this.ctx;
     context.save();
 
-    // Move into the line's local space
+    // Rotate around the line's bounding-box center, then move into local space
+    const centerX = this.left + this.width * 0.5;
+    const centerY = this.top + this.height * 0.5;
+    context.translate(centerX, centerY);
+    context.rotate(this.rotate);
+    context.translate(-centerX, -centerY);
     context.translate(this.left, this.top);
 
     // Resize style
