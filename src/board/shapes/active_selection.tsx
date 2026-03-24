@@ -68,6 +68,10 @@ class ActiveSelection extends Shape {
       ctx: this._board.ctx,
       _board: this._board,
     });
+    // Mark members as owned by this group (shapes stay in shapeStore)
+    this.shapes.forEach(({ s }) => {
+      s.groupId = newGroup.ID();
+    });
     this._board.add(newGroup);
     this._board.discardActiveShapes();
     this._board.setActiveShape(newGroup);

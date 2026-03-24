@@ -1,6 +1,6 @@
 import Board from "../board";
 import { HoveredColor } from "../constants";
-import { ActiveSelection, Box, Line, Path, Pointer } from "../index";
+import { ActiveSelection, Box, Line, Path, Pointer, Group, Rect } from "../index";
 import { Text } from "../index.ts";
 import Shape from "../shapes/shape";
 import type { HistoryType } from "../shapes/shape_store";
@@ -56,6 +56,7 @@ class SelectionTool implements ToolInterface {
   private hasSelectionStarted: boolean = false;
 
   private unsnappedPos: Point = new Pointer({ x: 0, y: 0 });
+  private sourceGroup: Group | null = null;
 
   private isTouchGesture: boolean = false;
   private touchStartDist: number = 0;
@@ -288,10 +289,30 @@ class SelectionTool implements ToolInterface {
       }
 
       const drag = this._board.shapeStore.forEach((s) => {
+        // Skip shapes owned by a group — they are not directly selectable
+        if (s.groupId) return false;
         return s.IsDraggable(p);
       });
 
       if (drag) {
+        // Excalidraw-style: second click inside an already-active group extracts the child
+        if (
+          drag instanceof Group &&
+          this._board.getActiveShapes()?.ID() === drag.ID()
+        ) {
+          const child = drag.getShapeAt(p);
+          if (child) {
+            drag.removeShape(child); // clears child.groupId, keeps child in shapeStore
+            this.draggedShape = child;
+            this.sourceGroup = drag;
+            this.unsnappedPos = new Pointer({ x: child.left, y: child.top });
+            this.lastPoint = new Pointer({ x: p.x, y: p.y });
+            this._board.setActiveShape(child);
+            this._board.render();
+            return;
+          }
+        }
+
         callback?.({ e: { x: p.x, y: p.y, target: [drag] } });
 
         this.draggedShape = drag;
@@ -520,13 +541,37 @@ class SelectionTool implements ToolInterface {
               /*
                     TODO : need to fix cloning
                     */
-              this.hoveredShape = s.clone();
-              this.hoveredShape.set({
-                fill: "transparent",
-                dash: [0, 0],
-                stroke: HoveredColor,
-                strokeWidth: 2,
-              });
+              if (s instanceof Group && s.shapes.length) {
+                // Compute actual bounds from children
+                let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+                s.shapes.forEach(({ s: child }) => {
+                  minX = Math.min(minX, child.left);
+                  minY = Math.min(minY, child.top);
+                  maxX = Math.max(maxX, child.left + child.width);
+                  maxY = Math.max(maxY, child.top + child.height);
+                });
+                const pad = s.padding;
+                this.hoveredShape = new Rect({
+                  ctx: this._board.ctx,
+                  _board: this._board,
+                  left: minX - pad,
+                  top: minY - pad,
+                  width: maxX - minX + pad * 2,
+                  height: maxY - minY + pad * 2,
+                  fill: "transparent",
+                  stroke: HoveredColor,
+                  strokeWidth: 2,
+                  dash: [0, 0],
+                });
+              } else {
+                this.hoveredShape = s.clone();
+                this.hoveredShape.set({
+                  fill: "transparent",
+                  dash: [0, 0],
+                  stroke: HoveredColor,
+                  strokeWidth: 2,
+                });
+              }
             }
           }
           s.mouseover({ e: { point: p } });
@@ -590,6 +635,27 @@ class SelectionTool implements ToolInterface {
     if (this.draggedShape) {
       eventCb({ e: { x: p.x, y: p.y, target: [this.draggedShape] } });
       this.draggedShape.mouseup({ e: { point: p } });
+
+      const dropped = this.draggedShape;
+      const dropCenter: Point = { x: dropped.left + dropped.width / 2, y: dropped.top + dropped.height / 2 };
+
+      if (this.sourceGroup) {
+        // Child was extracted from a group — put it back if still inside, else leave standalone
+        if (this.sourceGroup.containsPoint(dropCenter)) {
+          this.sourceGroup.addShape(dropped); // sets dropped.groupId
+          this._board.setActiveShape(this.sourceGroup);
+        }
+        this.sourceGroup = null;
+      } else {
+        // Regular drop: check if dropped into any group
+        this._board.shapeStore.forEach((s) => {
+          if (s instanceof Group && s.ID() !== dropped.ID() && s.containsPoint(dropCenter)) {
+            s.addShape(dropped); // sets dropped.groupId, shape stays in shapeStore
+          }
+          return false;
+        });
+      }
+
       this.draggedShape = null;
     } else if (this.resizableShape) {
       eventCb({ e: { x: p.x, y: p.y, target: [this.resizableShape.s] } });

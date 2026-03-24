@@ -25,6 +25,7 @@ import Text from "./shapes/text";
 import SvgShape from "./shapes/svg_shape";
 import ExcalidrawShape from "./shapes/excalidraw_shape";
 import ImageShape from "./shapes/image_shape";
+import Group from "./shapes/group";
 
 export {
    Pointer,
@@ -54,4 +55,5 @@ export {
    SvgShape,
    ExcalidrawShape,
    ImageShape,
+   Group,
 };

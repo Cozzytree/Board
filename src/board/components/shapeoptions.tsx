@@ -31,10 +31,11 @@ import type { textAlign } from "../types";
 import { helperEvent } from "../utils/utilfunc";
 import { useMobile } from "@/hooks/use-mobile";
 import ActiveSelection from "../shapes/active_selection";
+import Group from "../shapes/group";
 import { Button } from "@/components/ui/button";
 
 function ShapeOptions() {
-  const { activeShape, canvas, setActiveShape } = useBoard();
+  const { activeShape, canvas, setActiveShape, update } = useBoard();
   const isMobile = useMobile();
 
   const handleDelete = () => {
@@ -71,7 +72,12 @@ function ShapeOptions() {
               size="icon"
               className={cn("h-8 w-8", isMobile && "h-7 w-7")}
               onClick={() => {
-                // Group logic here if implemented, or just placeholder
+                if (!(activeShape instanceof ActiveSelection) || !canvas) return;
+                activeShape.group();
+                const ac = canvas.getActiveShapes();
+                setActiveShape(ac);
+                canvas.render();
+                update();
               }}
             >
               <GroupIcon className={cn("h-4 w-4", isMobile && "h-3.5 w-3.5")} />
@@ -82,7 +88,21 @@ function ShapeOptions() {
               size="icon"
               className={cn("h-8 w-8", isMobile && "h-7 w-7")}
               onClick={() => {
-                // Ungroup logic here
+                if (!(activeShape instanceof Group) || !canvas) return;
+                // ungroup() clears groupId on all members (they're already in shapeStore)
+                const shapes = activeShape.ungroup();
+                // Remove only the group shape itself (members stay in store, now visible)
+                canvas.shapeStore.removeById(activeShape.ID());
+                canvas.discardActiveShapes();
+                const sel = new ActiveSelection(
+                  { shapes: shapes.map((s) => ({ s })), ctx: canvas.ctx, _board: canvas },
+                  1,
+                );
+                canvas.add(sel);
+                canvas.setActiveShape(sel);
+                setActiveShape(sel);
+                canvas.render();
+                update();
               }}
             >
               <UngroupIcon className={cn("h-4 w-4", isMobile && "h-3.5 w-3.5")} />

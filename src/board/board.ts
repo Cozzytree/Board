@@ -18,6 +18,7 @@ import {
   DrawTool,
   LineTool,
   TextTool,
+  Group,
 } from "./index";
 import EraserTool from "./tool/eraser_tool";
 import ImageTool from "./tool/image_tool";
@@ -301,6 +302,10 @@ class Board implements BoardInterface {
       if (s instanceof ActiveSelection && s.type === "selection") {
         s.shapes.forEach((as) => collect(as.s));
       }
+      if (s instanceof Group) {
+        // Cascade: also remove all member shapes
+        s.shapes.forEach(({ s: member }) => collect(member));
+      }
       collect(s);
     });
 
@@ -443,6 +448,9 @@ class Board implements BoardInterface {
     ctx.scale(view.scl, view.scl);
 
     shapeStore.forEach((s) => {
+      // Skip shapes owned by a group — the group renders them
+      if (s.groupId) return false;
+
       const { x, y, width, height } = s.getBounds();
 
       // AABB viewport culling

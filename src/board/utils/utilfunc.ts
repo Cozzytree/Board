@@ -15,6 +15,7 @@ import {
   PlainLine,
   AnchorLine,
   LineCurve,
+  Group,
 } from "../index";
 import type { ActiveSeletionProps } from "../shapes/active_selection";
 import type { PathProps } from "../shapes/paths/path";
@@ -158,6 +159,27 @@ function generateShapeByShapeType(
       left: val.left,
       top: val.top,
     });
+  } else if (val.type === "group") {
+    if (!val.shapes || val.shapes.length === 0) return null;
+    const groupShapes = (val.shapes as Identity<Shape>[])
+      .map((s) => {
+        const newS = generateShapeByShapeType(s, board, ctx);
+        return newS ? { s: newS, oldProps: (s as any).oldProps } : null;
+      })
+      .filter(Boolean) as { s: Shape; oldProps?: any }[];
+    if (!groupShapes.length) return null;
+    const group = new Group({
+      ...val,
+      shapes: groupShapes,
+      _board: board,
+      ctx,
+    });
+    // Restore member shapes into shapeStore with their groupId
+    groupShapes.forEach(({ s }) => {
+      s.groupId = group.ID();
+      board.shapeStore.insert(s);
+    });
+    return group;
   } else if (val.type === "path") {
     if (val.pathType === "simplePath") {
       return new SimplePath({

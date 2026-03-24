@@ -205,7 +205,7 @@ const BoardProvider = ({
   const saveShapesToStorage = React.useCallback((board: Board) => {
     const shapes: Record<string, any>[] = [];
     board.shapeStore.forEach((s) => {
-      if (s.type !== "selection") {
+      if (s.type !== "selection" && !s.groupId) {
         shapes.push(s.toObject());
       }
       return false;

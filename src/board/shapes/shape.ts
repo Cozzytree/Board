@@ -61,6 +61,7 @@ abstract class Shape implements ShapeProps {
   text: string;
   fontSize: number;
   connections: ConnectionInterface;
+  groupId: string | undefined;
 
   private eventListeners = new Map<ShapeEvent, Set<ShapeEventCallback>>();
 
@@ -126,6 +127,7 @@ abstract class Shape implements ShapeProps {
     this.selectionFill = selectionFill || "#20202050";
     this.italic = italic || false;
     this.lastFlippedState = { x: false, y: false };
+    this.groupId = undefined;
   }
 
   protected cloneProps(): ShapeProps {
