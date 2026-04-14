@@ -28,7 +28,8 @@ export type ShapeEvent =
   | "shape:created"
   | "shape:updated"
   | "shape:resize"
-  | "shape:move";
+  | "shape:move"
+  | "shape:delete";
 
 export type ShapeEventData = {
   e: { point: Point };
@@ -132,7 +133,17 @@ export type submodedraw = "pencil";
 
 export type submodes = submodecursor | submodeshape | submodedraw | submodeline;
 
-export type shapeType = "path" | "rect" | "ellipse" | "text" | "selection" | "line" | "group" | "svg" | "excalidraw" | "image";
+export type shapeType =
+  | "path"
+  | "rect"
+  | "ellipse"
+  | "text"
+  | "selection"
+  | "line"
+  | "group"
+  | "svg"
+  | "excalidraw"
+  | "image";
 
 export interface BoxInterface {
   x1: number;

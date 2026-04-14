@@ -39,6 +39,7 @@ function getOrCreateRoom(roomId: string): RoomState {
       _origin: unknown,
     ) => {
       const changedClients = [...added, ...updated, ...removed];
+      console.log(`[awareness] broadcast to ${room!.conns.size} clients, changed:`, changedClients);
       const encoderAwareness = encoding.createEncoder();
       encoding.writeVarUint(encoderAwareness, MSG_AWARENESS);
       encoding.writeVarUint8Array(
@@ -80,9 +81,11 @@ function handleMessage(ws: Bun.ServerWebSocket<WSData>, room: RoomState, data: U
       break;
     }
     case MSG_AWARENESS: {
+      const update = decoding.readVarUint8Array(decoder);
+      console.log(`[room] ${roomIdFromWs(ws)}: received awareness update, size: ${update.length}`);
       awarenessProtocol.applyAwarenessUpdate(
         room.awareness,
-        decoding.readVarUint8Array(decoder),
+        update,
         ws,
       );
       break;

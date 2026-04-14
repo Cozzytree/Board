@@ -16,34 +16,149 @@ import { generateShapeByShapeType } from "@/board/utils/utilfunc";
 export const Route = createFileRoute("/room/$roomId")({
   component: RoomPage,
 });
+const TROTTLE_MS = 100;
+let lastCursorUpdate = 0;
+let lastShapeUpdate = 0;
 
-// Stable color palette for remote cursors
 const CURSOR_COLORS = [
-  "#f43f5e", // rose
-  "#8b5cf6", // violet
-  "#06b6d4", // cyan
-  "#f59e0b", // amber
-  "#10b981", // emerald
-  "#ec4899", // pink
-  "#3b82f6", // blue
-  "#ef4444", // red
-  "#14b8a6", // teal
-  "#a855f7", // purple
+  "#f43f5e",
+  "#8b5cf6",
+  "#06b6d4",
+  "#f59e0b",
+  "#10b981",
+  "#ec4899",
+  "#3b82f6",
+  "#ef4444",
+  "#14b8a6",
+  "#a855f7",
 ];
 
 function getColorForClient(clientId: number): string {
   return CURSOR_COLORS[clientId % CURSOR_COLORS.length];
 }
 
-type CursorState = {
+type CursorData = {
   x: number;
   y: number;
   id?: number;
   name?: string;
 };
 
+type RemoteCursor = {
+  clientId: number;
+  cursor: CursorData;
+};
+
 // ─────────────────────────────────────────────────────────────────────────────
-// Helper Functions (copied from useYjsSync.ts - to be refactored later)
+// Cursor Overlay Component
+// ─────────────────────────────────────────────────────────────────────────────
+
+function CursorOverlay({
+  cursors,
+  view,
+}: {
+  cursors: RemoteCursor[];
+  view: { x: number; y: number; scl: number } | undefined;
+}) {
+  if (cursors.length === 0) return null;
+
+  return (
+    <div className="fixed inset-0 pointer-events-none overflow-hidden" style={{ zIndex: 45 }}>
+      {cursors.map(({ clientId, cursor }) => {
+        const color = getColorForClient(clientId);
+        const screenX = view ? cursor.x * view.scl + view.x : cursor.x;
+        const screenY = view ? cursor.y * view.scl + view.y : cursor.y;
+
+        return (
+          <div
+            key={clientId}
+            className="absolute"
+            style={{
+              left: screenX,
+              top: screenY,
+              transition: "left 80ms linear, top 80ms linear",
+            }}>
+            <svg
+              width="16"
+              height="20"
+              viewBox="0 0 16 20"
+              fill="none"
+              style={{ filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.5))" }}>
+              <path
+                d="M0.928711 0.514648L14.9287 8.51465L7.92871 10.5146L4.92871 18.5146L0.928711 0.514648Z"
+                fill={color}
+                stroke="white"
+                strokeWidth="1"
+                strokeLinejoin="round"
+              />
+            </svg>
+            <div
+              className="absolute left-4 top-4 px-1.5 py-0.5 rounded text-[10px] font-medium whitespace-nowrap"
+              style={{
+                backgroundColor: color,
+                color: "white",
+                boxShadow: "0 1px 3px rgba(0,0,0,0.3)",
+              }}>
+              {cursor.name || `User ${clientId.toString().slice(-4)}`}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Cursor State Manager Component
+// ─────────────────────────────────────────────────────────────────────────────
+
+function CursorStateManager({
+  provider,
+  board,
+  onCursorCountChange,
+}: {
+  provider: WebsocketProvider | null;
+  board: Board | null;
+  onCursorCountChange: (count: number) => void;
+}) {
+  const [cursors, setCursors] = React.useState<RemoteCursor[]>([]);
+
+  React.useEffect(() => {
+    const prov = provider;
+    if (!prov) return;
+
+    const updateCursors = () => {
+      const states = prov.awareness.getStates();
+      const localId = prov.awareness.clientID;
+      const remoteCursors: RemoteCursor[] = [];
+
+      states.forEach((state, clientId) => {
+        if (clientId === localId) return;
+        if (state.cursor && typeof state.cursor.x === "number") {
+          remoteCursors.push({
+            clientId,
+            cursor: state.cursor as CursorData,
+          });
+        }
+      });
+
+      setCursors(remoteCursors);
+      onCursorCountChange(remoteCursors.length);
+    };
+
+    prov.awareness.on("change", updateCursors);
+    updateCursors();
+
+    return () => {
+      prov.awareness.off("change", updateCursors);
+    };
+  }, [provider, onCursorCountChange]);
+
+  return <CursorOverlay cursors={cursors} view={board?.view} />;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Helper Functions
 // ─────────────────────────────────────────────────────────────────────────────
 
 function serializeShape(shape: Shape): Record<string, unknown> {
@@ -115,8 +230,8 @@ function RoomPage() {
   const boardRef = React.useRef<Board | null>(null);
   const boardReadyRef = React.useRef(false);
   const [boardTrigger, setBoardTrigger] = React.useState(0);
+  const [cursorCount, setCursorCount] = React.useState(0);
 
-  // Yjs refs
   const docRef = React.useRef<Y.Doc | null>(null);
   const providerRef = React.useRef<WebsocketProvider | null>(null);
   const suppressSyncRef = React.useRef(false);
@@ -132,13 +247,11 @@ function RoomPage() {
     return () => window.removeEventListener("resize", handleWindow);
   }, [handleWindow]);
 
-  // ── Phase 1: Initialize Yjs connection when roomId is available ──
   React.useEffect(() => {
     if (!roomId) return;
 
     console.log("[yjs] Phase 1: Initializing connection for room:", roomId);
 
-    // Create Y.Doc and WebsocketProvider
     const doc = new Y.Doc();
     const provider = new WebsocketProvider("ws://localhost:3000", roomId, doc);
 
@@ -156,11 +269,9 @@ function RoomPage() {
     };
   }, [roomId]);
 
-  // ── Phase 2: Set up sync logic when board becomes available ──
   React.useEffect(() => {
     const board = boardRef.current;
     if (!board || !docRef.current || !providerRef.current) {
-      // Board not ready yet, will re-run when boardRef.current is set
       console.log(
         "[yjs] Phase 2: waiting for board, board:",
         !!board,
@@ -172,7 +283,6 @@ function RoomPage() {
       return;
     }
 
-    // Prevent re-initialization if already set up
     if (boardReadyRef.current) return;
     boardReadyRef.current = true;
 
@@ -182,7 +292,6 @@ function RoomPage() {
     const provider = providerRef.current;
     const yShapes = doc.getMap<string>("shapes");
 
-    // ── Load shapes from Yjs to board ──
     const loadShapes = () => {
       if (suppressSyncRef.current) return;
       console.log("[yjs] Loading shapes from Yjs, count:", yShapes.size);
@@ -216,7 +325,6 @@ function RoomPage() {
       }
     };
 
-    // ── Handle remote changes ──
     const observer = (events: Y.YMapEvent<string>, txn: Y.Transaction) => {
       if (txn.local) return;
 
@@ -225,6 +333,14 @@ function RoomPage() {
       suppressSyncRef.current = true;
       try {
         events.changes.keys.forEach((change, key) => {
+          if (change.action === "delete") {
+            const existing = board.shapeStore.get(key);
+            if (existing) {
+              existing.remove();
+            }
+            return;
+          }
+
           if (change.action === "add" || change.action === "update") {
             const raw = yShapes.get(key);
             if (!raw) return;
@@ -281,7 +397,6 @@ function RoomPage() {
 
     yShapes.observe(observer);
 
-    // ── Sync when provider connects ──
     provider.on("sync", (isSynced: boolean) => {
       console.log("[yjs] Provider synced:", isSynced);
       if (isSynced) {
@@ -289,13 +404,11 @@ function RoomPage() {
       }
     });
 
-    // ── Check if already synced ──
     if (provider.synced) {
       console.log("[yjs] Already synced, loading immediately");
       loadShapes();
     }
 
-    // ── Push local changes to Yjs ──
     const syncToYjs = (boardInstance: Board) => {
       if (suppressSyncRef.current || !docRef.current) return;
 
@@ -331,89 +444,82 @@ function RoomPage() {
     };
   }, [boardTrigger]);
 
-  // Callback wired into BoardProvider: called when board is first created
   const onBoardReady = React.useCallback((board: Board) => {
     boardRef.current = board;
     setBoardTrigger((t) => t + 1);
     console.log("[yjs] Board ready, triggering sync setup");
   }, []);
 
-  // Callback wired into BoardProvider: called on every shape mutation
   const onShapesChanged = React.useCallback((board: Board) => {
     syncToYjsRef.current?.(board);
   }, []);
 
+  const onDeleteShape = (shapes: Shape[]) => {
+    if (!docRef.current) return;
+
+    suppressSyncRef.current = true;
+    const yShapes = docRef.current.getMap<string>("shapes");
+
+    docRef.current.transact(() => {
+      for (const shape of shapes) {
+        if (shape.type === "selection") continue;
+        yShapes.delete(shape.ID());
+      }
+    });
+
+    suppressSyncRef.current = false;
+  };
+
   return (
     <div className="w-full h-full">
       <BoardProvider
+        theme="light"
         width={width}
         height={height}
-        onShapesChanged={onShapesChanged}
+        onShapesChanged={(b) => {
+          const now = Date.now();
+          if (now - lastShapeUpdate < TROTTLE_MS) return;
+          lastShapeUpdate = now;
+          onShapesChanged(b);
+        }}
+        onDeleteShape={onDeleteShape}
         onBoardReady={onBoardReady}
         skipLocalStorage
         onCursorMove={(e) => {
+          const now = Date.now();
+          if (now - lastCursorUpdate < TROTTLE_MS) return;
+          lastCursorUpdate = now;
           providerRef.current?.awareness.setLocalStateField("cursor", {
             x: e.e.x,
             y: e.e.y,
             id: providerRef.current?.awareness.clientID,
           });
         }}>
-        <RoomBoardUI roomId={roomId} boardRef={boardRef} provider={providerRef} />
+        <RoomBoardUI roomId={roomId} cursorCount={cursorCount} />
       </BoardProvider>
+
+      <CursorStateManager
+        provider={providerRef.current}
+        board={boardRef.current}
+        onCursorCountChange={setCursorCount}
+      />
     </div>
   );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Room Board UI Component (cursor overlay, room indicator, etc.)
+// Room Board UI Component
 // ─────────────────────────────────────────────────────────────────────────────
 
-function RoomBoardUI({
+const RoomBoardUI = React.memo(function RoomBoardUI({
   roomId,
-  boardRef,
-  provider,
+  cursorCount,
 }: {
   roomId: string;
-  boardRef: React.RefObject<Board | null>;
-  provider: React.RefObject<WebsocketProvider | null>;
+  cursorCount: number;
 }) {
-  const { isMinimal, activeShape, canvas } = useBoard();
+  const { isMinimal, activeShape } = useBoard();
   const [copied, setCopied] = React.useState(false);
-  const [remoteCursors, setRemoteCursors] = React.useState<Map<number, CursorState>>(new Map());
-
-  // Keep boardRef in sync with the board from context
-  React.useEffect(() => {
-    if (canvas) boardRef.current = canvas;
-  }, [canvas, boardRef]);
-
-  // Listen to awareness changes for remote cursors
-  React.useEffect(() => {
-    const prov = provider.current;
-    if (!prov) return;
-
-    const onAwarenessChange = () => {
-      const states = prov.awareness.getStates();
-      const localId = prov.awareness.clientID;
-      const cursors = new Map<number, CursorState>();
-
-      states.forEach((state, clientId) => {
-        if (clientId === localId) return;
-        if (state.cursor && typeof state.cursor.x === "number") {
-          cursors.set(clientId, state.cursor as CursorState);
-        }
-      });
-
-      setRemoteCursors(cursors);
-    };
-
-    prov.awareness.on("change", onAwarenessChange);
-    prov.awareness.on("update", onAwarenessChange);
-
-    return () => {
-      prov.awareness.off("change", onAwarenessChange);
-      prov.awareness.off("update", onAwarenessChange);
-    };
-  }, [provider]);
 
   const copyLink = React.useCallback(() => {
     const url = window.location.href;
@@ -425,56 +531,8 @@ function RoomBoardUI({
 
   const shortId = roomId.length > 8 ? roomId.slice(0, 8) + "…" : roomId;
 
-  const board = boardRef.current;
-  const view = board?.view;
-
   return (
     <>
-      {/* Remote cursors overlay */}
-      <div className="fixed inset-0 pointer-events-none overflow-hidden" style={{ zIndex: 45 }}>
-        {Array.from(remoteCursors.entries()).map(([clientId, cursor]) => {
-          const color = getColorForClient(clientId);
-          const screenX = view ? cursor.x * view.scl + view.x : cursor.x;
-          const screenY = view ? cursor.y * view.scl + view.y : cursor.y;
-
-          return (
-            <div
-              key={clientId}
-              className="absolute"
-              style={{
-                left: screenX,
-                top: screenY,
-                transition: "left 80ms linear, top 80ms linear",
-              }}>
-              <svg
-                width="16"
-                height="20"
-                viewBox="0 0 16 20"
-                fill="none"
-                style={{ filter: `drop-shadow(0 1px 2px rgba(0,0,0,0.5))` }}>
-                <path
-                  d="M0.928711 0.514648L14.9287 8.51465L7.92871 10.5146L4.92871 18.5146L0.928711 0.514648Z"
-                  fill={color}
-                  stroke="white"
-                  strokeWidth="1"
-                  strokeLinejoin="round"
-                />
-              </svg>
-              <div
-                className="absolute left-4 top-4 px-1.5 py-0.5 rounded text-[10px] font-medium whitespace-nowrap"
-                style={{
-                  backgroundColor: color,
-                  color: "white",
-                  boxShadow: "0 1px 3px rgba(0,0,0,0.3)",
-                }}>
-                {cursor.name || `User ${clientId.toString().slice(-4)}`}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Room indicator pill */}
       <div
         className="fixed top-4 left-4 z-50 flex items-center gap-2 px-3 py-1.5 rounded-full
           bg-[#1e1e2e]/90 backdrop-blur-md border border-[#313244] shadow-lg">
@@ -487,21 +545,19 @@ function RoomBoardUI({
         <div className="w-2 h-2 rounded-full bg-[#a6e3a1] animate-pulse" />
         <span className="text-xs font-medium text-[#a6adc8] font-mono">{shortId}</span>
 
-        {remoteCursors.size > 0 && (
+        {cursorCount > 0 && (
           <div className="flex -space-x-1 ml-1">
-            {Array.from(remoteCursors.keys())
-              .slice(0, 5)
-              .map((clientId) => (
-                <div
-                  key={clientId}
-                  className="w-3 h-3 rounded-full border border-[#1e1e2e]"
-                  style={{ backgroundColor: getColorForClient(clientId) }}
-                  title={`User ${clientId.toString().slice(-4)}`}
-                />
-              ))}
-            {remoteCursors.size > 5 && (
+            {Array.from({ length: Math.min(cursorCount, 5) }).map((_, i) => (
+              <div
+                key={i}
+                className="w-3 h-3 rounded-full border border-[#1e1e2e]"
+                style={{ backgroundColor: CURSOR_COLORS[i % CURSOR_COLORS.length] }}
+                title={`User ${i}`}
+              />
+            ))}
+            {cursorCount > 5 && (
               <div className="w-3 h-3 rounded-full bg-[#45475a] border border-[#1e1e2e] flex items-center justify-center">
-                <span className="text-[6px] text-white">+{remoteCursors.size - 5}</span>
+                <span className="text-[6px] text-white">+{cursorCount - 5}</span>
               </div>
             )}
           </div>
@@ -515,7 +571,6 @@ function RoomBoardUI({
         </button>
       </div>
 
-      {/* Standard board UI */}
       <div className="pointer-events-auto z-50 fixed left-1/2 -translate-x-1/2 bottom-4 flex justify-center">
         {!isMinimal && <BoardToolbar />}
       </div>
@@ -525,4 +580,4 @@ function RoomBoardUI({
       {!isMinimal && activeShape && <BoardShapeOptions />}
     </>
   );
-}
+});

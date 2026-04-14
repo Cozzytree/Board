@@ -21,6 +21,8 @@ import {
   ArrowUpToLine,
   ArrowDownToLine,
   AlignVerticalJustifyCenter,
+  Sun,
+  Moon,
 } from "lucide-react";
 import { useBoard } from "../board-context";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -33,6 +35,100 @@ import { useMobile } from "@/hooks/use-mobile";
 import ActiveSelection from "../shapes/active_selection";
 import Group from "../shapes/group";
 import { Button } from "@/components/ui/button";
+
+function ThemeToggle() {
+  const { theme, setTheme, foreground, background, setForeground, setBackground } = useBoard();
+
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button variant={null} size="xs" className="relative">
+          {theme === "dark" ? (
+            <Moon className="h-4 w-4" />
+          ) : (
+            <Sun className="h-4 w-4" />
+          )}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-64 p-3" side="top" align="end">
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium">Theme</span>
+            <div className="flex gap-1">
+              <Button
+                variant={theme === "dark" ? "secondary" : "ghost"}
+                size="xs"
+                onClick={() => setTheme("dark")}
+                className="h-7 px-2">
+                <Moon className="h-3.5 w-3.5 mr-1" />
+                Dark
+              </Button>
+              <Button
+                variant={theme === "light" ? "secondary" : "ghost"}
+                size="xs"
+                onClick={() => setTheme("light")}
+                className="h-7 px-2">
+                <Sun className="h-3.5 w-3.5 mr-1" />
+                Light
+              </Button>
+            </div>
+          </div>
+
+          <div className="border-t border-border" />
+
+          <div className="space-y-2">
+            <ColorPickerRow
+              label="Foreground"
+              color={foreground}
+              onChange={setForeground}
+            />
+            <ColorPickerRow
+              label="Background"
+              color={background}
+              onChange={setBackground}
+            />
+          </div>
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+function ColorPickerRow({
+  label,
+  color,
+  onChange,
+}: {
+  label: string;
+  color: string;
+  onChange: (color: string) => void;
+}) {
+  return (
+    <div className="flex items-center gap-2">
+      <span className="text-xs text-muted-foreground w-20">{label}</span>
+      <div
+        className="w-6 h-6 rounded border border-border cursor-pointer"
+        style={{ backgroundColor: color }}
+      />
+      <input
+        type="color"
+        value={color}
+        onChange={(e) => onChange(e.target.value)}
+        className="w-6 h-6 rounded border border-border cursor-pointer"
+      />
+      <div className="flex gap-1">
+        {COLORS.slice(0, 6).map((c) => (
+          <button
+            key={c}
+            className="w-4 h-4 rounded border border-border hover:scale-110 transition-transform"
+            style={{ backgroundColor: c }}
+            onClick={() => onChange(c)}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
 
 function ShapeOptions() {
   const { activeShape, canvas, setActiveShape, update } = useBoard();
@@ -68,7 +164,7 @@ function ShapeOptions() {
           <div className="w-[1px] bg-border mx-1 h-6 hidden md:block" />
           {activeShape instanceof ActiveSelection ? (
             <Button
-              variant="ghost"
+              variant={null}
               size="icon"
               className={cn("h-8 w-8", isMobile && "h-7 w-7")}
               onClick={() => {
@@ -83,7 +179,7 @@ function ShapeOptions() {
             </Button>
           ) : (
             <Button
-              variant="ghost"
+              variant={null}
               size="icon"
               className={cn("h-8 w-8", isMobile && "h-7 w-7")}
               onClick={() => {
@@ -119,15 +215,16 @@ function ShapeOptions() {
       <div className="w-[1px] bg-border mx-1 h-6 hidden md:block" />
 
       <Button
-        variant="ghost"
-        size="icon"
-        className={cn(
-          "h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10",
-          isMobile && "h-7 w-7",
-        )}
+        variant="outline"
+        size="xs"
+        className={cn("text-destructive hover:text-destructive")}
         onClick={handleDelete}>
-        <TrashIcon className={cn("h-4 w-4", isMobile && "h-3.5 w-3.5")} />
+        <TrashIcon className={cn("h-4 w-4")} />
       </Button>
+
+      <div className="w-[1px] bg-border mx-1 h-6 hidden md:block" />
+
+      <ThemeToggle />
     </>
   );
 
@@ -161,7 +258,6 @@ function ShapeOptions() {
 
 function ArrowOption() {
   const { activeShape, setActiveShape, canvas } = useBoard();
-  const isMobile = useMobile();
 
   const handleArrow = (side: 0 | 1) => {
     if (!activeShape || !canvas) return;
@@ -179,8 +275,8 @@ function ArrowOption() {
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button variant="ghost" size="icon" className={cn("h-8 w-8", isMobile && "h-7 w-7")}>
-          <ArrowLeftRightIcon className={cn("h-4 w-4", isMobile && "h-3.5 w-3.5")} />
+        <Button variant={null} size="xs">
+          <ArrowLeftRightIcon />
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-fit p-2" sideOffset={5}>
@@ -207,14 +303,12 @@ function ArrowOption() {
 
 function StrokeSize() {
   const { activeShape, canvas, setActiveShape, update } = useBoard();
-  const isMobile = useMobile();
 
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button variant="ghost" size="icon" className={cn("h-8 w-8", isMobile && "h-7 w-7")}>
+        <Button variant={null} size="xs">
           <Minus
-            className={cn("h-4 w-4", isMobile && "h-3.5 w-3.5")}
             style={{
               transform: `scaleY(${Math.min(Math.max((activeShape?.get("strokeWidth") || 1) * 0.5, 1), 3)})`,
             }}
@@ -258,16 +352,12 @@ function StrokeSize() {
 
 function StrokeOption() {
   const { activeShape, canvas, setActiveShape, update } = useBoard();
-  const isMobile = useMobile();
 
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button
-          variant="ghost"
-          size="icon"
-          className={cn("h-8 w-8 relative", isMobile && "h-7 w-7")}>
-          <BrushIcon className={cn("h-4 w-4", isMobile && "h-3.5 w-3.5")} />
+        <Button variant={null} size="xs" className={cn("relative")}>
+          <BrushIcon />
           <div
             className="absolute bottom-1 right-1 w-2 h-2 rounded-full border border-background"
             style={{ background: activeShape?.get("stroke") || "currentColor" }}
@@ -334,15 +424,11 @@ function StrokeOption() {
 
 function FillOption() {
   const { activeShape, canvas, setActiveShape, update } = useBoard();
-  const isMobile = useMobile();
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button
-          variant="ghost"
-          size="icon"
-          className={cn("h-8 w-8 relative", isMobile && "h-7 w-7")}>
-          <PaintBucket className={cn("h-4 w-4", isMobile && "h-3.5 w-3.5")} />
+        <Button variant={null} size="xs" className={cn("relative")}>
+          <PaintBucket />
           <div
             className="absolute bottom-1 right-1 w-2 h-2 rounded-full border border-background"
             style={{ background: activeShape?.get("fill") || "transparent" }}
@@ -423,13 +509,11 @@ function FillOption() {
 function ItalicOption() {
   const { activeShape, canvas, setActiveShape, update } = useBoard();
   const [isItalic, setItalic] = useState(!!activeShape?.get("italic"));
-  const isMobile = useMobile();
 
   return (
     <Button
       variant={isItalic ? "secondary" : "ghost"}
-      size="icon"
-      className={cn("h-8 w-8", isMobile && "h-7 w-7")}
+      size="xs"
       onClick={() => {
         if (!canvas || !activeShape) return;
         if (activeShape instanceof ActiveSelection) {
@@ -452,7 +536,6 @@ function ItalicOption() {
 function AlignOptions() {
   const { activeShape, canvas } = useBoard();
   // const [allign, setAllign] = useState((activeShape?.get("textAlign") as textAlign) || "center");
-  const isMobile = useMobile();
 
   const handleAlign = (a: textAlign) => {
     if (!activeShape || !canvas) return;
@@ -472,24 +555,24 @@ function AlignOptions() {
     <div className="flex bg-muted/50 rounded-md p-0.5 border border-border/50">
       <Button
         variant={currentAlign === "left" ? "secondary" : "ghost"}
-        size="icon"
-        className={cn("h-7 w-7 rounded-sm", isMobile && "h-6 w-6")}
+        size="xs"
+        className={cn("rounded-sm")}
         onClick={() => handleAlign("left")}>
-        <AlignLeftIcon className={cn("h-3.5 w-3.5", isMobile && "h-3 w-3")} />
+        <AlignLeftIcon className={cn("h-3.5 w-3.5")} />
       </Button>
       <Button
         variant={currentAlign === "center" ? "secondary" : "ghost"}
-        size="icon"
-        className={cn("h-7 w-7 rounded-sm", isMobile && "h-6 w-6")}
+        size="xs"
+        className={cn("rounded-sm")}
         onClick={() => handleAlign("center")}>
-        <AlignCenterIcon className={cn("h-3.5 w-3.5", isMobile && "h-3 w-3")} />
+        <AlignCenterIcon className={cn("h-3.5 w-3.5")} />
       </Button>
       <Button
         variant={currentAlign === "right" ? "secondary" : "ghost"}
-        size="icon"
-        className={cn("h-7 w-7 rounded-sm", isMobile && "h-6 w-6")}
+        size="xs"
+        className={cn("rounded-sm")}
         onClick={() => handleAlign("right")}>
-        <AlignRightIcon className={cn("h-3.5 w-3.5", isMobile && "h-3 w-3")} />
+        <AlignRightIcon className={cn("h-3.5 w-3.5")} />
       </Button>
     </div>
   );
@@ -498,13 +581,11 @@ function AlignOptions() {
 function BoldOption() {
   const { activeShape, canvas, update } = useBoard();
   const [w, setW] = useState((activeShape?.get("fontWeight") as number) || 500);
-  const isMobile = useMobile();
 
   return (
     <Button
       variant={w !== 500 ? "secondary" : "ghost"}
-      size="icon"
-      className={cn("h-8 w-8", isMobile && "h-7 w-7")}
+      size="xs"
       onClick={() => {
         if (!activeShape || !canvas) return;
         activeShape.set("fontWeight", w === 500 ? 800 : 500);
@@ -512,7 +593,7 @@ function BoldOption() {
         update();
         setW((p) => (p == 500 ? 800 : 500));
       }}>
-      <BoldIcon className={cn("h-4 w-4", isMobile && "h-3.5 w-3.5")} />
+      <BoldIcon className={cn("h-4 w-4")} />
     </Button>
   );
 }
@@ -520,14 +601,11 @@ function BoldOption() {
 function FontSizes() {
   const { activeShape, canvas } = useBoard();
   const [size, setSize] = useState(FONT_SIZES.find((f) => f.size === activeShape?.get("fontSize")));
-  const isMobile = useMobile();
 
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button
-          variant="ghost"
-          className={cn("h-8 px-2 min-w-[3rem] font-medium", isMobile && "h-7 text-xs")}>
+        <Button size={"xs"} variant={null} className="px-1">
           {size ? size.label : "Size"}
         </Button>
       </PopoverTrigger>
@@ -536,9 +614,9 @@ function FontSizes() {
           {FONT_SIZES.map((f) => (
             <Button
               key={f.size}
-              variant="ghost"
+              variant={null}
               className={cn(
-                "justify-start h-8 w-full",
+                "justify-start h-6 w-full",
                 activeShape?.get("fontSize") === f.size ? "bg-muted" : "",
               )}
               onClick={() => {
@@ -565,7 +643,6 @@ function FontSizes() {
 function StrokeDash() {
   const { setActiveShape, activeShape, canvas, update } = useBoard();
   const [, setS] = useState(activeShape?.get("dash").toString() || "");
-  const isMobile = useMobile();
 
   const handledash = (v: [number, number]) => {
     if (activeShape instanceof ActiveSelection) {
@@ -585,11 +662,11 @@ function StrokeDash() {
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button variant="ghost" size="icon" className={cn("h-8 w-8", isMobile && "h-7 w-7")}>
+        <Button variant={null} size="xs">
           {currentDash == "0,0" ? (
-            <Circle className={cn("h-4 w-4", isMobile && "h-3.5 w-3.5")} />
+            <Circle className={cn("h-4 w-4")} />
           ) : (
-            <CircleDashed className={cn("h-4 w-4", isMobile && "h-3.5 w-3.5")} />
+            <CircleDashed className={cn("h-4 w-4")} />
           )}
         </Button>
       </PopoverTrigger>
@@ -617,7 +694,6 @@ function StrokeDash() {
 
 function RotationOption() {
   const { activeShape, canvas, update } = useBoard();
-  const isMobile = useMobile();
 
   const getRotation = () => {
     if (!activeShape) return 0;
@@ -635,13 +711,8 @@ function RotationOption() {
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button
-          variant="ghost"
-          className={cn(
-            "h-8 px-2 w-20 justify-between font-medium text-xs",
-            isMobile && "h-7 w-16 px-1",
-          )}>
-          <RotateCwIcon className={cn("h-3 w-3", isMobile && "h-2.5 w-2.5")} />
+        <Button variant={null} size="xs">
+          <RotateCwIcon className={cn("h-3 w-3")} />
           {localRotation}°
         </Button>
       </PopoverTrigger>
@@ -710,7 +781,6 @@ function RotationOption() {
 function VerticalAlignOptions() {
   const { activeShape, canvas } = useBoard();
   // const [align, setAlign] = useState((activeShape?.get("verticalAlign") as "top" | "center" | "bottom") || "center");
-  const isMobile = useMobile();
 
   const handleAlign = (a: "top" | "center" | "bottom") => {
     if (!activeShape || !canvas) return;
@@ -731,24 +801,24 @@ function VerticalAlignOptions() {
     <div className="flex bg-muted/50 rounded-md p-0.5 border border-border/50">
       <Button
         variant={currentAlign === "top" ? "secondary" : "ghost"}
-        size="icon"
-        className={cn("h-7 w-7 rounded-sm", isMobile && "h-6 w-6")}
+        size="xs"
+        className={cn("rounded-sm")}
         onClick={() => handleAlign("top")}>
-        <ArrowUpToLine className={cn("h-3.5 w-3.5", isMobile && "h-3 w-3")} />
+        <ArrowUpToLine className={cn("h-3.5 w-3.5")} />
       </Button>
       <Button
         variant={currentAlign === "center" ? "secondary" : "ghost"}
-        size="icon"
-        className={cn("h-7 w-7 rounded-sm", isMobile && "h-6 w-6")}
+        size="xs"
+        className={cn("rounded-sm")}
         onClick={() => handleAlign("center")}>
-        <AlignVerticalJustifyCenter className={cn("h-3.5 w-3.5", isMobile && "h-3 w-3")} />
+        <AlignVerticalJustifyCenter className={cn("h-3.5 w-3.5")} />
       </Button>
       <Button
         variant={currentAlign === "bottom" ? "secondary" : "ghost"}
-        size="icon"
-        className={cn("h-7 w-7 rounded-sm", isMobile && "h-6 w-6")}
+        size="xs"
+        className={cn("rounded-sm")}
         onClick={() => handleAlign("bottom")}>
-        <ArrowDownToLine className={cn("h-3.5 w-3.5", isMobile && "h-3 w-3")} />
+        <ArrowDownToLine className={cn("h-3.5 w-3.5")} />
       </Button>
     </div>
   );

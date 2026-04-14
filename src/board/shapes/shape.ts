@@ -470,6 +470,7 @@ abstract class Shape implements ShapeProps {
     } else {
       this._set(key, value);
     }
+    this._board.fire("shape:updated", { e: { target: [this] } });
     return this;
   }
 
@@ -580,6 +581,8 @@ abstract class Shape implements ShapeProps {
     context.textBaseline = "middle";
     const font = `${this.fontWeight} ${this.italic ? "italic" : ""} ${this.fontSize}px system-ui`;
     context.font = font;
+    context.strokeStyle = this.stroke;
+    context.fillStyle = this.stroke;
 
     // Measure the height of one line (using fontSize * lineHeight ratio, or estimate)
     const lineHeight = this.fontSize * 1.2; // adjust multiplier as needed
@@ -607,6 +610,7 @@ abstract class Shape implements ShapeProps {
         const size = context.measureText(t);
         x = this.left + this.width - size.width - this.padding;
       }
+      context.strokeText(t, x, y);
       context.fillText(t, x, y);
       y += lineHeight;
     });

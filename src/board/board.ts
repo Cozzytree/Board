@@ -27,7 +27,8 @@ import SvgShape from "./shapes/svg_shape";
 type view_t = { x: number; y: number; scl: number };
 
 type BoardProps = {
-  background?: string;
+  background: string;
+  foreground: string;
   canvas: HTMLCanvasElement;
   width: number;
   height: number;
@@ -74,6 +75,7 @@ class Board implements BoardInterface {
 
   snap: boolean;
   hoverEffect: boolean;
+  foreground: string;
   background: string;
   declare view: { x: number; y: number; scl: number; cartesian: boolean };
   declare activeShapes: Shape | null;
@@ -108,6 +110,7 @@ class Board implements BoardInterface {
     height,
     onModeChange,
     background,
+    foreground,
     hoverEffect,
     snap,
     onActiveShape,
@@ -134,7 +137,8 @@ class Board implements BoardInterface {
     this.canvas.height = height;
     this.onModeChange = onModeChange;
     this.view = { x: 0, y: 0, scl, cartesian: false };
-    this.background = background || "#101011";
+    this.background = background;
+    this.foreground = foreground;
     this.canvas.style.background = this.background;
 
     this.onActiveShapeCallback = onActiveShape;
@@ -161,7 +165,8 @@ class Board implements BoardInterface {
     this.canvas.style.left = "0px";
     this.canvas.style.top = "0px";
     this.canvas.style.zIndex = "10"; // Main canvas is on top
-    this.canvas.style.backgroundColor = "transparent"; // Transparent background
+    // this.canvas.style.backgroundColor = "transparent"; // Transparent background
+    this.canvas.style.backgroundColor = this.background;
 
     c2.style.zIndex = "5"; // Overlay canvas underneath
 
@@ -330,6 +335,8 @@ class Board implements BoardInterface {
     idsToRemove.forEach((id) => {
       if (this.shapeStore.removeById(id)) count++;
     });
+
+    this.fire("shape:delete", { e: { target: targets } });
 
     this.discardActiveShapes();
     this.shapeStore.setLastInserted = null;

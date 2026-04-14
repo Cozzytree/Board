@@ -4,6 +4,12 @@ import { Board, Shape } from "./index";
 import type { modes, submodes } from "./types";
 
 export type ContextProps = {
+  foreground: string;
+  background: string;
+  theme: "dark" | "light";
+  setTheme: (theme: "dark" | "light") => void;
+  setForeground: (color: string) => void;
+  setBackground: (color: string) => void;
   mode: { m: modes; sm: submodes | null };
   setMode: (m: modes, sm: submodes | null) => void;
   tools: {

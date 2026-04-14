@@ -7,12 +7,14 @@ import { BoardLibrarySidebar } from "@/board/components/library_sidebar";
 import { useBoard } from "@/board/board-context";
 import { createFileRoute } from "@tanstack/react-router";
 import React from "react";
+import { useTheme } from "@/components/theme-provider";
 
 export const Route = createFileRoute("/local")({
   component: LocalBoardPage,
 });
 
 function LocalBoardPage() {
+  const { theme } = useTheme();
   const [width, setWidth] = React.useState(window.innerWidth);
   const [height, setHeight] = React.useState(window.innerHeight);
   const handleWindow = React.useCallback(() => {
@@ -27,7 +29,7 @@ function LocalBoardPage() {
 
   return (
     <div className="w-full h-full">
-      <BoardProvider width={width} height={height}>
+      <BoardProvider theme={theme || "light"} width={width} height={height}>
         <BoardUI />
       </BoardProvider>
     </div>

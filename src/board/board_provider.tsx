@@ -33,7 +33,7 @@ import {
 } from "@/components/ui/context-menu";
 import CloudShape from "./shapes/paths/cloud_shape";
 import { BoardContext } from "./board-context";
-type Theme = "dark" | "light";
+export type Theme = "dark" | "light" | "system";
 
 const DEFAULT_CUSTOM_SHAPES: CustomShapeDef[] = [
   {
@@ -54,6 +54,7 @@ const BoardProvider = ({
   onBoardReady,
   skipLocalStorage = false,
   onCursorMove,
+  onDeleteShape,
 }: {
   onCursorMove?: (e: EventData) => void;
   theme?: Theme;
@@ -66,11 +67,39 @@ const BoardProvider = ({
   onShapesChanged?: (board: Board) => void;
   /** Called once when the board is first created. */
   onBoardReady?: (board: Board) => void;
+  onDeleteShape?: (shapes: Shape[]) => void;
   /** When true, skips loading/saving from localStorage (used for room mode where sync is external). */
   skipLocalStorage?: boolean;
 }) => {
-  const [background, setBackground] = React.useState(theme === "dark" ? "#181818" : "#efefef");
-  const [foreground, setForeground] = React.useState("");
+  const [boardTheme, setBoardThemeState] = React.useState<"dark" | "light">(
+    theme === "dark" || theme === "system"
+      ? "dark"
+      : "light",
+  );
+  const [background, setBackground] = React.useState(boardTheme === "dark" ? "#181818" : "#efefef");
+  const [foreground, setForeground] = React.useState(boardTheme === "dark" ? "#cccccc" : "#202020");
+
+  React.useEffect(() => {
+    if (boardTheme === "dark") {
+      setForeground("#cccccc");
+      setBackground("#181818");
+    } else {
+      setForeground("#202020");
+      setBackground("#efefef");
+    }
+  }, [boardTheme]);
+
+  React.useEffect(() => {
+    const root = window.document.documentElement;
+    root.style.setProperty("--background", background);
+    root.style.setProperty("--foreground", foreground);
+    root.style.setProperty("--popover", background);
+  }, [background, foreground]);
+
+  const handleThemeChange = React.useCallback((newTheme: "dark" | "light") => {
+    setBoardThemeState(newTheme);
+  }, []);
+
   const [offset, setOffset] = React.useState<[number, number]>([0, 0]);
   const [zoom, setZoom] = React.useState(100);
   const [activeShape, setActiveShape] = React.useState<Shape | null>(null);
@@ -343,6 +372,12 @@ const BoardProvider = ({
     return false;
   }, []);
 
+  const onDelete = React.useCallback(
+    (shapes: Shape[]) => {
+      onDeleteShape?.(shapes);
+    },
+    [onDeleteShape],
+  );
   const onMouseUp = React.useCallback(() => {}, []);
   const onMouseMove = React.useCallback(
     (e: EventData) => {
@@ -363,6 +398,8 @@ const BoardProvider = ({
     if (!canvasRef.current) return;
     const newBoard = new Board({
       width,
+      foreground,
+      background,
       height,
       canvas: canvasRef.current,
       snap: isSnap,
@@ -404,8 +441,18 @@ const BoardProvider = ({
     newBoard.on("mousemove", (e) => {
       onMouseMove(e);
     });
+    newBoard.on("shape:delete", (e) => {
+      onDelete(e.e.target || []);
+    });
     newBoard.on("shape:resize", () => {});
     newBoard.on("shape:move", () => {});
+    newBoard.on("shape:updated", () => {
+      if (onShapesChangedRef.current) {
+        onShapesChangedRef.current(newBoard);
+      } else {
+        saveShapesToStorage(newBoard);
+      }
+    });
     newBoard.on("shape:created", () => {
       if (onShapesChangedRef.current) {
         onShapesChangedRef.current(newBoard);
@@ -455,6 +502,8 @@ const BoardProvider = ({
     };
   }, [
     width,
+    foreground,
+    background,
     height,
     isHover,
     isSnap,
@@ -686,6 +735,12 @@ const BoardProvider = ({
     <ContextMenu>
       <BoardContext.Provider
         value={{
+          foreground,
+          background,
+          theme: boardTheme,
+          setTheme: handleThemeChange,
+          setForeground,
+          setBackground,
           setActiveShape: (s) => {
             setActiveShape(s);
           },

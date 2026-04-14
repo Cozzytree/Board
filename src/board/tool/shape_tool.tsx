@@ -17,7 +17,7 @@ class ShapeTool implements ToolInterface {
     this.oldShapeProps = new Box({ x1: 0, y1: 0, y2: 0, x2: 0 });
   }
 
-  cleanUp(): void { }
+  cleanUp(): void {}
 
   pointerDown({ p }: ToolEventData): void {
     this._board.discardActiveShapes();
@@ -53,6 +53,7 @@ class ShapeTool implements ToolInterface {
           ctx: this._board.ctx,
           width: w,
           height: w,
+          stroke: this._board.foreground,
           points: [
             new Pointer({ x: 0, y: w * 0.2 }),
             new Pointer({ x: w * 0.2, y: 0 }),
@@ -73,6 +74,7 @@ class ShapeTool implements ToolInterface {
           height: w,
           left: p.x,
           top: p.y,
+          stroke: this._board.foreground,
           points: [
             new Pointer({ x: 0, y: w * 0.4 }),
             new Pointer({ x: w * 0.4, y: w * 0.4 }),
@@ -95,6 +97,7 @@ class ShapeTool implements ToolInterface {
           ctx: this._board.ctx,
           width: w,
           height: w,
+          stroke: this._board.foreground,
           left: p.x,
           top: p.y,
           points: [
@@ -111,6 +114,7 @@ class ShapeTool implements ToolInterface {
           ctx: this._board.ctx,
           width: w,
           height: w,
+          stroke: this._board.foreground,
           left: p.x,
           top: p.y,
           points: [
@@ -128,6 +132,7 @@ class ShapeTool implements ToolInterface {
           width: w,
           height: w,
           left: p.x,
+          stroke: this._board.foreground,
           top: p.y,
           points: [
             new Pointer({ x: w / 2, y: 0 }),
@@ -144,6 +149,7 @@ class ShapeTool implements ToolInterface {
           ctx: this._board.ctx,
           width: w,
           height: w,
+          stroke: this._board.foreground,
           left: p.x,
           top: p.y,
         });
@@ -162,6 +168,7 @@ class ShapeTool implements ToolInterface {
         this.newShape = new Arrow({
           _board: this._board,
           ctx: this._board.ctx,
+          stroke: this._board.foreground,
           width: w,
           height: w,
           left: p.x,
@@ -173,6 +180,7 @@ class ShapeTool implements ToolInterface {
           _board: this._board,
           ctx: this._board.ctx,
           width: w,
+          stroke: this._board.foreground,
           height: w,
           left: p.x,
           top: p.y,
@@ -183,6 +191,7 @@ class ShapeTool implements ToolInterface {
           ctx: this._board.ctx,
           left: p.x,
           top: p.y,
+          stroke: this._board.foreground,
           width: 0,
           height: 0,
           _board: this._board,
@@ -192,6 +201,7 @@ class ShapeTool implements ToolInterface {
         this.newShape = new Ellipse({
           ctx: this._board.ctx,
           left: p.x,
+          stroke: this._board.foreground,
           top: p.y,
           width: 0,
           height: 0,
@@ -240,9 +250,9 @@ class ShapeTool implements ToolInterface {
     }
   }
 
-  dblClick(): void { }
+  dblClick(): void {}
 
-  onClick(): void { }
+  onClick(): void {}
 
   private draw(...shapes: Shape[]) {
     const ctx = this._board.ctx2;

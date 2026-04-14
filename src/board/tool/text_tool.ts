@@ -46,6 +46,7 @@ class TextTool implements ToolInterface {
     div.style.top = rect.top + p.y * this._board.view.scl + this._board.view.y + "px";
     div.style.zIndex = "1000";
     div.style.padding = "0";
+    div.style.color = this._board.foreground;
 
     // Create textarea
     const textarea = document.createElement("textarea");
@@ -197,6 +198,7 @@ class TextTool implements ToolInterface {
         textAlign: "left",
         width,
         height,
+        stroke: this._board.foreground,
       });
 
       this._board.add(newText);
