@@ -161,14 +161,15 @@ class SelectionTool implements ToolInterface {
           // Initialize unsnapped position
           this.unsnappedPos = new Pointer({ x: clone.left, y: clone.top });
         } else {
-          const shapeFound = this._board.shapeStore.forEach((s) => {
-            if (s.IsDraggable(p)) return true;
+          let shapeFound: Shape | null = null;
+          this._board.shapeStore.forEach((s) => {
+            if (s.IsDraggable(p)) shapeFound = s;
             return false;
           });
 
-          if (shapeFound) {
-            const cloned = shapeFound.clone();
-            this._board.add(cloned);
+          if (shapeFound !== null) {
+            const cloned: Shape = shapeFound;
+            this._board.add(cloned.clone());
             this.draggedShape = cloned;
             // Initialize unsnapped position
             this.unsnappedPos = new Pointer({ x: cloned.left, y: cloned.top });
@@ -273,6 +274,7 @@ class SelectionTool implements ToolInterface {
         this.isRotating = true;
         this.rotatingShape = currentActive;
         this.mouseDowmShapeState.push(currentActive.toObject());
+        // let drag: Shape | null = null;
 
         // Calculate center and initial angle
         this.rotationCenter = {
@@ -291,15 +293,12 @@ class SelectionTool implements ToolInterface {
       const drag = this._board.shapeStore.forEach((s) => {
         // Skip shapes owned by a group — they are not directly selectable
         if (s.groupId) return false;
-        return s.IsDraggable(p);
+        if (s.IsDraggable(p)) return true;
+        return false;
       });
 
-      if (drag) {
-        // Excalidraw-style: second click inside an already-active group extracts the child
-        if (
-          drag instanceof Group &&
-          this._board.getActiveShapes()?.ID() === drag.ID()
-        ) {
+      if (drag !== null) {
+        if (drag instanceof Group && this._board.getActiveShapes()?.ID() === drag.ID()) {
           const child = drag.getShapeAt(p);
           if (child) {
             drag.removeShape(child); // clears child.groupId, keeps child in shapeStore
@@ -357,7 +356,7 @@ class SelectionTool implements ToolInterface {
     return false;
   }
 
-  pointermove({ p }: ToolEventData, _: (e: EventData) => void): void {
+  pointermove({ p }: ToolEventData, mousemove: (e: EventData) => void): void {
     if (this.isTouchGesture) return;
     this.hoveredShape = null;
 
@@ -387,7 +386,7 @@ class SelectionTool implements ToolInterface {
 
       this._board.renderImmediate();
       // this.draw(this.rotatingShape);
-      this._board.fire("mousemove", { e: { target: [this.rotatingShape], x: p.x, y: p.y } });
+      mousemove({ e: { target: [this.rotatingShape], x: p.x, y: p.y } });
       return;
     }
 
@@ -445,7 +444,7 @@ class SelectionTool implements ToolInterface {
 
       this.draw(this.draggedShape, ...(shapes || []), ...snapLines);
 
-      this._board.fire("mousemove", { e: { target: [this.draggedShape], x: p.x, y: p.y } });
+      mousemove({ e: { target: [this.draggedShape], x: p.x, y: p.y } });
       this._board.fire("shape:move", { e: { target: [this.draggedShape], x: p.x, y: p.y } });
       return;
     }
@@ -481,7 +480,7 @@ class SelectionTool implements ToolInterface {
 
       this.draw(this.resizableShape.s, ...(shapes || []), ...snapLines);
 
-      this._board.fire("mousemove", { e: { target: [this.resizableShape.s], x: p.x, y: p.y } });
+      mousemove({ e: { target: [this.resizableShape.s], x: p.x, y: p.y } });
       this._board.fire("shape:resize", { e: { target: [this.resizableShape.s], x: p.x, y: p.y } });
       return;
     }
@@ -527,59 +526,62 @@ class SelectionTool implements ToolInterface {
 
     // If not hovering over active shape, check other shapes
     if (!foundHoveredShape) {
-      this._board.shapeStore.forEach((s) => {
+      const topHoveredShape = this._board.shapeStore.forEach((s) => {
         if (s.IsDraggable(p) && !this.isGrabbing) {
-          if (
-            this._board.hoverEffect &&
-            this.draggedShape === null &&
-            this.resizableShape === null
-          ) {
-            if (
-              this._board.activeShapes?.ID() !== s.ID() &&
-              this._board.shapeStore.getLastInsertedShape()?.type !== "selection"
-            ) {
-              /*
-                    TODO : need to fix cloning
-                    */
-              if (s instanceof Group && s.shapes.length) {
-                // Compute actual bounds from children
-                let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-                s.shapes.forEach(({ s: child }) => {
-                  minX = Math.min(minX, child.left);
-                  minY = Math.min(minY, child.top);
-                  maxX = Math.max(maxX, child.left + child.width);
-                  maxY = Math.max(maxY, child.top + child.height);
-                });
-                const pad = s.padding;
-                this.hoveredShape = new Rect({
-                  ctx: this._board.ctx,
-                  _board: this._board,
-                  left: minX - pad,
-                  top: minY - pad,
-                  width: maxX - minX + pad * 2,
-                  height: maxY - minY + pad * 2,
-                  fill: "transparent",
-                  stroke: HoveredColor,
-                  strokeWidth: 2,
-                  dash: [0, 0],
-                });
-              } else {
-                this.hoveredShape = s.clone();
-                this.hoveredShape.set({
-                  fill: "transparent",
-                  dash: [0, 0],
-                  stroke: HoveredColor,
-                  strokeWidth: 2,
-                });
-              }
-            }
-          }
-          s.mouseover({ e: { point: p } });
-          foundHoveredShape = true;
           return true;
         }
         return false;
       });
+
+      if (topHoveredShape) {
+        const s = topHoveredShape;
+        if (this._board.hoverEffect && this.draggedShape === null && this.resizableShape === null) {
+          if (
+            this._board.activeShapes?.ID() !== s.ID() &&
+            this._board.shapeStore.getLastInsertedShape()?.type !== "selection"
+          ) {
+            /*
+                  TODO : need to fix cloning
+                  */
+            if (s instanceof Group && s.shapes.length) {
+              // Compute actual bounds from children
+              let minX = Infinity,
+                minY = Infinity,
+                maxX = -Infinity,
+                maxY = -Infinity;
+              s.shapes.forEach(({ s: child }) => {
+                minX = Math.min(minX, child.left);
+                minY = Math.min(minY, child.top);
+                maxX = Math.max(maxX, child.left + child.width);
+                maxY = Math.max(maxY, child.top + child.height);
+              });
+              const pad = s.padding;
+              this.hoveredShape = new Rect({
+                ctx: this._board.ctx,
+                _board: this._board,
+                left: minX - pad,
+                top: minY - pad,
+                width: maxX - minX + pad * 2,
+                height: maxY - minY + pad * 2,
+                fill: "transparent",
+                stroke: HoveredColor,
+                strokeWidth: 2,
+                dash: [0, 0],
+              });
+            } else {
+              this.hoveredShape = s.clone();
+              this.hoveredShape.set({
+                fill: "transparent",
+                dash: [0, 0],
+                stroke: HoveredColor,
+                strokeWidth: 2,
+              });
+            }
+          }
+        }
+        s.mouseover({ e: { point: p } });
+        foundHoveredShape = true;
+      }
     }
 
     // Only reset cursor if we're not hovering over any shape
@@ -595,6 +597,8 @@ class SelectionTool implements ToolInterface {
       this._board.ctx2.clearRect(0, 0, this._board.canvas2.width, this._board.canvas2.height);
       this._board.ctx2.save();
     }
+
+    mousemove({ e: { target: [], x: p.x, y: p.y } });
   }
 
   pointerup({ p }: ToolEventData, _: ToolCallback, eventCb: (e: EventData) => void): void {
@@ -637,7 +641,10 @@ class SelectionTool implements ToolInterface {
       this.draggedShape.mouseup({ e: { point: p } });
 
       const dropped = this.draggedShape;
-      const dropCenter: Point = { x: dropped.left + dropped.width / 2, y: dropped.top + dropped.height / 2 };
+      const dropCenter: Point = {
+        x: dropped.left + dropped.width / 2,
+        y: dropped.top + dropped.height / 2,
+      };
 
       if (this.sourceGroup) {
         // Child was extracted from a group — put it back if still inside, else leave standalone
@@ -667,7 +674,7 @@ class SelectionTool implements ToolInterface {
     this.clearOverlay();
   }
 
-  private tryStartTextEdit(p: Point): boolean {
+  private tryStartTextEdit(_: Point): boolean {
     if (this.isDragging || !this.isTextEditale || this.hasSelectionStarted) {
       return false;
     }
@@ -851,11 +858,12 @@ class SelectionTool implements ToolInterface {
               s.s.set({ left: s.s.left + 10, top: s.s.top + 10 });
               newShapes.push(s.s);
             });
+            this._board.add(...newShapes);
+            this._board.add(clone);
           } else {
             newShapes.push(clone);
+            this._board.add(...newShapes);
           }
-          this._board.add(...newShapes);
-          this._board.setActiveShape(clone);
           this._board.render();
 
           break;
@@ -1031,7 +1039,7 @@ class SelectionTool implements ToolInterface {
         cloned.top = this._board._lastMousePosition.y - cloned.height * 0.5;
 
         this._board.add(...s);
-        this._board.setActiveShape(cloned);
+        this._board.add(cloned);
       } else {
         cloned.left = this._board._lastMousePosition.x - cloned.width * 0.5;
         cloned.top = this._board._lastMousePosition.y - cloned.height * 0.5;

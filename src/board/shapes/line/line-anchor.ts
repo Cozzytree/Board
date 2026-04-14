@@ -24,27 +24,14 @@ class LineAnchor extends Line {
   }
 
   setCoords(): void {
-    super.setCoords();
-    if (this.connections.size() > 0 && this.points.length >= 4) {
-      const p0 = this.points[0];
-      const pLast = this.points[this.points.length - 1];
-      const maxX = Math.max(p0.x, pLast.x);
-      const minX = Math.min(p0.x, pLast.x);
-      const maxY = Math.max(p0.y, pLast.y);
-      const minY = Math.min(p0.y, pLast.y);
-      const width = maxX - minX;
-      const height = maxY - minY;
-      const midWidth = width / 2;
-      const midHeight = height / 2;
-      this.points[1] = {
-        x: height > 200 ? p0.x : minX + midWidth,
-        y: height > 200 ? minY + midHeight : p0.y,
-      };
-      this.points[2] = {
-        x: height > 200 ? pLast.x : minX + midWidth,
-        y: height > 200 ? minY + midHeight : pLast.y,
-      };
+    if (this.connections.size() > 0) {
+      this.connections.forEach((c) => {
+        this.connectionEvent({ c, s: c.s, p: { x: c.s.left, y: c.s.top } });
+        if (this.connections.size() === 2) return true;
+        return false;
+      });
     }
+    super.setCoords();
   }
 
   clone(): Shape {

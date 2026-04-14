@@ -1,0 +1,19 @@
+{
+  "name": "package_websocket",
+  "module": "index.ts",
+  "type": "module",
+  "private": true,
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "scripts": {
+    "dev": "bun run --env-file=.env ./index.ts"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "dependencies": {
+    "y-websocket": "^3.0.0",
+    "yjs": "^13.6.30"
+  }
+}

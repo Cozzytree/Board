@@ -215,11 +215,11 @@ class Board implements BoardInterface {
     this.registerCustomShape({
       name,
       icon: svgString, // Save the raw SVG string so Toolbar can render it as a button
-      shape: (class extends SvgShape {
+      shape: class extends SvgShape {
         constructor(baseProps: any) {
           super({ ...baseProps, ...props });
         }
-      }) as unknown as ShapeConstructor
+      } as unknown as ShapeConstructor,
     });
     return true;
   }
@@ -492,7 +492,7 @@ class Board implements BoardInterface {
 
   private onmousemove(e: PointerEvent | MouseEvent | TouchEvent) {
     e.preventDefault();
-    if (e instanceof TouchEvent && e.touches.length >= 2) {
+    if (typeof TouchEvent !== "undefined" && e instanceof TouchEvent && e.touches.length >= 2) {
       if (typeof (this.currentTool as any).touchMove === "function") {
         (this.currentTool as any).touchMove(e);
         return;
@@ -502,7 +502,7 @@ class Board implements BoardInterface {
   }
 
   private onmouseup(e: PointerEvent | MouseEvent | TouchEvent) {
-    if (e instanceof TouchEvent) {
+    if (typeof TouchEvent !== "undefined" && e instanceof TouchEvent) {
       if (typeof (this.currentTool as any).touchEnd === "function") {
         (this.currentTool as any).touchEnd(e);
       }

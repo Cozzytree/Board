@@ -22,7 +22,7 @@ import {
 } from "lucide-react";
 import * as React from "react";
 import { Board, Rect, Shape } from "./index";
-import type { modes, submodes, CustomShapeDef } from "./types";
+import type { modes, submodes, CustomShapeDef, EventData } from "./types";
 import { generateShapeByShapeType } from "./utils/utilfunc";
 import { saveLibraryItems } from "./utils/library_db";
 import {
@@ -50,13 +50,24 @@ const BoardProvider = ({
   onImageUpload,
   theme,
   children,
+  onShapesChanged,
+  onBoardReady,
+  skipLocalStorage = false,
+  onCursorMove,
 }: {
+  onCursorMove?: (e: EventData) => void;
   theme?: Theme;
   width?: number;
   height?: number;
   customShapes?: CustomShapeDef[];
   onImageUpload?: (file: File) => Promise<string>;
   children?: React.ReactNode;
+  /** Called whenever shapes change (create/move/delete). If provided, replaces localStorage persistence. */
+  onShapesChanged?: (board: Board) => void;
+  /** Called once when the board is first created. */
+  onBoardReady?: (board: Board) => void;
+  /** When true, skips loading/saving from localStorage (used for room mode where sync is external). */
+  skipLocalStorage?: boolean;
 }) => {
   const [background, setBackground] = React.useState(theme === "dark" ? "#181818" : "#efefef");
   const [foreground, setForeground] = React.useState("");
@@ -333,6 +344,16 @@ const BoardProvider = ({
   }, []);
 
   const onMouseUp = React.useCallback(() => {}, []);
+  const onMouseMove = React.useCallback(
+    (e: EventData) => {
+      onCursorMove?.(e);
+    },
+    [onCursorMove],
+  );
+
+  // Keep a stable ref to the onShapesChanged callback
+  const onShapesChangedRef = React.useRef(onShapesChanged);
+  onShapesChangedRef.current = onShapesChanged;
 
   const onModeChange = React.useCallback((m: modes, sm: submodes) => {
     setMode({ m, sm });
@@ -364,43 +385,64 @@ const BoardProvider = ({
       onImageUpload,
     });
 
+    // Notify parent that board is ready
+    onBoardReady?.(newBoard);
+
     newBoard.on("mouseup", () => {
       onMouseUp();
-      saveShapesToStorage(newBoard);
+      if (onShapesChangedRef.current) {
+        onShapesChangedRef.current(newBoard);
+      } else {
+        saveShapesToStorage(newBoard);
+      }
     });
     newBoard.on("mousedown", (e) => {
       if (e.e.target?.length) {
         setActiveShape(e.e.target[e.e.target.length - 1]);
       }
     });
-    newBoard.on("mousemove", () => {});
+    newBoard.on("mousemove", (e) => {
+      onMouseMove(e);
+    });
     newBoard.on("shape:resize", () => {});
     newBoard.on("shape:move", () => {});
     newBoard.on("shape:created", () => {
-      saveShapesToStorage(newBoard);
+      if (onShapesChangedRef.current) {
+        onShapesChangedRef.current(newBoard);
+      } else {
+        saveShapesToStorage(newBoard);
+      }
     });
 
-    // Load saved shapes or create a default one
-    loadViewFromStorage(newBoard);
-    const loaded = loadShapesFromStorage(newBoard);
-    if (!loaded) {
-      // Create a default rect so the canvas isn't empty
-      const defaultShape = new Rect({
-        ctx: newBoard.ctx,
-        _board: newBoard,
-        left: width / 2 - 50,
-        top: height / 2 - 50,
-        width: 100,
-        height: 100,
-      });
-      newBoard.add(defaultShape);
+    // Load saved shapes or create a default one (only when not using external sync)
+    if (!skipLocalStorage) {
+      loadViewFromStorage(newBoard);
+      const loaded = loadShapesFromStorage(newBoard);
+      if (!loaded) {
+        // Create a default rect so the canvas isn't empty
+        const defaultShape = new Rect({
+          ctx: newBoard.ctx,
+          _board: newBoard,
+          left: width / 2 - 50,
+          top: height / 2 - 50,
+          width: 100,
+          height: 100,
+        });
+        newBoard.add(defaultShape);
+      }
     }
 
     // Save when shapes are deleted via keyboard
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Delete" || (e.ctrlKey && (e.key === "z" || e.key === "y"))) {
         // Small delay to let the board process the key first
-        requestAnimationFrame(() => saveShapesToStorage(newBoard));
+        requestAnimationFrame(() => {
+          if (onShapesChangedRef.current) {
+            onShapesChangedRef.current(newBoard);
+          } else {
+            saveShapesToStorage(newBoard);
+          }
+        });
       }
     };
     document.addEventListener("keydown", handleKeyDown);

@@ -10,13 +10,9 @@ export function BoardCenterButton() {
   }
 
   return (
-    <div className="fixed w-fit z-50 md:left-5 md:top-5 right-15 bottom-5">
-      <Button
-        className="cursor-pointer"
-        onClick={handleCenter}
-        variant={"secondary"}
-        size={"xs"}>
-        <ArrowLeft width={10} /> <span className="hidden md:block">Back to center</span>
+    <div className="fixed w-fit z-50 md:left-5 md:top-5 right-15 bottom-5 h-fit">
+      <Button className="cursor-pointer" onClick={handleCenter} variant={"secondary"} size={"sm"}>
+        <ArrowLeft width={8} /> <span className="hidden md:block text-xs">Back to center</span>
       </Button>
     </div>
   );
