@@ -27,6 +27,7 @@ import SvgShape from "./shapes/svg_shape";
 type view_t = { x: number; y: number; scl: number };
 
 type BoardProps = {
+  container?: HTMLElement;
   background: string;
   foreground: string;
   canvas: HTMLCanvasElement;
@@ -75,8 +76,38 @@ class Board implements BoardInterface {
 
   snap: boolean;
   hoverEffect: boolean;
-  foreground: string;
-  background: string;
+  _foreground: string;
+  _background: string;
+  _theme: "dark" | "light" = "dark";
+
+  get foreground(): string {
+    return this._foreground;
+  }
+
+  set foreground(value: string) {
+    this._foreground = value;
+    this.render();
+  }
+
+  get background(): string {
+    return this._background;
+  }
+
+  set background(value: string) {
+    this._background = value;
+    this.canvas.style.background = value;
+    this.canvas.style.backgroundColor = value;
+    this.render();
+  }
+
+  get theme(): "dark" | "light" {
+    return this._theme;
+  }
+
+  set theme(value: "dark" | "light") {
+    this._theme = value;
+    this.render();
+  }
   declare view: { x: number; y: number; scl: number; cartesian: boolean };
   declare activeShapes: Shape | null;
   declare shapeStore: ShapeStore<Shape>;
@@ -118,6 +149,7 @@ class Board implements BoardInterface {
     onScroll,
     customShapes = [],
     onImageUpload,
+    container,
   }: BoardProps) {
     this.customShapes = new Map();
     customShapes.forEach((s) => {
@@ -137,9 +169,9 @@ class Board implements BoardInterface {
     this.canvas.height = height;
     this.onModeChange = onModeChange;
     this.view = { x: 0, y: 0, scl, cartesian: false };
-    this.background = background;
-    this.foreground = foreground;
-    this.canvas.style.background = this.background;
+    this._background = background;
+    this._foreground = foreground;
+    this.canvas.style.background = this._background;
 
     this.onActiveShapeCallback = onActiveShape;
     // Ensure only one secondary canvas
@@ -153,7 +185,11 @@ class Board implements BoardInterface {
       c2.style.left = "0px";
       c2.style.top = "0px";
       c2.style.pointerEvents = "none"; // Let pointer events pass through
-      document.body.appendChild(c2);
+      if (container !== undefined) {
+        container.append(c2);
+      } else {
+        document.body.appendChild(c2);
+      }
     }
 
     this.canvas2 = c2;
@@ -166,7 +202,7 @@ class Board implements BoardInterface {
     this.canvas.style.top = "0px";
     this.canvas.style.zIndex = "10"; // Main canvas is on top
     // this.canvas.style.backgroundColor = "transparent"; // Transparent background
-    this.canvas.style.backgroundColor = this.background;
+    this.canvas.style.backgroundColor = this._background;
 
     c2.style.zIndex = "5"; // Overlay canvas underneath
 

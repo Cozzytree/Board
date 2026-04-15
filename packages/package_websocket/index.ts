@@ -3,6 +3,11 @@ import * as syncProtocol from "y-protocols/sync";
 import * as awarenessProtocol from "y-protocols/awareness";
 import * as encoding from "lib0/encoding";
 import * as decoding from "lib0/decoding";
+import { auth } from "./auth";
+import { initPageHandler } from "./handlers/pages.handler";
+import { initShapeHandler } from "./handlers/shapes.handler";
+import { createRepos } from "./repo";
+import { db } from "./db";
 
 // ── Message types (matching y-websocket protocol) ──
 const MSG_SYNC = 0;
@@ -83,11 +88,7 @@ function handleMessage(ws: Bun.ServerWebSocket<WSData>, room: RoomState, data: U
     case MSG_AWARENESS: {
       const update = decoding.readVarUint8Array(decoder);
       console.log(`[room] ${roomIdFromWs(ws)}: received awareness update, size: ${update.length}`);
-      awarenessProtocol.applyAwarenessUpdate(
-        room.awareness,
-        update,
-        ws,
-      );
+      awarenessProtocol.applyAwarenessUpdate(room.awareness, update, ws);
       break;
     }
   }
@@ -162,8 +163,119 @@ type WSData = {
   cleanup?: () => void;
 };
 
+const repos = createRepos(db);
+const pageHandler = initPageHandler(repos, auth);
+const shapeHandler = initShapeHandler(repos, auth);
+
+const ALLOWED_ORIGINS = ["http://localhost:5173", "http://localhost:4173"];
+
+function corsHeaders(): Headers {
+  return new Headers({
+    "Access-Control-Allow-Origin": "http://localhost:5173",
+    "Access-Control-Allow-Methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization",
+    "Access-Control-Allow-Credentials": "true",
+  });
+}
+
+async function authHandlerWrapper(req: Request): Promise<Response> {
+  if (req.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: corsHeaders() });
+  }
+  const response = await auth.handler(req);
+  const cors = corsHeaders();
+  const newHeaders = new Headers(response.headers);
+  cors.forEach((value, key) => {
+    if (!newHeaders.has(key)) {
+      newHeaders.set(key, value);
+    }
+  });
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers: newHeaders,
+  });
+}
+
+function withCors(handler: (req: Bun.BunRequest) => Promise<Response>) {
+  return async (req: Bun.BunRequest): Promise<Response> => {
+    const response = await handler(req);
+
+    const cors = corsHeaders();
+    const headers = new Headers(response.headers);
+
+    cors.forEach((value, key) => {
+      if (!headers.has(key)) headers.set(key, value);
+    });
+
+    // Avoid double compression
+    if (headers.has("Content-Encoding")) {
+      return new Response(response.body, {
+        status: response.status,
+        statusText: response.statusText,
+        headers,
+      });
+    }
+
+    const body = response.body ? await response.body.bytes() : null;
+    if (!body || body.length < 1024) {
+      return new Response(body, {
+        status: response.status,
+        statusText: response.statusText,
+        headers,
+      });
+    }
+
+    const acceptEncoding = req.headers.get("accept-encoding") || "";
+
+    if (acceptEncoding.includes("gzip")) {
+      const compressed = Bun.gzipSync(body);
+
+      headers.set("Content-Encoding", "gzip");
+      headers.set("Content-Length", compressed.length.toString());
+      headers.set("Vary", "Accept-Encoding");
+
+      return new Response(compressed, {
+        status: response.status,
+        statusText: response.statusText,
+        headers,
+      });
+    }
+
+    return new Response(body, {
+      status: response.status,
+      statusText: response.statusText,
+      headers,
+    });
+  };
+}
+
 const server = Bun.serve<WSData>({
   port: 3000,
+  routes: {
+    "/": {
+      GET: (req: Bun.BunRequest, server: Bun.Server<WSData>) => {
+        const roomId = req.params as { roomId: string };
+        const success = server.upgrade(req, {
+          data: roomId,
+        });
+
+        if (success) return undefined as unknown as Response;
+        return new Response("WebSocket upgrade failed", { status: 400 });
+      },
+    },
+    "/api/auth/*": authHandlerWrapper,
+    "/page/create": { POST: withCors((req) => pageHandler.createPage(req)) },
+    "/page/get": { GET: withCors((req) => pageHandler.getPage(req)) },
+    "/page/user": { GET: withCors((req) => pageHandler.getPagesByUser(req)) },
+    "/page/update": { PATCH: withCors((req) => pageHandler.updatePage(req)) },
+    "/page/delete": { DELETE: withCors((req) => pageHandler.deletePage(req)) },
+    "/shape/create": { POST: withCors((req) => shapeHandler.createShape(req)) },
+    "/shape/get": { GET: withCors((req) => shapeHandler.getShape(req)) },
+    "/shape/page": { GET: withCors((req) => shapeHandler.getShapesByPage(req)) },
+    "/shape/update": { PATCH: withCors((req) => shapeHandler.updateShape(req)) },
+    "/shape/delete": { DELETE: withCors((req) => shapeHandler.deleteShape(req)) },
+  },
   websocket: {
     message(ws, message) {
       const room = rooms.get(ws.data.roomId);
@@ -192,30 +304,17 @@ const server = Bun.serve<WSData>({
       console.log(`[ws] client disconnected from room: ${ws.data.roomId}`);
     },
   },
-  fetch(req, server) {
-    const url = new URL(req.url);
-    const roomId = url.pathname.slice(1);
+  fetch(req) {
+    const cors = corsHeaders();
 
-    if (!roomId) {
-      return new Response("Board WebSocket server. Connect to /:roomId", {
-        status: 200,
-        headers: { "Access-Control-Allow-Origin": "*" },
-      });
+    if (req.method === "OPTIONS") {
+      return new Response("Departed", { status: 204, headers: cors });
     }
 
-    const success = server.upgrade(req, {
-      data: { roomId },
-    });
-
-    if (success) return undefined as unknown as Response;
-
-    return new Response("WebSocket upgrade failed", {
-      status: 400,
-      headers: { "Access-Control-Allow-Origin": "*" },
-    });
+    return new Response(null, { status: 404 }); // This will trigger 404 if no route matches
   },
 });
 
 console.log(`[board-ws] Yjs WebSocket server running on port ${server.port}`);
 
-// opencode -s ses_274600b45ffe3GOrEedH8l4cIj
+// opencode -s ses_26fb51d0cffeaE51VNlTmfov7b

@@ -35,30 +35,62 @@ import { useMobile } from "@/hooks/use-mobile";
 import ActiveSelection from "../shapes/active_selection";
 import Group from "../shapes/group";
 import { Button } from "@/components/ui/button";
+import { Lock } from "lucide-react";
 
 function ThemeToggle() {
-  const { theme, setTheme, foreground, background, setForeground, setBackground } = useBoard();
+  const {
+    theme,
+    setTheme,
+    foreground,
+    background,
+    setForeground,
+    setBackground,
+    onThemeChange,
+    isOwner,
+  } = useBoard();
+
+  const isOwnerBool = isOwner ?? true;
+
+  const handleThemeChange = (newTheme: "dark" | "light") => {
+    if (!isOwnerBool) return;
+    setTheme(newTheme);
+    onThemeChange?.({ theme: newTheme });
+  };
+
+  const handleColorChange = (type: "foreground" | "background", color: string) => {
+    if (!isOwnerBool) return;
+    if (type === "foreground") {
+      setForeground(color);
+      onThemeChange?.({ foreground: color });
+    } else {
+      setBackground(color);
+      onThemeChange?.({ background: color });
+    }
+  };
 
   return (
     <Popover>
       <PopoverTrigger asChild>
         <Button variant={null} size="xs" className="relative">
-          {theme === "dark" ? (
-            <Moon className="h-4 w-4" />
-          ) : (
-            <Sun className="h-4 w-4" />
+          {theme === "dark" ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
+          {!isOwnerBool && (
+            <Lock className="h-2.5 w-2.5 absolute -bottom-0.5 -right-0.5 text-muted-foreground" />
           )}
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-64 p-3" side="top" align="end">
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <span className="text-sm font-medium">Theme</span>
+            <span className="text-sm font-medium flex items-center gap-1">
+              Theme
+              {!isOwnerBool && <Lock className="h-3 w-3 text-muted-foreground" />}
+            </span>
             <div className="flex gap-1">
               <Button
                 variant={theme === "dark" ? "secondary" : "ghost"}
                 size="xs"
-                onClick={() => setTheme("dark")}
+                onClick={() => handleThemeChange("dark")}
+                disabled={!isOwnerBool}
                 className="h-7 px-2">
                 <Moon className="h-3.5 w-3.5 mr-1" />
                 Dark
@@ -66,7 +98,8 @@ function ThemeToggle() {
               <Button
                 variant={theme === "light" ? "secondary" : "ghost"}
                 size="xs"
-                onClick={() => setTheme("light")}
+                onClick={() => handleThemeChange("light")}
+                disabled={!isOwnerBool}
                 className="h-7 px-2">
                 <Sun className="h-3.5 w-3.5 mr-1" />
                 Light
@@ -80,12 +113,14 @@ function ThemeToggle() {
             <ColorPickerRow
               label="Foreground"
               color={foreground}
-              onChange={setForeground}
+              onChange={(color) => handleColorChange("foreground", color)}
+              disabled={!isOwnerBool}
             />
             <ColorPickerRow
               label="Background"
               color={background}
-              onChange={setBackground}
+              onChange={(color) => handleColorChange("background", color)}
+              disabled={!isOwnerBool}
             />
           </div>
         </div>
@@ -98,31 +133,32 @@ function ColorPickerRow({
   label,
   color,
   onChange,
+  disabled = false,
 }: {
   label: string;
   color: string;
   onChange: (color: string) => void;
+  disabled?: boolean;
 }) {
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-2 opacity-50" style={{ opacity: disabled ? 0.5 : 1 }}>
       <span className="text-xs text-muted-foreground w-20">{label}</span>
-      <div
-        className="w-6 h-6 rounded border border-border cursor-pointer"
-        style={{ backgroundColor: color }}
-      />
+      <div className="w-6 h-6 rounded border border-border" style={{ backgroundColor: color }} />
       <input
         type="color"
         value={color}
         onChange={(e) => onChange(e.target.value)}
-        className="w-6 h-6 rounded border border-border cursor-pointer"
+        disabled={disabled}
+        className="w-6 h-6 rounded border border-border cursor-pointer disabled:cursor-not-allowed"
       />
       <div className="flex gap-1">
         {COLORS.slice(0, 6).map((c) => (
           <button
             key={c}
-            className="w-4 h-4 rounded border border-border hover:scale-110 transition-transform"
+            className="w-4 h-4 rounded border border-border hover:scale-110 transition-transform disabled:hover:scale-100 disabled:cursor-not-allowed"
             style={{ backgroundColor: c }}
             onClick={() => onChange(c)}
+            disabled={disabled}
           />
         ))}
       </div>
@@ -248,10 +284,8 @@ function ShapeOptions() {
   }
 
   return (
-    <div className="z-50 fixed top-6 left-1/2 -translate-x-1/2">
-      <div className="flex items-center gap-1 p-1 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border rounded-lg shadow-lg">
-        <Content />
-      </div>
+    <div className="flex items-center gap-1 p-1 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border rounded-lg shadow-lg">
+      <Content />
     </div>
   );
 }

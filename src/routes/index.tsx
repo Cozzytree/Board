@@ -1,7 +1,8 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import React from "react";
-import { Paintbrush, Users, ArrowRight, Zap, Globe, Shield } from "lucide-react";
+import { Paintbrush, Users, ArrowRight, Zap, Globe, Shield, LogIn, UserPlus, LogOut, ChevronDown, FileText } from "lucide-react";
 import { Link } from "@tanstack/react-router";
+import { useSession, signOut } from "@/lib/auth-client";
 
 export const Route = createFileRoute("/")({
   component: Index,
@@ -9,6 +10,8 @@ export const Route = createFileRoute("/")({
 
 function Index() {
   const navigate = useNavigate();
+  const { data: session, isPending } = useSession();
+  const [showUserMenu, setShowUserMenu] = React.useState(false);
   const [joinId, setJoinId] = React.useState("");
   const [isCreating, setIsCreating] = React.useState(false);
 
@@ -108,32 +111,60 @@ function Index() {
             />
           </button>
 
-          {/* Local Board */}
-          <Link
-            to="/local"
-            className="group relative flex flex-col gap-3 p-6 rounded-2xl
-              bg-gradient-to-br from-[#1e1e2e] to-[#181825]
-              border border-[#313244] hover:border-[#06b6d4]/50
-              transition-all duration-300
-              hover:shadow-xl hover:shadow-[#06b6d4]/10
-              cursor-pointer text-left"
-          >
-            <div className="w-10 h-10 rounded-xl bg-[#06b6d4]/15 flex items-center justify-center group-hover:bg-[#06b6d4]/25 transition-colors">
-              <Paintbrush size={20} className="text-[#89dceb]" />
-            </div>
-            <div>
-              <h3 className="text-lg font-semibold text-[#cdd6f4] mb-1">
-                Open Local Board
-              </h3>
-              <p className="text-sm text-[#6c7086]">
-                Work offline with your shapes saved to your browser.
-              </p>
-            </div>
-            <ArrowRight
-              size={16}
-              className="absolute top-6 right-6 text-[#45475a] group-hover:text-[#89dceb] group-hover:translate-x-1 transition-all"
-            />
-          </Link>
+          {/* Local Board or My Pages */}
+          {session ? (
+            <Link
+              to="/pages"
+              className="group relative flex flex-col gap-3 p-6 rounded-2xl
+                bg-gradient-to-br from-[#1e1e2e] to-[#181825]
+                border border-[#313244] hover:border-[#06b6d4]/50
+                transition-all duration-300
+                hover:shadow-xl hover:shadow-[#06b6d4]/10
+                cursor-pointer text-left"
+            >
+              <div className="w-10 h-10 rounded-xl bg-[#06b6d4]/15 flex items-center justify-center group-hover:bg-[#06b6d4]/25 transition-colors">
+                <FileText size={20} className="text-[#89dceb]" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-[#cdd6f4] mb-1">
+                  My Pages
+                </h3>
+                <p className="text-sm text-[#6c7086]">
+                  View and manage your saved pages with cloud sync.
+                </p>
+              </div>
+              <ArrowRight
+                size={16}
+                className="absolute top-6 right-6 text-[#45475a] group-hover:text-[#89dceb] group-hover:translate-x-1 transition-all"
+              />
+            </Link>
+          ) : (
+            <Link
+              to="/local"
+              className="group relative flex flex-col gap-3 p-6 rounded-2xl
+                bg-gradient-to-br from-[#1e1e2e] to-[#181825]
+                border border-[#313244] hover:border-[#06b6d4]/50
+                transition-all duration-300
+                hover:shadow-xl hover:shadow-[#06b6d4]/10
+                cursor-pointer text-left"
+            >
+              <div className="w-10 h-10 rounded-xl bg-[#06b6d4]/15 flex items-center justify-center group-hover:bg-[#06b6d4]/25 transition-colors">
+                <Paintbrush size={20} className="text-[#89dceb]" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-[#cdd6f4] mb-1">
+                  Open Local Board
+                </h3>
+                <p className="text-sm text-[#6c7086]">
+                  Work offline with your shapes saved to your browser.
+                </p>
+              </div>
+              <ArrowRight
+                size={16}
+                className="absolute top-6 right-6 text-[#45475a] group-hover:text-[#89dceb] group-hover:translate-x-1 transition-all"
+              />
+            </Link>
+          )}
         </div>
 
         {/* Join room input */}
@@ -177,6 +208,72 @@ function Index() {
             Peer-to-peer via CRDT
           </span>
         </div>
+
+        {/* Auth buttons or User info */}
+        {isPending ? (
+          <div className="h-10 w-24 bg-[#313244] rounded-xl animate-pulse" />
+        ) : session ? (
+          <div className="relative">
+            <button
+              onClick={() => setShowUserMenu(!showUserMenu)}
+              className="flex items-center gap-3 px-4 py-2 rounded-xl
+                bg-[#1e1e2e] border border-[#313244]
+                hover:border-[#7c3aed]/50 transition-all"
+            >
+              {session.user.image ? (
+                <img src={session.user.image} alt="" className="w-8 h-8 rounded-full" />
+              ) : (
+                <div className="w-8 h-8 rounded-full bg-[#7c3aed] flex items-center justify-center">
+                  <span className="text-white text-sm font-medium">
+                    {session.user.name?.[0]?.toUpperCase() || "U"}
+                  </span>
+                </div>
+              )}
+              <div className="text-left">
+                <p className="text-sm font-medium text-[#cdd6f4]">{session.user.name}</p>
+                <p className="text-xs text-[#6c7086]">@{session.user.username}</p>
+              </div>
+              <ChevronDown size={16} className="text-[#6c7086]" />
+            </button>
+
+            {showUserMenu && (
+              <div className="absolute top-full mt-2 right-0 w-48 rounded-xl
+                bg-[#1e1e2e] border border-[#313244] shadow-xl overflow-hidden z-50">
+                <button
+                  onClick={() => signOut()}
+                  className="w-full flex items-center gap-2 px-4 py-3 text-sm text-[#f38ba8]
+                    hover:bg-[#313244] transition-colors"
+                >
+                  <LogOut size={16} />
+                  Sign out
+                </button>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="flex gap-3 mt-4">
+            <Link
+              to="/login"
+              className="flex items-center gap-2 px-5 py-2.5 rounded-xl
+                bg-[#1e1e2e] border border-[#313244] text-sm text-[#cdd6f4]
+                hover:border-[#89b4fa]/50 hover:bg-[#313244]
+                transition-all"
+            >
+              <LogIn size={16} className="text-[#89b4fa]" />
+              Log in
+            </Link>
+            <Link
+              to="/signup"
+              className="flex items-center gap-2 px-5 py-2.5 rounded-xl
+                bg-[#7c3aed] text-white text-sm font-medium
+                hover:bg-[#9333ea]
+                transition-all shadow-lg shadow-[#7c3aed]/20"
+            >
+              <UserPlus size={16} />
+              Sign up
+            </Link>
+          </div>
+        )}
       </div>
     </div>
   );

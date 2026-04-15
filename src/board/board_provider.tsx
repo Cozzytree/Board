@@ -44,6 +44,7 @@ const DEFAULT_CUSTOM_SHAPES: CustomShapeDef[] = [
 ];
 
 const BoardProvider = ({
+  container,
   height = window.innerHeight,
   width = window.innerWidth,
   customShapes = DEFAULT_CUSTOM_SHAPES,
@@ -55,7 +56,10 @@ const BoardProvider = ({
   skipLocalStorage = false,
   onCursorMove,
   onDeleteShape,
+  onThemeChange,
+  isOwner,
 }: {
+  container?: React.RefObject<HTMLElement | null>;
   onCursorMove?: (e: EventData) => void;
   theme?: Theme;
   width?: number;
@@ -70,15 +74,18 @@ const BoardProvider = ({
   onDeleteShape?: (shapes: Shape[]) => void;
   /** When true, skips loading/saving from localStorage (used for room mode where sync is external). */
   skipLocalStorage?: boolean;
+  onThemeChange?: (settings: {
+    theme?: "dark" | "light";
+    background?: string;
+    foreground?: string;
+  }) => void;
+  isOwner?: boolean;
 }) => {
   const [boardTheme, setBoardThemeState] = React.useState<"dark" | "light">(
-    theme === "dark" || theme === "system"
-      ? "dark"
-      : "light",
+    theme === "dark" || theme === "system" ? "dark" : "light",
   );
   const [background, setBackground] = React.useState(boardTheme === "dark" ? "#181818" : "#efefef");
   const [foreground, setForeground] = React.useState(boardTheme === "dark" ? "#cccccc" : "#202020");
-
   React.useEffect(() => {
     if (boardTheme === "dark") {
       setForeground("#cccccc");
@@ -398,6 +405,7 @@ const BoardProvider = ({
     if (!canvasRef.current) return;
     const newBoard = new Board({
       width,
+      container: container?.current || undefined,
       foreground,
       background,
       height,
@@ -741,6 +749,8 @@ const BoardProvider = ({
           setTheme: handleThemeChange,
           setForeground,
           setBackground,
+          onThemeChange,
+          isOwner,
           setActiveShape: (s) => {
             setActiveShape(s);
           },

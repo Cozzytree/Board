@@ -231,11 +231,13 @@ function RoomPage() {
   const boardReadyRef = React.useRef(false);
   const [boardTrigger, setBoardTrigger] = React.useState(0);
   const [cursorCount, setCursorCount] = React.useState(0);
+  const [isOwner, setIsOwner] = React.useState(false);
 
   const docRef = React.useRef<Y.Doc | null>(null);
   const providerRef = React.useRef<WebsocketProvider | null>(null);
   const suppressSyncRef = React.useRef(false);
   const syncToYjsRef = React.useRef<((board: Board) => void) | null>(null);
+  const ySettingsRef = React.useRef<Y.Map<unknown> | null>(null);
 
   const handleWindow = React.useCallback(() => {
     setWidth(window.innerWidth);
@@ -253,7 +255,7 @@ function RoomPage() {
     console.log("[yjs] Phase 1: Initializing connection for room:", roomId);
 
     const doc = new Y.Doc();
-    const provider = new WebsocketProvider("ws://localhost:3000", roomId, doc);
+    const provider = new WebsocketProvider("ws://localhost:3000/ws", roomId, doc);
 
     docRef.current = doc;
     providerRef.current = provider;
@@ -397,16 +399,72 @@ function RoomPage() {
 
     yShapes.observe(observer);
 
+    // ── Settings sync (theme, colors) ──
+    const ySettings = doc.getMap<unknown>("settings");
+    ySettingsRef.current = ySettings;
+
+    const loadSettings = () => {
+      const savedTheme = ySettings.get("theme") as "dark" | "light" | undefined;
+      const savedBackground = ySettings.get("background") as string | undefined;
+      const savedForeground = ySettings.get("foreground") as string | undefined;
+
+      if (savedBackground) board.background = savedBackground;
+      if (savedForeground) board.foreground = savedForeground;
+      if (savedTheme) board.theme = savedTheme;
+      board.render();
+    };
+
+    ySettings.observe((events, txn) => {
+      if (txn.local) return;
+
+      events.changes.keys.forEach((change, key) => {
+        if (key === "ownerClientId") {
+          const newOwner = ySettings.get("ownerClientId") as number;
+          const amOwner = newOwner === provider.awareness.clientID;
+          setIsOwner(amOwner);
+          console.log("[yjs] Owner changed, am I owner:", amOwner);
+        } else if (change.action !== "delete") {
+          const value = ySettings.get(key);
+          if (key === "theme" && (value === "dark" || value === "light")) {
+            board.theme = value;
+          } else if (key === "background" && typeof value === "string") {
+            board.background = value;
+          } else if (key === "foreground" && typeof value === "string") {
+            board.foreground = value;
+          }
+        }
+      });
+      board.render();
+    });
+
     provider.on("sync", (isSynced: boolean) => {
       console.log("[yjs] Provider synced:", isSynced);
       if (isSynced) {
         loadShapes();
+
+        // Check/take ownership
+        const existingOwner = ySettings.get("ownerClientId") as number | undefined;
+        if (!existingOwner) {
+          // First client takes ownership
+          ySettings.set("ownerClientId", provider.awareness.clientID);
+          setIsOwner(true);
+          console.log("[yjs] I became the owner");
+        } else if (existingOwner === provider.awareness.clientID) {
+          setIsOwner(true);
+          console.log("[yjs] I am the owner");
+        } else {
+          setIsOwner(false);
+          console.log("[yjs] I am not the owner");
+        }
+
+        loadSettings();
       }
     });
 
     if (provider.synced) {
       console.log("[yjs] Already synced, loading immediately");
       loadShapes();
+      loadSettings();
     }
 
     const syncToYjs = (boardInstance: Board) => {
@@ -470,6 +528,26 @@ function RoomPage() {
     suppressSyncRef.current = false;
   };
 
+  const onThemeChange = React.useCallback((settings: { 
+    theme?: "dark" | "light"; 
+    background?: string; 
+    foreground?: string 
+  }) => {
+    if (!isOwner || !ySettingsRef.current) return;
+    
+    docRef.current?.transact(() => {
+      if (settings.theme !== undefined) {
+        ySettingsRef.current?.set("theme", settings.theme);
+      }
+      if (settings.background !== undefined) {
+        ySettingsRef.current?.set("background", settings.background);
+      }
+      if (settings.foreground !== undefined) {
+        ySettingsRef.current?.set("foreground", settings.foreground);
+      }
+    });
+  }, [isOwner]);
+
   return (
     <div className="w-full h-full">
       <BoardProvider
@@ -484,6 +562,8 @@ function RoomPage() {
         }}
         onDeleteShape={onDeleteShape}
         onBoardReady={onBoardReady}
+        onThemeChange={onThemeChange}
+        isOwner={isOwner}
         skipLocalStorage
         onCursorMove={(e) => {
           const now = Date.now();

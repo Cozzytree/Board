@@ -10,6 +10,8 @@ export type ContextProps = {
   setTheme: (theme: "dark" | "light") => void;
   setForeground: (color: string) => void;
   setBackground: (color: string) => void;
+  onThemeChange?: (settings: { theme?: "dark" | "light"; background?: string; foreground?: string }) => void;
+  isOwner?: boolean;
   mode: { m: modes; sm: submodes | null };
   setMode: (m: modes, sm: submodes | null) => void;
   tools: {

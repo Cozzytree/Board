@@ -6,7 +6,7 @@ export function BoardZoomControls() {
   const { zoom, handleZoom } = useBoard();
 
   return (
-    <div className="z-50 fixed left-4 bottom-5 flex items-center gap-2">
+    <div className="flex items-center gap-2">
       <Button
         onClick={() => {
           handleZoom(true);
