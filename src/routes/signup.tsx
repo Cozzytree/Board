@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import React from "react";
 import { Mail, Lock, User, Eye, EyeOff } from "lucide-react";
-import { Background } from "./_components/Background";
+import { Background } from "../components/Background";
 import { authClient } from "@/lib/auth-client";
 
 export const Route = createFileRoute("/signup")({
@@ -81,18 +81,14 @@ function Signup() {
           onSubmit={handleSubmit}
           className="w-full flex flex-col gap-4 p-6 rounded-2xl
             bg-gradient-to-br from-[#1e1e2e] to-[#181825]
-            border border-[#313244]"
-        >
+            border border-[#313244]">
           {/* Username */}
           <div className="flex flex-col gap-2">
             <label className="text-sm text-[#bac2de]" htmlFor="username">
               Username
             </label>
             <div className="relative">
-              <User
-                size={16}
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-[#45475a]"
-              />
+              <User size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#45475a]" />
               <input
                 id="username"
                 type="text"
@@ -114,10 +110,7 @@ function Signup() {
               Display Name
             </label>
             <div className="relative">
-              <User
-                size={16}
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-[#45475a]"
-              />
+              <User size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#45475a]" />
               <input
                 id="name"
                 type="text"
@@ -139,10 +132,7 @@ function Signup() {
               Email
             </label>
             <div className="relative">
-              <Mail
-                size={16}
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-[#45475a]"
-              />
+              <Mail size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#45475a]" />
               <input
                 id="email"
                 type="email"
@@ -164,10 +154,7 @@ function Signup() {
               Password
             </label>
             <div className="relative">
-              <Lock
-                size={16}
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-[#45475a]"
-              />
+              <Lock size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#45475a]" />
               <input
                 id="password"
                 type={showPassword ? "text" : "password"}
@@ -184,8 +171,7 @@ function Signup() {
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-[#45475a] hover:text-[#bac2de] transition-colors"
-              >
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-[#45475a] hover:text-[#bac2de] transition-colors">
                 {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
               </button>
             </div>
@@ -197,10 +183,7 @@ function Signup() {
               Confirm Password
             </label>
             <div className="relative">
-              <Lock
-                size={16}
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-[#45475a]"
-              />
+              <Lock size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#45475a]" />
               <input
                 id="confirmPassword"
                 type={showPassword ? "text" : "password"}
@@ -222,17 +205,13 @@ function Signup() {
             disabled={isLoading}
             className="mt-2 w-full py-3 rounded-xl bg-[#f5c2e7] text-[#1e1e2e] font-medium
               hover:bg-[#eba0ac] disabled:opacity-50 disabled:cursor-not-allowed
-              transition-all shadow-lg shadow-[#f5c2e7]/20"
-          >
+              transition-all shadow-lg shadow-[#f5c2e7]/20">
             {isLoading ? "Creating account..." : "Create account"}
           </button>
         </form>
 
         {/* Back to home */}
-        <Link
-          to="/"
-          className="text-sm text-[#6c7086] hover:text-[#cdd6f4] transition-colors"
-        >
+        <Link to="/" className="text-sm text-[#6c7086] hover:text-[#cdd6f4] transition-colors">
           ← Back to home
         </Link>
       </div>

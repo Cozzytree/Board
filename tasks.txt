@@ -1,0 +1,2 @@
+store canvas details in page
+load initial shapes for canvas

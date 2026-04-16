@@ -22,9 +22,10 @@ import {
 } from "lucide-react";
 import * as React from "react";
 import { Board, Rect, Shape } from "./index";
-import type { modes, submodes, CustomShapeDef, EventData } from "./types";
+import type { modes, submodes, CustomShapeDef, EventData, ShapeProps } from "./types";
 import { generateShapeByShapeType } from "./utils/utilfunc";
 import { saveLibraryItems } from "./utils/library_db";
+import { loadShapesFromProps } from "@/lib/shape-loader";
 import {
   ContextMenu,
   ContextMenuContent,
@@ -58,7 +59,9 @@ const BoardProvider = ({
   onDeleteShape,
   onThemeChange,
   isOwner,
+  initialShapes,
 }: {
+  initialShapes?: ShapeProps[];
   container?: React.RefObject<HTMLElement | null>;
   onCursorMove?: (e: EventData) => void;
   theme?: Theme;
@@ -397,13 +400,17 @@ const BoardProvider = ({
   const onShapesChangedRef = React.useRef(onShapesChanged);
   onShapesChangedRef.current = onShapesChanged;
 
+  const hasInitialShapes = !!initialShapes;
+
   const onModeChange = React.useCallback((m: modes, sm: submodes) => {
     setMode({ m, sm });
   }, []);
 
   React.useEffect(() => {
     if (!canvasRef.current) return;
+
     const newBoard = new Board({
+      initialShapes: initialShapes || [],
       width,
       container: container?.current || undefined,
       foreground,
@@ -435,10 +442,12 @@ const BoardProvider = ({
 
     newBoard.on("mouseup", () => {
       onMouseUp();
-      if (onShapesChangedRef.current) {
-        onShapesChangedRef.current(newBoard);
-      } else {
-        saveShapesToStorage(newBoard);
+      if (!hasInitialShapes) {
+        if (onShapesChangedRef.current) {
+          onShapesChangedRef.current(newBoard);
+        } else {
+          saveShapesToStorage(newBoard);
+        }
       }
     });
     newBoard.on("mousedown", (e) => {
@@ -455,26 +464,31 @@ const BoardProvider = ({
     newBoard.on("shape:resize", () => {});
     newBoard.on("shape:move", () => {});
     newBoard.on("shape:updated", () => {
-      if (onShapesChangedRef.current) {
-        onShapesChangedRef.current(newBoard);
-      } else {
-        saveShapesToStorage(newBoard);
+      if (!hasInitialShapes) {
+        if (onShapesChangedRef.current) {
+          onShapesChangedRef.current(newBoard);
+        } else {
+          saveShapesToStorage(newBoard);
+        }
       }
     });
     newBoard.on("shape:created", () => {
-      if (onShapesChangedRef.current) {
-        onShapesChangedRef.current(newBoard);
-      } else {
-        saveShapesToStorage(newBoard);
+      if (!hasInitialShapes) {
+        if (onShapesChangedRef.current) {
+          onShapesChangedRef.current(newBoard);
+        } else {
+          saveShapesToStorage(newBoard);
+        }
       }
     });
 
-    // Load saved shapes or create a default one (only when not using external sync)
-    if (!skipLocalStorage) {
+    // Load shapes - priority: initialShapes > localStorage > default
+    if (initialShapes && initialShapes.length > 0) {
+      void loadShapesFromProps(newBoard, initialShapes.map((s) => ({ id: s.id || crypto.randomUUID(), props: s })));
+    } else if (!skipLocalStorage) {
       loadViewFromStorage(newBoard);
       const loaded = loadShapesFromStorage(newBoard);
       if (!loaded) {
-        // Create a default rect so the canvas isn't empty
         const defaultShape = new Rect({
           ctx: newBoard.ctx,
           _board: newBoard,
@@ -490,14 +504,15 @@ const BoardProvider = ({
     // Save when shapes are deleted via keyboard
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Delete" || (e.ctrlKey && (e.key === "z" || e.key === "y"))) {
-        // Small delay to let the board process the key first
-        requestAnimationFrame(() => {
-          if (onShapesChangedRef.current) {
-            onShapesChangedRef.current(newBoard);
-          } else {
-            saveShapesToStorage(newBoard);
-          }
-        });
+        if (!hasInitialShapes) {
+          requestAnimationFrame(() => {
+            if (onShapesChangedRef.current) {
+              onShapesChangedRef.current(newBoard);
+            } else {
+              saveShapesToStorage(newBoard);
+            }
+          });
+        }
       }
     };
     document.addEventListener("keydown", handleKeyDown);
@@ -520,6 +535,15 @@ const BoardProvider = ({
     customShapes,
     saveShapesToStorage,
     loadShapesFromStorage,
+    container,
+    hasInitialShapes,
+    initialShapes,
+    onBoardReady,
+    onDelete,
+    onImageUpload,
+    onMouseMove,
+    saveViewToStorage,
+    skipLocalStorage,
   ]);
 
   React.useEffect(() => {

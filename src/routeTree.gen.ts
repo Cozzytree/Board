@@ -15,6 +15,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as LocalRouteImport } from './routes/local'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as PagesIndexRouteImport } from './routes/pages/index'
+import { Route as SessionsSessionKeyRouteImport } from './routes/sessions/$sessionKey'
 import { Route as RoomRoomIdRouteImport } from './routes/room.$roomId'
 import { Route as PagesPageIdRouteImport } from './routes/pages/$pageId'
 
@@ -48,6 +49,11 @@ const PagesIndexRoute = PagesIndexRouteImport.update({
   path: '/',
   getParentRoute: () => PagesRoute,
 } as any)
+const SessionsSessionKeyRoute = SessionsSessionKeyRouteImport.update({
+  id: '/sessions/$sessionKey',
+  path: '/sessions/$sessionKey',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const RoomRoomIdRoute = RoomRoomIdRouteImport.update({
   id: '/room/$roomId',
   path: '/room/$roomId',
@@ -67,6 +73,7 @@ export interface FileRoutesByFullPath {
   '/signup': typeof SignupRoute
   '/pages/$pageId': typeof PagesPageIdRoute
   '/room/$roomId': typeof RoomRoomIdRoute
+  '/sessions/$sessionKey': typeof SessionsSessionKeyRoute
   '/pages/': typeof PagesIndexRoute
 }
 export interface FileRoutesByTo {
@@ -76,6 +83,7 @@ export interface FileRoutesByTo {
   '/signup': typeof SignupRoute
   '/pages/$pageId': typeof PagesPageIdRoute
   '/room/$roomId': typeof RoomRoomIdRoute
+  '/sessions/$sessionKey': typeof SessionsSessionKeyRoute
   '/pages': typeof PagesIndexRoute
 }
 export interface FileRoutesById {
@@ -87,6 +95,7 @@ export interface FileRoutesById {
   '/signup': typeof SignupRoute
   '/pages/$pageId': typeof PagesPageIdRoute
   '/room/$roomId': typeof RoomRoomIdRoute
+  '/sessions/$sessionKey': typeof SessionsSessionKeyRoute
   '/pages/': typeof PagesIndexRoute
 }
 export interface FileRouteTypes {
@@ -99,6 +108,7 @@ export interface FileRouteTypes {
     | '/signup'
     | '/pages/$pageId'
     | '/room/$roomId'
+    | '/sessions/$sessionKey'
     | '/pages/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -108,6 +118,7 @@ export interface FileRouteTypes {
     | '/signup'
     | '/pages/$pageId'
     | '/room/$roomId'
+    | '/sessions/$sessionKey'
     | '/pages'
   id:
     | '__root__'
@@ -118,6 +129,7 @@ export interface FileRouteTypes {
     | '/signup'
     | '/pages/$pageId'
     | '/room/$roomId'
+    | '/sessions/$sessionKey'
     | '/pages/'
   fileRoutesById: FileRoutesById
 }
@@ -128,6 +140,7 @@ export interface RootRouteChildren {
   PagesRoute: typeof PagesRouteWithChildren
   SignupRoute: typeof SignupRoute
   RoomRoomIdRoute: typeof RoomRoomIdRoute
+  SessionsSessionKeyRoute: typeof SessionsSessionKeyRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -174,6 +187,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PagesIndexRouteImport
       parentRoute: typeof PagesRoute
     }
+    '/sessions/$sessionKey': {
+      id: '/sessions/$sessionKey'
+      path: '/sessions/$sessionKey'
+      fullPath: '/sessions/$sessionKey'
+      preLoaderRoute: typeof SessionsSessionKeyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/room/$roomId': {
       id: '/room/$roomId'
       path: '/room/$roomId'
@@ -210,6 +230,7 @@ const rootRouteChildren: RootRouteChildren = {
   PagesRoute: PagesRouteWithChildren,
   SignupRoute: SignupRoute,
   RoomRoomIdRoute: RoomRoomIdRoute,
+  SessionsSessionKeyRoute: SessionsSessionKeyRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

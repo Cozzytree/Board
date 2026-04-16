@@ -27,6 +27,7 @@ import SvgShape from "./shapes/svg_shape";
 type view_t = { x: number; y: number; scl: number };
 
 type BoardProps = {
+  initialShapes: any[];
   container?: HTMLElement;
   background: string;
   foreground: string;
@@ -150,6 +151,7 @@ class Board implements BoardInterface {
     customShapes = [],
     onImageUpload,
     container,
+    initialShapes,
   }: BoardProps) {
     this.customShapes = new Map();
     customShapes.forEach((s) => {

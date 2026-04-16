@@ -7,7 +7,7 @@ export interface PageRepo {
   findById(id: string): Promise<typeof PagesTable.$inferSelect | null>;
   findByUserId(userId: string): Promise<typeof PagesTable.$inferSelect[]>;
   create(data: { userId: string; title: string }): Promise<typeof PagesTable.$inferSelect>;
-  update(id: string, data: { title?: string }): Promise<typeof PagesTable.$inferSelect | null>;
+  update(id: string, data: { title?: string; isLocked?: boolean }): Promise<typeof PagesTable.$inferSelect | null>;
   delete(id: string): Promise<boolean>;
 }
 

@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import React from "react";
 import { Mail, Lock, Eye, EyeOff, User } from "lucide-react";
-import { Background } from "./_components/Background";
+import { Background } from "../components/Background";
 import { authClient } from "@/lib/auth-client";
 
 export const Route = createFileRoute("/login")({
@@ -75,8 +75,7 @@ function Login() {
           onSubmit={handleSubmit}
           className="w-full flex flex-col gap-4 p-6 rounded-2xl
             bg-gradient-to-br from-[#1e1e2e] to-[#181825]
-            border border-[#313244]"
-        >
+            border border-[#313244]">
           {/* Email or Username */}
           <div className="flex flex-col gap-2">
             <label className="text-sm text-[#bac2de]" htmlFor="identifier">
@@ -115,10 +114,7 @@ function Login() {
               Password
             </label>
             <div className="relative">
-              <Lock
-                size={16}
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-[#45475a]"
-              />
+              <Lock size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#45475a]" />
               <input
                 id="password"
                 type={showPassword ? "text" : "password"}
@@ -134,8 +130,7 @@ function Login() {
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-[#45475a] hover:text-[#bac2de] transition-colors"
-              >
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-[#45475a] hover:text-[#bac2de] transition-colors">
                 {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
               </button>
             </div>
@@ -147,17 +142,13 @@ function Login() {
             disabled={isLoading || !identifier.trim() || !password}
             className="mt-2 w-full py-3 rounded-xl bg-[#89b4fa] text-[#1e1e2e] font-medium
               hover:bg-[#b4befe] disabled:opacity-50 disabled:cursor-not-allowed
-              transition-all shadow-lg shadow-[#89b4fa]/20"
-          >
+              transition-all shadow-lg shadow-[#89b4fa]/20">
             {isLoading ? "Signing in..." : "Sign in"}
           </button>
         </form>
 
         {/* Back to home */}
-        <Link
-          to="/"
-          className="text-sm text-[#6c7086] hover:text-[#cdd6f4] transition-colors"
-        >
+        <Link to="/" className="text-sm text-[#6c7086] hover:text-[#cdd6f4] transition-colors">
           ← Back to home
         </Link>
       </div>

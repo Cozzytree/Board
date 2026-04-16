@@ -23,6 +23,7 @@ export interface ShapeHandler {
   createShape(req: Request): Promise<Response>;
   getShape(req: Request): Promise<Response>;
   getShapesByPage(req: Request): Promise<Response>;
+  getShapesBySession(req: Request): Promise<Response>;
   updateShape(req: Request): Promise<Response>;
   deleteShape(req: Request): Promise<Response>;
 }
@@ -98,6 +99,23 @@ export function initShapeHandler(repos: Repos, auth: typeof authInstance): Shape
       }
 
       const shapes = await repos.shapes.findByPageId(parsed.data.pageId);
+      return Response.json(shapes);
+    },
+
+    async getShapesBySession(req) {
+      const session = await auth.api.getSession({ headers: req.headers });
+      if (!session) {
+        return Response.json({ error: "Unauthorized" }, { status: 401 });
+      }
+
+      const url = new URL(req.url);
+      const sessionId = url.searchParams.get("sessionId");
+      const parsed = z.object({ sessionId: z.uuid() }).safeParse({ sessionId });
+      if (!parsed.success) {
+        return Response.json({ error: parsed.error.flatten() }, { status: 400 });
+      }
+
+      const shapes = await repos.shapes.findBySessionId(parsed.data.sessionId);
       return Response.json(shapes);
     },
 

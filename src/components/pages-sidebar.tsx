@@ -1,7 +1,8 @@
 import React from "react";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { useSession } from "@/lib/auth-client";
-import { Paintbrush, Plus, MoreHorizontal, Trash2, Edit2 } from "lucide-react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Paintbrush, Plus, MoreHorizontal, Trash2, Edit2, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -21,118 +22,79 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-
-interface Page {
-  id: string;
-  title: string;
-  createdAt: string;
-  updatedAt: string;
-}
+import { createSession } from "@/lib/session-api";
+import { getPagesByUser, createPage as apiCreatePage, updatePage as apiUpdatePage, deletePage as apiDeletePage, type Page } from "@/lib/page-api";
 
 export function PagesSidebar() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { pageId: currentPageId } = useParams({ strict: false });
   const { data: session } = useSession();
-  const [pages, setPages] = React.useState<Page[]>([]);
-  const [isLoading, setIsLoading] = React.useState(true);
-  const [isCreating, setIsCreating] = React.useState(false);
   const [newPageTitle, setNewPageTitle] = React.useState("");
   const [editingPage, setEditingPage] = React.useState<Page | null>(null);
   const [editTitle, setEditTitle] = React.useState("");
 
-  const fetchPages = React.useCallback(async () => {
-    if (!session?.user?.id) return;
+  const { data: pages = [], isLoading } = useQuery({
+    queryKey: ["pages", session?.user?.id],
+    queryFn: () => getPagesByUser(session!.user.id),
+    enabled: !!session?.user?.id,
+  });
 
-    try {
-      const res = await fetch(
-        `${import.meta.env.VITE_API_URL}/page/user?userId=${session.user.id}`,
-        {
-          credentials: "include",
-        },
-      );
-      if (res.ok) {
-        const data = await res.json();
-        setPages(data);
-      }
-    } catch (err) {
-      console.error("Failed to fetch pages:", err);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [session?.user?.id]);
+  const createPageMutation = useMutation({
+    mutationFn: (title: string) => apiCreatePage(title),
+    onSuccess: (newPage) => {
+      queryClient.invalidateQueries({ queryKey: ["pages"] });
+      setNewPageTitle("");
+      navigate({ to: "/pages/$pageId", params: { pageId: newPage.id } });
+    },
+  });
 
-  React.useEffect(() => {
-    fetchPages();
-  }, [fetchPages]);
+  const updatePageMutation = useMutation({
+    mutationFn: ({ id, title }: { id: string; title: string }) => apiUpdatePage(id, { title }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["pages"] });
+      setEditingPage(null);
+    },
+  });
 
-  const createPage = async () => {
-    if (!newPageTitle.trim() || !session?.user?.id) return;
-
-    setIsCreating(true);
-    try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/page/create`, {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          userId: session.user.id,
-          title: newPageTitle.trim(),
-        }),
-      });
-
-      if (res.ok) {
-        const newPage = await res.json();
-        setPages([newPage, ...pages]);
-        setNewPageTitle("");
-        navigate({ to: "/pages/$pageId", params: { pageId: newPage.id } });
-      }
-    } catch (err) {
-      console.error("Failed to create page:", err);
-    } finally {
-      setIsCreating(false);
-    }
-  };
-
-  const deletePage = async (pageId: string) => {
-    try {
-      const res = await fetch(`/api/page/delete?id=${pageId}`, {
-        method: "DELETE",
-      });
-
-      if (res.ok) {
-        setPages(pages.filter((p) => p.id !== pageId));
-        if (currentPageId === pageId) {
-          const remainingPage = pages.find((p) => p.id !== pageId);
-          if (remainingPage) {
-            navigate({ to: "/pages/$pageId", params: { pageId: remainingPage.id } });
-          } else {
-            navigate({ to: "/pages" });
-          }
+  const deletePageMutation = useMutation({
+    mutationFn: (id: string) => apiDeletePage(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["pages"] });
+      if (currentPageId) {
+        const remainingPage = pages.find((p) => p.id !== currentPageId);
+        if (remainingPage) {
+          navigate({ to: "/pages/$pageId", params: { pageId: remainingPage.id } });
+        } else {
+          navigate({ to: "/pages" });
         }
       }
-    } catch (err) {
-      console.error("Failed to delete page:", err);
-    }
+    },
+  });
+
+  const startSessionMutation = useMutation({
+    mutationFn: (pageId: string) => createSession(pageId, { expiresInMinutes: 60 }),
+    onSuccess: (newSession) => {
+      navigate({ to: "/sessions/$sessionKey", params: { sessionKey: newSession.sessionKey } });
+    },
+  });
+
+  const createPage = () => {
+    if (!newPageTitle.trim()) return;
+    createPageMutation.mutate(newPageTitle.trim());
   };
 
-  const updatePage = async () => {
+  const deletePage = (pageId: string) => {
+    deletePageMutation.mutate(pageId);
+  };
+
+  const updatePage = () => {
     if (!editingPage || !editTitle.trim()) return;
+    updatePageMutation.mutate({ id: editingPage.id, title: editTitle.trim() });
+  };
 
-    try {
-      const res = await fetch("/api/page/update", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: editingPage.id, title: editTitle.trim() }),
-      });
-
-      if (res.ok) {
-        const updated = await res.json();
-        setPages(pages.map((p) => (p.id === updated.id ? updated : p)));
-        setEditingPage(null);
-      }
-    } catch (err) {
-      console.error("Failed to update page:", err);
-    }
+  const startSession = (pageId: string) => {
+    startSessionMutation.mutate(pageId);
   };
 
   return (
@@ -168,9 +130,9 @@ export function PagesSidebar() {
             <DialogFooter>
               <Button
                 onClick={createPage}
-                disabled={!newPageTitle.trim() || isCreating}
+                disabled={!newPageTitle.trim() || createPageMutation.isPending}
                 className="bg-[#7c3aed] hover:bg-[#9333ea] text-white">
-                {isCreating ? "Creating..." : "Create"}
+                {createPageMutation.isPending ? "Creating..." : "Create"}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -202,7 +164,9 @@ export function PagesSidebar() {
                       ? "bg-[#7c3aed]/20 border border-[#7c3aed]/50"
                       : "hover:bg-[#313244]/50 border border-transparent"
                   }`}
-                  onClick={() => navigate({ to: "/pages/$pageId", params: { pageId: page.id } })}>
+                  onClick={() => {
+                    navigate({ to: "/pages/$pageId", params: { pageId: page.id } });
+                  }}>
                   <Paintbrush
                     size={16}
                     className={currentPageId === page.id ? "text-[#b4befe]" : "text-[#6c7086]"}
@@ -213,6 +177,12 @@ export function PagesSidebar() {
                     }`}>
                     {page.title}
                   </span>
+
+                  {page.isLocked ? (
+                    <div className="flex items-center gap-1">
+                      <div className="w-2 h-2 rounded-full bg-[#f59e0b]" />
+                    </div>
+                  ) : null}
 
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
@@ -235,6 +205,20 @@ export function PagesSidebar() {
                         <Edit2 size={14} className="mr-2" />
                         Rename
                       </DropdownMenuItem>
+                      {!page.isLocked && (
+                        <>
+                          <DropdownMenuSeparator className="bg-[#313244]" />
+                          <DropdownMenuItem
+                            className="text-[#a6e3a1] hover:bg-[#313244] cursor-pointer"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              startSession(page.id);
+                            }}>
+                            <Users size={14} className="mr-2" />
+                            Start Session
+                          </DropdownMenuItem>
+                        </>
+                      )}
                       <DropdownMenuSeparator className="bg-[#313244]" />
                       <DropdownMenuItem
                         className="text-[#f38ba8] hover:bg-[#313244] cursor-pointer"

@@ -6,6 +6,7 @@ import * as decoding from "lib0/decoding";
 import { auth } from "./auth";
 import { initPageHandler } from "./handlers/pages.handler";
 import { initShapeHandler } from "./handlers/shapes.handler";
+import { initSessionHandler } from "./handlers/sessions.handler";
 import { createRepos } from "./repo";
 import { db } from "./db";
 
@@ -19,11 +20,13 @@ type RoomState = {
   awareness: awarenessProtocol.Awareness;
   conns: Map<Bun.ServerWebSocket<WSData>, Set<number>>;
   cleanupTimeout: ReturnType<typeof setTimeout> | null;
+  sessionId?: string;
+  sessionKey?: string;
 };
 
 const rooms = new Map<string, RoomState>();
 
-function getOrCreateRoom(roomId: string): RoomState {
+function getOrCreateRoom(roomId: string, sessionId?: string, sessionKey?: string): RoomState {
   let room = rooms.get(roomId);
   if (room) {
     // Clear any pending cleanup if room already exists
@@ -63,7 +66,7 @@ function getOrCreateRoom(roomId: string): RoomState {
     },
   );
 
-  room = { doc, awareness, conns: new Map(), cleanupTimeout: null };
+  room = { doc, awareness, conns: new Map(), cleanupTimeout: null, sessionId, sessionKey };
   rooms.set(roomId, room);
   console.log(`[room] created: ${roomId}`);
   return room;
@@ -138,10 +141,53 @@ function setupConnection(ws: Bun.ServerWebSocket<WSData>, room: RoomState) {
       if (room.cleanupTimeout) {
         clearTimeout(room.cleanupTimeout);
       }
-      room.cleanupTimeout = setTimeout(() => {
+      room.cleanupTimeout = setTimeout(async () => {
         if (room.conns.size === 0) {
           const roomId = [...rooms.entries()].find(([, r]) => r === room)?.[0];
           if (roomId) {
+            if (room.sessionId) {
+              try {
+                console.log(`[session] syncing shapes to DB for session: ${room.sessionId}`);
+                const session = await repos.sessions.findById(room.sessionId);
+                if (session) {
+                  const yShapes = room.doc.getMap<string>("shapes");
+                  let syncedCount = 0;
+                  let deletedCount = 0;
+
+                  yShapes.forEach((raw, shapeId) => {
+                    try {
+                      const obj = JSON.parse(raw);
+                      if (obj === null || obj === undefined || obj._deleted) {
+                        repos.shapes.hardDelete(shapeId);
+                        deletedCount++;
+                      } else {
+                        repos.shapes.upsert(shapeId, {
+                          pageId: session.pageId,
+                          props: obj,
+                          sessionId: room.sessionId,
+                          updatedBy: session.ownerId,
+                        });
+                        syncedCount++;
+                      }
+                    } catch (e) {
+                      console.error(`[session] failed to parse shape ${shapeId}:`, e);
+                    }
+                  });
+
+                  console.log(
+                    `[session] synced ${syncedCount} shapes, deleted ${deletedCount} shapes`,
+                  );
+
+                  if (session.isActive) {
+                    await repos.pages.update(session.pageId, { isLocked: false });
+                  }
+                  await repos.sessions.delete(room.sessionId);
+                  console.log(`[session] deleted: ${room.sessionId}`);
+                }
+              } catch (err) {
+                console.error(`[session] failed to sync/delete session:`, err);
+              }
+            }
             console.log(`[room] destroyed: ${roomId}`);
             room.awareness.destroy();
             room.doc.destroy();
@@ -161,11 +207,16 @@ function roomIdFromWs(ws: Bun.ServerWebSocket<WSData>): string {
 type WSData = {
   roomId: string;
   cleanup?: () => void;
+  sessionId?: string;
+  sessionKey?: string;
+  isOwner?: boolean;
+  userId?: string;
 };
 
 const repos = createRepos(db);
 const pageHandler = initPageHandler(repos, auth);
 const shapeHandler = initShapeHandler(repos, auth);
+const sessionHandler = initSessionHandler(repos, auth);
 
 const ALLOWED_ORIGINS = ["http://localhost:5173", "http://localhost:4173"];
 
@@ -252,18 +303,14 @@ function withCors(handler: (req: Bun.BunRequest) => Promise<Response>) {
 
 const server = Bun.serve<WSData>({
   port: 3000,
+  fetch(req) {
+    const cors = corsHeaders();
+    if (req.method === "OPTIONS") {
+      return new Response("Departed", { status: 204, headers: cors });
+    }
+    return new Response(null, { status: 404 });
+  },
   routes: {
-    "/": {
-      GET: (req: Bun.BunRequest, server: Bun.Server<WSData>) => {
-        const roomId = req.params as { roomId: string };
-        const success = server.upgrade(req, {
-          data: roomId,
-        });
-
-        if (success) return undefined as unknown as Response;
-        return new Response("WebSocket upgrade failed", { status: 400 });
-      },
-    },
     "/api/auth/*": authHandlerWrapper,
     "/page/create": { POST: withCors((req) => pageHandler.createPage(req)) },
     "/page/get": { GET: withCors((req) => pageHandler.getPage(req)) },
@@ -273,8 +320,35 @@ const server = Bun.serve<WSData>({
     "/shape/create": { POST: withCors((req) => shapeHandler.createShape(req)) },
     "/shape/get": { GET: withCors((req) => shapeHandler.getShape(req)) },
     "/shape/page": { GET: withCors((req) => shapeHandler.getShapesByPage(req)) },
+    "/shape/session": { GET: withCors((req) => shapeHandler.getShapesBySession(req)) },
     "/shape/update": { PATCH: withCors((req) => shapeHandler.updateShape(req)) },
     "/shape/delete": { DELETE: withCors((req) => shapeHandler.deleteShape(req)) },
+    "/session/create": { POST: withCors((req) => sessionHandler.createSession(req)) },
+    "/session/get": { GET: withCors((req) => sessionHandler.getSession(req)) },
+    "/session/key": { GET: withCors((req) => sessionHandler.getSessionByKey(req)) },
+    "/session/page": { GET: withCors((req) => sessionHandler.getSessionsByPage(req)) },
+    "/session/page/active": { GET: withCors((req) => sessionHandler.getActiveSessionByPage(req)) },
+    "/session/update": { PATCH: withCors((req) => sessionHandler.updateSession(req)) },
+    "/session/end": { POST: withCors((req) => sessionHandler.endSession(req)) },
+    "/session/delete": { DELETE: withCors((req) => sessionHandler.deleteSession(req)) },
+    "/ws/:roomId": {
+      GET: (req: Bun.BunRequest, server: Bun.Server<WSData>) => {
+        const roomId = (req.params as { roomId: string }).roomId;
+        const success = server.upgrade(req, { data: { roomId } });
+        if (success) return undefined as unknown as Response;
+        return new Response("WebSocket upgrade failed", { status: 400 });
+      },
+    },
+    "/session/:sessionKey": {
+      GET: (req: Bun.BunRequest, server: Bun.Server<WSData>) => {
+        const sessionKey = (req.params as { sessionKey: string }).sessionKey;
+        const success = server.upgrade(req, {
+          data: { roomId: `session:${sessionKey}`, sessionKey },
+        });
+        if (success) return undefined as unknown as Response;
+        return new Response("WebSocket upgrade failed", { status: 400 });
+      },
+    },
   },
   websocket: {
     message(ws, message) {
@@ -291,27 +365,48 @@ const server = Bun.serve<WSData>({
       handleMessage(ws, room, data);
     },
 
-    open(ws) {
-      const room = getOrCreateRoom(ws.data.roomId);
+    async open(ws) {
+      const { roomId, sessionKey } = ws.data;
+      let sessionId: string | undefined;
+
+      if (sessionKey) {
+        try {
+          const session = await repos.sessions.findBySessionKey(sessionKey);
+          if (!session) {
+            console.log(`[ws] session not found: ${sessionKey}`);
+            ws.close(4001, "Session not found");
+            return;
+          }
+          if (!session.isActive) {
+            console.log(`[ws] session is not active: ${sessionKey}`);
+            ws.close(4002, "Session is not active");
+            return;
+          }
+          if (session.expiresAt && session.expiresAt < new Date()) {
+            console.log(`[ws] session has expired: ${sessionKey}`);
+            ws.close(4003, "Session has expired");
+            return;
+          }
+          sessionId = session.id;
+          ws.data.sessionId = sessionId;
+        } catch (err) {
+          console.error(`[ws] error validating session:`, err);
+          ws.close(5000, "Internal error");
+          return;
+        }
+      }
+
+      const room = getOrCreateRoom(roomId, sessionId, sessionKey);
       ws.data.cleanup = setupConnection(ws, room);
       console.log(
-        `[ws] client connected to room: ${ws.data.roomId}, total clients: ${room.conns.size}`,
+        `[ws] connected: ${roomId}, session: ${sessionId || "none"}, clients: ${room.conns.size}`,
       );
     },
 
     close(ws) {
       ws.data.cleanup?.();
-      console.log(`[ws] client disconnected from room: ${ws.data.roomId}`);
+      console.log(`[ws] disconnected: ${ws.data.roomId}`);
     },
-  },
-  fetch(req) {
-    const cors = corsHeaders();
-
-    if (req.method === "OPTIONS") {
-      return new Response("Departed", { status: 204, headers: cors });
-    }
-
-    return new Response(null, { status: 404 }); // This will trigger 404 if no route matches
   },
 });
 

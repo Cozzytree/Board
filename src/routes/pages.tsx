@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate, Outlet } from "@tanstack/react-router";
 import React from "react";
 import { Paintbrush, LogOut, ChevronDown } from "lucide-react";
 import { useSession, signOut } from "@/lib/auth-client";
-import { PagesSidebar } from "./_components/pages-sidebar";
+import { PagesSidebar } from "../components/pages-sidebar";
 
 export const Route = createFileRoute("/pages")({
   component: PagesLayout,
@@ -28,7 +28,7 @@ function PagesLayout() {
   }
 
   return (
-    <div className="h-screen w-screen flex flex-col bg-background">
+    <div className="h-screen w-full flex flex-col bg-background">
       {/* Header */}
       <header className="h-14 px-4 flex items-center justify-between border-b border-muted bg-background">
         <div className="flex items-center gap-3">
