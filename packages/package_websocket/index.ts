@@ -323,6 +323,7 @@ const server = Bun.serve<WSData>({
     "/shape/session": { GET: withCors((req) => shapeHandler.getShapesBySession(req)) },
     "/shape/update": { PATCH: withCors((req) => shapeHandler.updateShape(req)) },
     "/shape/delete": { DELETE: withCors((req) => shapeHandler.deleteShape(req)) },
+    "/shape/sync": { POST: withCors((req) => shapeHandler.syncShapes(req)) },
     "/session/create": { POST: withCors((req) => sessionHandler.createSession(req)) },
     "/session/get": { GET: withCors((req) => sessionHandler.getSession(req)) },
     "/session/key": { GET: withCors((req) => sessionHandler.getSessionByKey(req)) },

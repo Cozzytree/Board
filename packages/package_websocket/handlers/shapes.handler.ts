@@ -19,6 +19,17 @@ const pageIdParamSchema = z.object({
   pageId: z.uuid(),
 });
 
+const syncChangeSchema = z.object({
+  id: z.string(),
+  pageId: z.uuid(),
+  props: z.record(z.string(), z.unknown()).optional(),
+  isDeleted: z.boolean().optional(),
+});
+
+const syncRequestSchema = z.object({
+  changes: z.array(syncChangeSchema),
+});
+
 export interface ShapeHandler {
   createShape(req: Request): Promise<Response>;
   getShape(req: Request): Promise<Response>;
@@ -26,6 +37,7 @@ export interface ShapeHandler {
   getShapesBySession(req: Request): Promise<Response>;
   updateShape(req: Request): Promise<Response>;
   deleteShape(req: Request): Promise<Response>;
+  syncShapes(req: Request): Promise<Response>;
 }
 
 export function initShapeHandler(repos: Repos, auth: typeof authInstance): ShapeHandler {
@@ -177,6 +189,71 @@ export function initShapeHandler(repos: Repos, auth: typeof authInstance): Shape
 
       await repos.shapes.delete(parsed.data.id);
       return new Response(null, { status: 204 });
+    },
+
+    async syncShapes(req) {
+      const session = await auth.api.getSession({ headers: req.headers });
+      if (!session) {
+        return Response.json({ error: "Unauthorized" }, { status: 401 });
+      }
+
+      const body = await req.json();
+      const parsed = syncRequestSchema.safeParse(body);
+      if (!parsed.success) {
+        return Response.json({ error: parsed.error.flatten() }, { status: 400 });
+      }
+
+      const { changes } = parsed.data;
+      if (changes.length === 0) {
+        return Response.json({ synced: 0 });
+      }
+
+      const userId = session.user.id;
+      const results: { id: string; success: boolean; error?: string }[] = [];
+
+      for (const change of changes) {
+        try {
+          const existingShape = await repos.shapes.findById(change.id);
+          const page = await repos.pages.findById(change.pageId);
+
+          if (!page) {
+            results.push({ id: change.id, success: false, error: "Page not found" });
+            continue;
+          }
+
+          if (page.userId !== userId) {
+            results.push({ id: change.id, success: false, error: "Forbidden" });
+            continue;
+          }
+
+          if (change.isDeleted) {
+            if (existingShape) {
+              await repos.shapes.delete(change.id);
+            }
+            results.push({ id: change.id, success: true });
+          } else if (existingShape) {
+            await repos.shapes.update(change.id, {
+              props: change.props,
+              updatedBy: userId,
+            });
+            results.push({ id: change.id, success: true });
+          } else {
+            await repos.shapes.upsert(change.id, {
+              pageId: change.pageId,
+              props: change.props ?? {},
+              createdBy: userId,
+              updatedBy: userId,
+            });
+            results.push({ id: change.id, success: true });
+          }
+        } catch (err) {
+          console.error(`[syncShapes] Failed to sync shape ${change.id}:`, err);
+          results.push({ id: change.id, success: false, error: "Internal error" });
+        }
+      }
+
+      const successCount = results.filter((r) => r.success).length;
+      return Response.json({ synced: successCount, total: changes.length, results });
     },
   };
 }

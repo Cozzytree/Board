@@ -4,13 +4,13 @@ import { auth as authInstance } from "../auth";
 
 const createSessionSchema = z.object({
   pageId: z.uuid(),
-  settings: z.record(z.unknown()).optional(),
+  settings: z.record(z.string(), z.unknown()).optional(),
   expiresInMinutes: z.number().int().positive().optional(),
 });
 
 const updateSessionSchema = z.object({
   isActive: z.boolean().optional(),
-  settings: z.record(z.unknown()).optional(),
+  settings: z.record(z.string(), z.unknown()).optional(),
   expiresAt: z.string().datetime().optional(),
 });
 

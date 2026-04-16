@@ -45,3 +45,23 @@ export async function getShapesByPage(pageId: string): Promise<Shape[]> {
 export async function getShapesBySession(sessionId: string): Promise<Shape[]> {
   return fetchWithAuth(`/shape/session?sessionId=${sessionId}`);
 }
+
+export interface SyncChange {
+  id: string;
+  pageId: string;
+  props?: ShapeProps;
+  isDeleted?: boolean;
+}
+
+export interface SyncResult {
+  synced: number;
+  total: number;
+  results: { id: string; success: boolean; error?: string }[];
+}
+
+export async function syncShapes(changes: SyncChange[]): Promise<SyncResult> {
+  return fetchWithAuth("/shape/sync", {
+    method: "POST",
+    body: JSON.stringify({ changes }),
+  });
+}
