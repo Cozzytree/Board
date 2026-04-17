@@ -9,6 +9,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import React from "react";
 import { Copy, Check, ArrowLeft } from "lucide-react";
 import type { Board, Shape } from "@/board/index";
+import type { EventData } from "@/board/types";
 import { WebsocketProvider } from "y-websocket";
 import * as Y from "yjs";
 import { generateShapeByShapeType } from "@/board/utils/utilfunc";
@@ -287,7 +288,7 @@ function RoomPage() {
     const provider = providerRef.current;
     const yShapes = doc.getMap<string>("shapes");
 
-const loadShapes = () => {
+    const loadShapes = () => {
       if (suppressSyncRef.current) return;
 
       suppressSyncRef.current = true;
@@ -509,7 +510,7 @@ const loadShapes = () => {
     syncToYjsRef.current?.(board);
   }, []);
 
-  const onDeleteShape = (shapes: Shape[]) => {
+  const onDeleteShape = React.useCallback((shapes: Shape[]) => {
     if (!docRef.current) return;
 
     suppressSyncRef.current = true;
@@ -523,7 +524,27 @@ const loadShapes = () => {
     });
 
     suppressSyncRef.current = false;
-  };
+  }, []);
+
+  const onCursorMove = React.useCallback((e: EventData) => {
+    const now = Date.now();
+    if (now - lastCursorUpdate < TROTTLE_MS) return;
+    lastCursorUpdate = now;
+    const x = e.e.x ?? 0;
+    const y = e.e.y ?? 0;
+    providerRef.current?.awareness.setLocalStateField("cursor", {
+      x,
+      y,
+      id: providerRef.current?.awareness.clientID,
+    });
+  }, []);
+
+  const onShapesChangedThrottled = React.useCallback((board: Board) => {
+    const now = Date.now();
+    if (now - lastShapeUpdate < TROTTLE_MS) return;
+    lastShapeUpdate = now;
+    onShapesChanged(board);
+  }, [onShapesChanged]);
 
   const onThemeChange = React.useCallback(
     (settings: { theme?: "dark" | "light"; background?: string; foreground?: string }) => {
@@ -550,27 +571,13 @@ const loadShapes = () => {
         theme="light"
         width={width}
         height={height}
-        onShapesChanged={(b) => {
-          const now = Date.now();
-          if (now - lastShapeUpdate < TROTTLE_MS) return;
-          lastShapeUpdate = now;
-          onShapesChanged(b);
-        }}
+        onShapesChanged={onShapesChangedThrottled}
         onDeleteShape={onDeleteShape}
         onBoardReady={onBoardReady}
         onThemeChange={onThemeChange}
         isOwner={isOwner}
         skipLocalStorage
-        onCursorMove={(e) => {
-          const now = Date.now();
-          if (now - lastCursorUpdate < TROTTLE_MS) return;
-          lastCursorUpdate = now;
-          providerRef.current?.awareness.setLocalStateField("cursor", {
-            x: e.e.x,
-            y: e.e.y,
-            id: providerRef.current?.awareness.clientID,
-          });
-        }}>
+        onCursorMove={onCursorMove}>
         <RoomBoardUI roomId={roomId} cursorCount={cursorCount} />
       </BoardProvider>
 
