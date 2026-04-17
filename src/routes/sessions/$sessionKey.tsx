@@ -227,7 +227,6 @@ function SessionPage() {
   const [height, setHeight] = React.useState(window.innerHeight);
   const [session, setSession] = React.useState<Session | null>(null);
   const [error, setError] = React.useState<string | null>(null);
-  const [loading, setLoading] = React.useState(true);
   const boardRef = React.useRef<Board | null>(null);
   const boardReadyRef = React.useRef(false);
   const [boardTrigger, setBoardTrigger] = React.useState(0);
@@ -250,28 +249,26 @@ function SessionPage() {
   });
 
   const shapesQuery = useQuery({
-    queryKey: ["shapes", "session", session?.id],
+    queryKey: ["shapes", "session", sessionKey],
     queryFn: () => getShapesBySession(session!.id),
-    enabled: !!session?.id,
+    enabled: !!session,
   });
 
-  const isLoading = loading || sessionQuery.isLoading || shapesQuery.isLoading;
-
   React.useEffect(() => {
-    if (sessionQuery.data) {
+    if (sessionQuery.data && !session) {
       setSession(sessionQuery.data);
     }
-    if (sessionQuery.error) {
-      setError(sessionQuery.error instanceof Error ? sessionQuery.error.message : "Failed to load session");
-    }
-    if (!sessionQuery.isLoading) {
-      setLoading(false);
-    }
-  }, [sessionQuery.data, sessionQuery.error, sessionQuery.isLoading]);
+  }, [sessionQuery.data]);
 
   React.useEffect(() => {
-    setLoading(sessionQuery.isLoading || shapesQuery.isLoading);
-  }, [sessionQuery.isLoading, shapesQuery.isLoading]);
+    if (sessionQuery.error) {
+      setError(
+        sessionQuery.error instanceof Error ? sessionQuery.error.message : "Failed to load session",
+      );
+    }
+  }, [sessionQuery.error]);
+
+  const isLoading = sessionQuery.isLoading || shapesQuery.isLoading;
 
   const handleWindow = React.useCallback(() => {
     setWidth(window.innerWidth);
