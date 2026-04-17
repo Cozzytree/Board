@@ -45,10 +45,11 @@ function PageCanvas() {
     syncManagerRef.current = new ShapeSyncManager({
       pageId,
       debounceMs: 500,
+      thresholdMs: 3000,
     });
 
     return () => {
-      syncManagerRef.current?.destroy();
+      void syncManagerRef.current?.destroy();
     };
   }, [pageId]);
 
@@ -60,14 +61,28 @@ function PageCanvas() {
         loadShapesFromProps(board, shapesQuery.data);
       }
 
-      board.on("mouseup", () => {
-        board.shapeStore.forEach((shape) => {
-          if (shape.type !== "selection") {
+      board.on("shape:created", (s) => {
+        s.e.target?.forEach((shape) => {
+          if (shape.type !== "selection")
             syncManagerRef.current?.markDirty(shape.ID(), shape.toObject());
-          }
-          return false;
         });
       });
+
+      board.on("shape:delete", (s) => {
+        console.log(s);
+        s.e.target?.forEach((shape) => {
+          syncManagerRef.current?.markDeleted(shape.ID());
+        });
+      });
+
+      // board.on("mouseup", () => {
+      //   board.shapeStore.forEach((shape) => {
+      //     if (shape.type !== "selection") {
+      //       syncManagerRef.current?.markDirty(shape.ID(), shape.toObject());
+      //     }
+      //     return false;
+      //   });
+      // });
     },
     [shapesQuery.data],
   );
