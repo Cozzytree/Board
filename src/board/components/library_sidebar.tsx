@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, useCallback } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetDescription } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Library, Upload, Shapes } from "lucide-react";
@@ -12,29 +12,26 @@ export function LibrarySidebar() {
   const [items, setItems] = useState<LibraryItem[]>([]);
   const { setMode, canvas } = useBoard();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const canvasLoadedRef = useRef(false);
 
-  const loadItems = async () => {
+  const loadItems = useCallback(async () => {
     const dbItems = await getAllLibraryItems();
     setItems(dbItems);
 
-    // Register loaded SVG shapes onto the canvas
     if (canvas && dbItems.length > 0) {
       for (const item of dbItems) {
-        // board-library format: item has a raw `svg` string
         if (item.svg && item.name) {
-          const success = canvas.registerSvgIcon(item.name, item.svg);
-          if (!success) {
-            console.error("Failed to register SVG for library item:", item.name);
-          }
-          continue;
+          canvas.registerSvgIcon(item.name, item.svg);
         }
       }
     }
-  };
+  }, [canvas]);
 
   useEffect(() => {
-    loadItems();
-  }, [canvas]);
+    if (!canvas || canvasLoadedRef.current) return;
+    canvasLoadedRef.current = true;
+    void loadItems();
+  }, [canvas, loadItems]);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
