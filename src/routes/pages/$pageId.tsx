@@ -11,6 +11,7 @@ import { useBoard } from "@/board/board-context";
 import { useTheme } from "@/components/theme-provider";
 import { getShapesByPage } from "@/lib/shape-api";
 import { loadShapesFromProps } from "@/lib/shape-loader";
+import { ShapeSyncManager } from "@/lib/shape-sync-manager";
 import type { Board } from "@/board/index";
 
 export const Route = createFileRoute("/pages/$pageId")({
@@ -36,13 +37,37 @@ function PageCanvas() {
   });
 
   const boardRef = React.useRef<Board | null>(null);
+  const syncManagerRef = React.useRef<ShapeSyncManager | null>(null);
+
+  React.useEffect(() => {
+    if (!pageId) return;
+
+    syncManagerRef.current = new ShapeSyncManager({
+      pageId,
+      debounceMs: 500,
+    });
+
+    return () => {
+      syncManagerRef.current?.destroy();
+    };
+  }, [pageId]);
 
   const handleBoardReady = React.useCallback(
     (board: Board) => {
       boardRef.current = board;
+
       if (shapesQuery.data && shapesQuery.data.length > 0) {
         loadShapesFromProps(board, shapesQuery.data);
       }
+
+      board.on("mouseup", () => {
+        board.shapeStore.forEach((shape) => {
+          if (shape.type !== "selection") {
+            syncManagerRef.current?.markDirty(shape.ID(), shape.toObject());
+          }
+          return false;
+        });
+      });
     },
     [shapesQuery.data],
   );

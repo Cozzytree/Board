@@ -15,7 +15,7 @@ interface ShapeSyncOptions {
   onError?: (error: Error) => void;
 }
 
-const API_BASE = "http://localhost:3000";
+const API_BASE = import.meta.env.API_URL || "http://localhost:3000";
 
 export class ShapeSyncManager {
   private dirtyShapes: Map<string, SyncChange> = new Map();
