@@ -6,6 +6,7 @@ import { BoardCenterButton } from "@/board/components/center_button";
 import { BoardLibrarySidebar } from "@/board/components/library_sidebar";
 import { useBoard } from "@/board/board-context";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
 import React from "react";
 import { Copy, Check, ArrowLeft, X } from "lucide-react";
 import type { Board, Shape } from "@/board/index";
@@ -15,7 +16,6 @@ import { generateShapeByShapeType } from "@/board/utils/utilfunc";
 import { getSessionByKey, endSession, type Session } from "@/lib/session-api";
 import { Loader2 } from "lucide-react";
 import { useTheme } from "@/components/theme-provider";
-import { loadShapesFromProps } from "@/lib/shape-loader";
 import { getShapesBySession } from "@/lib/shape-api";
 
 export const Route = createFileRoute("/sessions/$sessionKey")({
@@ -243,6 +243,36 @@ function SessionPage() {
   const syncToYjsRef = React.useRef<((board: Board) => void) | null>(null);
   const ySettingsRef = React.useRef<Y.Map<unknown> | null>(null);
 
+  const sessionQuery = useQuery({
+    queryKey: ["session", "key", sessionKey],
+    queryFn: () => getSessionByKey(sessionKey),
+    enabled: !!sessionKey,
+  });
+
+  const shapesQuery = useQuery({
+    queryKey: ["shapes", "session", session?.id],
+    queryFn: () => getShapesBySession(session!.id),
+    enabled: !!session?.id,
+  });
+
+  const isLoading = loading || sessionQuery.isLoading || shapesQuery.isLoading;
+
+  React.useEffect(() => {
+    if (sessionQuery.data) {
+      setSession(sessionQuery.data);
+    }
+    if (sessionQuery.error) {
+      setError(sessionQuery.error instanceof Error ? sessionQuery.error.message : "Failed to load session");
+    }
+    if (!sessionQuery.isLoading) {
+      setLoading(false);
+    }
+  }, [sessionQuery.data, sessionQuery.error, sessionQuery.isLoading]);
+
+  React.useEffect(() => {
+    setLoading(sessionQuery.isLoading || shapesQuery.isLoading);
+  }, [sessionQuery.isLoading, shapesQuery.isLoading]);
+
   const handleWindow = React.useCallback(() => {
     setWidth(window.innerWidth);
     setHeight(window.innerHeight);
@@ -252,20 +282,6 @@ function SessionPage() {
     window.addEventListener("resize", handleWindow);
     return () => window.removeEventListener("resize", handleWindow);
   }, [handleWindow]);
-
-  React.useEffect(() => {
-    const loadSession = async () => {
-      try {
-        const sess = await getSessionByKey(sessionKey);
-        setSession(sess);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to load session");
-      } finally {
-        setLoading(false);
-      }
-    };
-    loadSession();
-  }, [sessionKey]);
 
   React.useEffect(() => {
     if (!sessionKey || !session) return;
@@ -574,7 +590,7 @@ function SessionPage() {
     }
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="w-full h-full flex items-center justify-center bg-background">
         <Loader2 size={32} className="text-[#7c3aed] animate-spin" />
@@ -596,6 +612,7 @@ function SessionPage() {
   return (
     <div ref={containerRef} className="relative w-full h-full">
       <BoardProvider
+        initialShapes={shapesQuery.data?.map((s) => s.props)}
         theme={theme}
         width={width}
         height={height}

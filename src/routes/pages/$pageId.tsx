@@ -64,7 +64,13 @@ function PageCanvas() {
       board.on("shape:created", (s) => {
         s.e.target?.forEach((shape) => {
           if (shape.type !== "selection")
-            syncManagerRef.current?.markDirty(shape.ID(), shape.toObject());
+            syncManagerRef.current?.markCreated(shape.ID(), shape.toObject());
+        });
+      });
+
+      board.on("shape:updated", (s) => {
+        s.e.target?.forEach((shape) => {
+          syncManagerRef.current?.markDirty(shape.ID(), shape.toObject());
         });
       });
 
