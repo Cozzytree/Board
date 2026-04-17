@@ -274,21 +274,11 @@ function RoomPage() {
   React.useEffect(() => {
     const board = boardRef.current;
     if (!board || !docRef.current || !providerRef.current) {
-      console.log(
-        "[yjs] Phase 2: waiting for board, board:",
-        !!board,
-        "doc:",
-        !!docRef.current,
-        "provider:",
-        !!providerRef.current,
-      );
       return;
     }
 
     if (boardReadyRef.current) return;
     boardReadyRef.current = true;
-
-    console.log("[yjs] Phase 2: Board ready, setting up sync");
 
     const doc = docRef.current;
     const provider = providerRef.current;
@@ -296,7 +286,6 @@ function RoomPage() {
 
     const loadShapes = () => {
       if (suppressSyncRef.current) return;
-      console.log("[yjs] Loading shapes from Yjs, count:", yShapes.size);
 
       suppressSyncRef.current = true;
       try {
@@ -495,17 +484,16 @@ function RoomPage() {
     syncToYjsRef.current = syncToYjs;
 
     return () => {
-      console.log("[yjs] Phase 2 cleanup");
       yShapes.unobserve(observer);
       syncToYjsRef.current = null;
-      boardReadyRef.current = false;
+      // Don't reset boardReadyRef - setup should only happen once
     };
   }, [boardTrigger]);
 
   const onBoardReady = React.useCallback((board: Board) => {
+    if (boardRef.current) return; // Already have a board
     boardRef.current = board;
     setBoardTrigger((t) => t + 1);
-    console.log("[yjs] Board ready, triggering sync setup");
   }, []);
 
   const onShapesChanged = React.useCallback((board: Board) => {

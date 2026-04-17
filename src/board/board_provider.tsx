@@ -60,7 +60,9 @@ const BoardProvider = ({
   onThemeChange,
   isOwner,
   initialShapes,
+  canvasLock = false,
 }: {
+  canvasLock?: boolean;
   initialShapes?: ShapeProps[];
   container?: React.RefObject<HTMLElement | null>;
   onCursorMove?: (e: EventData) => void;
@@ -87,6 +89,7 @@ const BoardProvider = ({
   const [boardTheme, setBoardThemeState] = React.useState<"dark" | "light">(
     theme === "dark" || theme === "system" ? "dark" : "light",
   );
+  const [isLockedCanvas, setIsLockedCanvas] = React.useState(canvasLock);
   const [background, setBackground] = React.useState(boardTheme === "dark" ? "#181818" : "#efefef");
   const [foreground, setForeground] = React.useState(boardTheme === "dark" ? "#cccccc" : "#202020");
   React.useEffect(() => {
@@ -410,6 +413,7 @@ const BoardProvider = ({
     if (!canvasRef.current) return;
 
     const newBoard = new Board({
+      isLocked: isLockedCanvas,
       initialShapes: initialShapes || [],
       width,
       container: container?.current || undefined,
@@ -484,7 +488,10 @@ const BoardProvider = ({
 
     // Load shapes - priority: initialShapes > localStorage > default
     if (initialShapes && initialShapes.length > 0) {
-      void loadShapesFromProps(newBoard, initialShapes.map((s) => ({ id: s.id || crypto.randomUUID(), props: s })));
+      void loadShapesFromProps(
+        newBoard,
+        initialShapes.map((s) => ({ id: s.id || crypto.randomUUID(), props: s })),
+      );
     } else if (!skipLocalStorage) {
       loadViewFromStorage(newBoard);
       const loaded = loadShapesFromStorage(newBoard);

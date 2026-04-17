@@ -16,7 +16,7 @@ import { generateShapeByShapeType } from "@/board/utils/utilfunc";
 import { getSessionByKey, endSession, type Session } from "@/lib/session-api";
 import { Loader2 } from "lucide-react";
 import { useTheme } from "@/components/theme-provider";
-import { getShapesBySession } from "@/lib/shape-api";
+import { getShapesByPage, getShapesBySession } from "@/lib/shape-api";
 
 export const Route = createFileRoute("/sessions/$sessionKey")({
   component: SessionPage,
@@ -250,7 +250,7 @@ function SessionPage() {
 
   const shapesQuery = useQuery({
     queryKey: ["shapes", "session", sessionKey],
-    queryFn: () => getShapesBySession(session!.id),
+    queryFn: () => getShapesByPage(session!.pageId),
     enabled: !!session,
   });
 
@@ -599,6 +599,7 @@ function SessionPage() {
     );
   }
 
+  console.log(shapesQuery.data);
   return (
     <div ref={containerRef} className="relative w-full h-full">
       <BoardProvider

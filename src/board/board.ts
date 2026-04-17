@@ -43,6 +43,7 @@ type BoardProps = {
   onScroll?: (view: view_t) => void;
   customShapes?: CustomShapeDef[];
   onImageUpload?: (file: File) => Promise<string>;
+  isLocked?: boolean;
 };
 
 type EventCallback = (e: EventData) => void;
@@ -151,6 +152,7 @@ class Board implements BoardInterface {
     customShapes = [],
     onImageUpload,
     container,
+    isLocked = false,
     initialShapes,
   }: BoardProps) {
     this.customShapes = new Map();
@@ -230,18 +232,53 @@ class Board implements BoardInterface {
     this.handleDoubleClick = this.ondoubleclick.bind(this);
     this.handleTouchStart = this.ontouchstart.bind(this);
 
-    this.canvas.addEventListener("touchstart", this.handleTouchStart, { passive: false });
-    this.canvas.addEventListener("touchmove", this.handlePointerMove);
-    this.canvas.addEventListener("touchend", this.handlePointerUp);
+    this.canvas.addEventListener(
+      "touchstart",
+      (e) => {
+        if (isLocked) return;
+        this.handleTouchStart(e);
+      },
+      { passive: false },
+    );
+    this.canvas.addEventListener("touchmove", (e) => {
+      if (isLocked) return;
+      this.handlePointerMove(e);
+    });
+    this.canvas.addEventListener("touchend", (e) => {
+      if (isLocked) return;
+      this.handlePointerUp(e);
+    });
 
-    this.canvas.addEventListener("click", this.handleClick);
-    this.canvas.addEventListener("pointerdown", this.handlePointerDown);
-    // this.canvas.addEventListener("pointermove", this.handlePointerMove);
-    document.addEventListener("pointermove", this.handlePointerMove);
-    this.canvas.addEventListener("pointerup", this.handlePointerUp);
-    // document.addEventListener("pointerup", this.handlePointerUp);
-    this.canvas.addEventListener("dblclick", this.handleDoubleClick);
-    window.addEventListener("wheel", this.handleWheel, { passive: false });
+    this.canvas.addEventListener("click", (e) => {
+      if (isLocked) return;
+      this.handleClick(e);
+    });
+    this.canvas.addEventListener("pointerdown", (e) => {
+      if (isLocked) return;
+      this.handlePointerDown(e);
+    });
+    // this.canvas.addEventListener("pointermove", (e) => {if (isLocked) return; this.handlePointerMove(e)});
+    document.addEventListener("pointermove", (e) => {
+      if (isLocked) return;
+      this.handlePointerMove(e);
+    });
+    this.canvas.addEventListener("pointerup", (e) => {
+      if (isLocked) return;
+      this.handlePointerUp(e);
+    });
+    // document.addEventListener("pointerup", (e) => {if (isLocked) return; this.handlePointerUp(e)});
+    this.canvas.addEventListener("dblclick", (e) => {
+      if (isLocked) return;
+      this.handleDoubleClick(e);
+    });
+    window.addEventListener(
+      "wheel",
+      (e) => {
+        if (isLocked) return;
+        this.handleWheel(e);
+      },
+      { passive: false },
+    );
 
     this.events = new Map();
     this.render();
