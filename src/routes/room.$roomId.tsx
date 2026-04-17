@@ -229,6 +229,7 @@ function RoomPage() {
   const [height, setHeight] = React.useState(window.innerHeight);
   const boardRef = React.useRef<Board | null>(null);
   const boardReadyRef = React.useRef(false);
+  const yjsSetupRef = React.useRef(false); // Track if Yjs sync is fully set up
   const [boardTrigger, setBoardTrigger] = React.useState(0);
   const [cursorCount, setCursorCount] = React.useState(0);
   const [isOwner, setIsOwner] = React.useState(false);
@@ -277,6 +278,8 @@ function RoomPage() {
       return;
     }
 
+    if (yjsSetupRef.current) return; // Already set up Yjs sync
+
     if (boardReadyRef.current) return;
     boardReadyRef.current = true;
 
@@ -284,7 +287,7 @@ function RoomPage() {
     const provider = providerRef.current;
     const yShapes = doc.getMap<string>("shapes");
 
-    const loadShapes = () => {
+const loadShapes = () => {
       if (suppressSyncRef.current) return;
 
       suppressSyncRef.current = true;
@@ -482,17 +485,23 @@ function RoomPage() {
     };
 
     syncToYjsRef.current = syncToYjs;
+    yjsSetupRef.current = true; // Mark Yjs sync as fully set up
 
     return () => {
       yShapes.unobserve(observer);
       syncToYjsRef.current = null;
-      // Don't reset boardReadyRef - setup should only happen once
+      yjsSetupRef.current = false;
     };
   }, [boardTrigger]);
 
   const onBoardReady = React.useCallback((board: Board) => {
-    if (boardRef.current) return; // Already have a board
-    boardRef.current = board;
+    // Only increment trigger if Yjs sync is not set up yet
+    // This allows board to be set even if WebSocket connects later
+    if (!boardRef.current) {
+      boardRef.current = board;
+    }
+    // Always trigger to ensure Yjs setup runs once WebSocket is ready
+    // The yjsSetupRef guard in the effect will prevent duplicate setups
     setBoardTrigger((t) => t + 1);
   }, []);
 
@@ -516,25 +525,24 @@ function RoomPage() {
     suppressSyncRef.current = false;
   };
 
-  const onThemeChange = React.useCallback((settings: { 
-    theme?: "dark" | "light"; 
-    background?: string; 
-    foreground?: string 
-  }) => {
-    if (!isOwner || !ySettingsRef.current) return;
-    
-    docRef.current?.transact(() => {
-      if (settings.theme !== undefined) {
-        ySettingsRef.current?.set("theme", settings.theme);
-      }
-      if (settings.background !== undefined) {
-        ySettingsRef.current?.set("background", settings.background);
-      }
-      if (settings.foreground !== undefined) {
-        ySettingsRef.current?.set("foreground", settings.foreground);
-      }
-    });
-  }, [isOwner]);
+  const onThemeChange = React.useCallback(
+    (settings: { theme?: "dark" | "light"; background?: string; foreground?: string }) => {
+      if (!isOwner || !ySettingsRef.current) return;
+
+      docRef.current?.transact(() => {
+        if (settings.theme !== undefined) {
+          ySettingsRef.current?.set("theme", settings.theme);
+        }
+        if (settings.background !== undefined) {
+          ySettingsRef.current?.set("background", settings.background);
+        }
+        if (settings.foreground !== undefined) {
+          ySettingsRef.current?.set("foreground", settings.foreground);
+        }
+      });
+    },
+    [isOwner],
+  );
 
   return (
     <div className="w-full h-full">

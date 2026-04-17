@@ -3,7 +3,6 @@ import { BoardToolbar } from "@/board/components/toolbar";
 import { BoardShapeOptions } from "@/board/components/shapeoptions";
 import { BoardZoomControls } from "@/board/components/zoom_controls";
 import { BoardCenterButton } from "@/board/components/center_button";
-import { BoardLibrarySidebar } from "@/board/components/library_sidebar";
 import { useBoard } from "@/board/board-context";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
@@ -16,7 +15,7 @@ import { generateShapeByShapeType } from "@/board/utils/utilfunc";
 import { getSessionByKey, endSession, type Session } from "@/lib/session-api";
 import { Loader2 } from "lucide-react";
 import { useTheme } from "@/components/theme-provider";
-import { getShapesByPage, getShapesBySession } from "@/lib/shape-api";
+import { getShapesByPage } from "@/lib/shape-api";
 
 export const Route = createFileRoute("/sessions/$sessionKey")({
   component: SessionPage,
@@ -229,6 +228,7 @@ function SessionPage() {
   const [error, setError] = React.useState<string | null>(null);
   const boardRef = React.useRef<Board | null>(null);
   const boardReadyRef = React.useRef(false);
+  const yjsSetupRef = React.useRef(false);
   const [boardTrigger, setBoardTrigger] = React.useState(0);
   const [cursorCount, setCursorCount] = React.useState(0);
   const [isOwner, setIsOwner] = React.useState(false);
@@ -309,6 +309,8 @@ function SessionPage() {
     if (!board || !docRef.current || !providerRef.current) {
       return;
     }
+
+    if (yjsSetupRef.current) return;
 
     if (boardReadyRef.current) return;
     boardReadyRef.current = true;
@@ -515,20 +517,21 @@ function SessionPage() {
     };
 
     syncToYjsRef.current = syncToYjs;
+    yjsSetupRef.current = true;
 
     return () => {
       console.log("[yjs] Phase 2 cleanup");
       yShapes.unobserve(observer);
       syncToYjsRef.current = null;
-      // Don't reset boardReadyRef - setup should only happen once
+      yjsSetupRef.current = false;
     };
   }, [boardTrigger]);
 
   const onBoardReady = React.useCallback((board: Board) => {
-    if (boardRef.current) return; // Already have a board
-    boardRef.current = board;
+    if (!boardRef.current) {
+      boardRef.current = board;
+    }
     setBoardTrigger((t) => t + 1);
-    console.log("[yjs] Board ready, triggering sync setup");
   }, []);
 
   const onShapesChanged = React.useCallback((board: Board) => {
