@@ -307,14 +307,6 @@ function SessionPage() {
   React.useEffect(() => {
     const board = boardRef.current;
     if (!board || !docRef.current || !providerRef.current) {
-      console.log(
-        "[yjs] Phase 2: waiting for board, board:",
-        !!board,
-        "doc:",
-        !!docRef.current,
-        "provider:",
-        !!providerRef.current,
-      );
       return;
     }
 
@@ -528,11 +520,12 @@ function SessionPage() {
       console.log("[yjs] Phase 2 cleanup");
       yShapes.unobserve(observer);
       syncToYjsRef.current = null;
-      boardReadyRef.current = false;
+      // Don't reset boardReadyRef - setup should only happen once
     };
   }, [boardTrigger]);
 
   const onBoardReady = React.useCallback((board: Board) => {
+    if (boardRef.current) return; // Already have a board
     boardRef.current = board;
     setBoardTrigger((t) => t + 1);
     console.log("[yjs] Board ready, triggering sync setup");
@@ -727,7 +720,7 @@ const SessionBoardUI = React.memo(function SessionBoardUI({
       <div className="pointer-events-auto z-50 fixed left-1/2 -translate-x-1/2 bottom-4 flex justify-center">
         {!isMinimal && <BoardToolbar />}
       </div>
-      {!isMinimal && <BoardLibrarySidebar />}
+      {/*{!isMinimal && <BoardLibrarySidebar />}*/}
       <BoardCenterButton />
       <BoardZoomControls />
       {!isMinimal && activeShape && <BoardShapeOptions />}
