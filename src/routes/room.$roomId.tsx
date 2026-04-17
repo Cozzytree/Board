@@ -229,8 +229,7 @@ function RoomPage() {
   const [width, setWidth] = React.useState(window.innerWidth);
   const [height, setHeight] = React.useState(window.innerHeight);
   const boardRef = React.useRef<Board | null>(null);
-  const boardReadyRef = React.useRef(false);
-  const yjsSetupRef = React.useRef(false); // Track if Yjs sync is fully set up
+  const yjsSetupRef = React.useRef(false);
   const [boardTrigger, setBoardTrigger] = React.useState(0);
   const [cursorCount, setCursorCount] = React.useState(0);
   const [isOwner, setIsOwner] = React.useState(false);
@@ -254,18 +253,13 @@ function RoomPage() {
   React.useEffect(() => {
     if (!roomId) return;
 
-    console.log("[yjs] Phase 1: Initializing connection for room:", roomId);
-
     const doc = new Y.Doc();
     const provider = new WebsocketProvider("ws://localhost:3000/ws", roomId, doc);
 
     docRef.current = doc;
     providerRef.current = provider;
 
-    console.log("[yjs] WebSocket provider created, connecting...");
-
     return () => {
-      console.log("[yjs] Phase 1 cleanup");
       provider.destroy();
       doc.destroy();
       docRef.current = null;
@@ -279,10 +273,9 @@ function RoomPage() {
       return;
     }
 
-    if (yjsSetupRef.current) return; // Already set up Yjs sync
-
-    if (boardReadyRef.current) return;
-    boardReadyRef.current = true;
+    if (yjsSetupRef.current) {
+      return;
+    }
 
     const doc = docRef.current;
     const provider = providerRef.current;
@@ -306,7 +299,6 @@ function RoomPage() {
             if (shape) {
               shape.id = key;
               board.shapeStore.insert(shape);
-              console.log("[yjs] Loaded shape:", key);
             }
           } catch (e) {
             console.error("[yjs] Failed to load shape:", key, e);
@@ -322,8 +314,6 @@ function RoomPage() {
 
     const observer = (events: Y.YMapEvent<string>, txn: Y.Transaction) => {
       if (txn.local) return;
-
-      console.log("[yjs] Remote change detected");
 
       suppressSyncRef.current = true;
       try {
@@ -415,7 +405,6 @@ function RoomPage() {
           const newOwner = ySettings.get("ownerClientId") as number;
           const amOwner = newOwner === provider.awareness.clientID;
           setIsOwner(amOwner);
-          console.log("[yjs] Owner changed, am I owner:", amOwner);
         } else if (change.action !== "delete") {
           const value = ySettings.get(key);
           if (key === "theme" && (value === "dark" || value === "light")) {
@@ -431,23 +420,18 @@ function RoomPage() {
     });
 
     provider.on("sync", (isSynced: boolean) => {
-      console.log("[yjs] Provider synced:", isSynced);
       if (isSynced) {
         loadShapes();
 
         // Check/take ownership
         const existingOwner = ySettings.get("ownerClientId") as number | undefined;
         if (!existingOwner) {
-          // First client takes ownership
           ySettings.set("ownerClientId", provider.awareness.clientID);
           setIsOwner(true);
-          console.log("[yjs] I became the owner");
         } else if (existingOwner === provider.awareness.clientID) {
           setIsOwner(true);
-          console.log("[yjs] I am the owner");
         } else {
           setIsOwner(false);
-          console.log("[yjs] I am not the owner");
         }
 
         loadSettings();
@@ -455,7 +439,6 @@ function RoomPage() {
     });
 
     if (provider.synced) {
-      console.log("[yjs] Already synced, loading immediately");
       loadShapes();
       loadSettings();
     }
@@ -486,7 +469,7 @@ function RoomPage() {
     };
 
     syncToYjsRef.current = syncToYjs;
-    yjsSetupRef.current = true; // Mark Yjs sync as fully set up
+    yjsSetupRef.current = true;
 
     return () => {
       yShapes.unobserve(observer);
@@ -496,13 +479,9 @@ function RoomPage() {
   }, [boardTrigger]);
 
   const onBoardReady = React.useCallback((board: Board) => {
-    // Only increment trigger if Yjs sync is not set up yet
-    // This allows board to be set even if WebSocket connects later
     if (!boardRef.current) {
       boardRef.current = board;
     }
-    // Always trigger to ensure Yjs setup runs once WebSocket is ready
-    // The yjsSetupRef guard in the effect will prevent duplicate setups
     setBoardTrigger((t) => t + 1);
   }, []);
 

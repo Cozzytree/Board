@@ -75,7 +75,6 @@ function PageCanvas() {
       });
 
       board.on("shape:delete", (s) => {
-        console.log(s);
         s.e.target?.forEach((shape) => {
           syncManagerRef.current?.markDeleted(shape.ID());
         });

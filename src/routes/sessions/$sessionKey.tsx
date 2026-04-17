@@ -227,7 +227,6 @@ function SessionPage() {
   const [session, setSession] = React.useState<Session | null>(null);
   const [error, setError] = React.useState<string | null>(null);
   const boardRef = React.useRef<Board | null>(null);
-  const boardReadyRef = React.useRef(false);
   const yjsSetupRef = React.useRef(false);
   const [boardTrigger, setBoardTrigger] = React.useState(0);
   const [cursorCount, setCursorCount] = React.useState(0);
@@ -283,20 +282,14 @@ function SessionPage() {
   React.useEffect(() => {
     if (!sessionKey || !session) return;
 
-    console.log("[yjs] Phase 1: Initializing connection for session:", sessionKey);
-
     const doc = new Y.Doc();
-    console.log(sessionKey);
     const wsUrl = `ws://localhost:3000/session`;
     const provider = new WebsocketProvider(wsUrl, `${sessionKey}`, doc);
 
     docRef.current = doc;
     providerRef.current = provider;
 
-    console.log("[yjs] WebSocket provider created for session, connecting...");
-
     return () => {
-      console.log("[yjs] Phase 1 cleanup");
       provider.destroy();
       doc.destroy();
       docRef.current = null;
@@ -312,18 +305,12 @@ function SessionPage() {
 
     if (yjsSetupRef.current) return;
 
-    if (boardReadyRef.current) return;
-    boardReadyRef.current = true;
-
-    console.log("[yjs] Phase 2: Board ready, setting up sync");
-
     const doc = docRef.current;
     const provider = providerRef.current;
     const yShapes = doc.getMap<string>("shapes");
 
     const loadShapes = () => {
       if (suppressSyncRef.current) return;
-      console.log("[yjs] Loading shapes from Yjs, count:", yShapes.size);
 
       suppressSyncRef.current = true;
       try {
@@ -340,7 +327,6 @@ function SessionPage() {
             if (shape) {
               shape.id = key;
               board.shapeStore.insert(shape);
-              console.log("[yjs] Loaded shape:", key);
             }
           } catch (e) {
             console.error("[yjs] Failed to load shape:", key, e);
@@ -356,8 +342,6 @@ function SessionPage() {
 
     const observer = (events: Y.YMapEvent<string>, txn: Y.Transaction) => {
       if (txn.local) return;
-
-      console.log("[yjs] Remote change detected");
 
       suppressSyncRef.current = true;
       try {
@@ -448,7 +432,6 @@ function SessionPage() {
           const newOwner = ySettings.get("ownerClientId") as number;
           const amOwner = newOwner === provider.awareness.clientID;
           setIsOwner(amOwner);
-          console.log("[yjs] Owner changed, am I owner:", amOwner);
         } else if (change.action !== "delete") {
           const value = ySettings.get(key);
           if (key === "theme" && (value === "dark" || value === "light")) {
@@ -464,7 +447,6 @@ function SessionPage() {
     });
 
     provider.on("sync", (isSynced: boolean) => {
-      console.log("[yjs] Provider synced:", isSynced);
       if (isSynced) {
         loadShapes();
 
@@ -472,13 +454,10 @@ function SessionPage() {
         if (!existingOwner) {
           ySettings.set("ownerClientId", provider.awareness.clientID);
           setIsOwner(true);
-          console.log("[yjs] I became the owner");
         } else if (existingOwner === provider.awareness.clientID) {
           setIsOwner(true);
-          console.log("[yjs] I am the owner");
         } else {
           setIsOwner(false);
-          console.log("[yjs] I am not the owner");
         }
 
         loadSettings();
@@ -486,7 +465,6 @@ function SessionPage() {
     });
 
     if (provider.synced) {
-      console.log("[yjs] Already synced, loading immediately");
       loadShapes();
       loadSettings();
     }
@@ -520,7 +498,6 @@ function SessionPage() {
     yjsSetupRef.current = true;
 
     return () => {
-      console.log("[yjs] Phase 2 cleanup");
       yShapes.unobserve(observer);
       syncToYjsRef.current = null;
       yjsSetupRef.current = false;
