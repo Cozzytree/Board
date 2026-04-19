@@ -111,7 +111,7 @@ class Board implements BoardInterface {
     this.render();
   }
   declare view: { x: number; y: number; scl: number; cartesian: boolean };
-  declare activeShapes: Shape | null;
+  declare activeShapes: ActiveSelection | null;
   declare shapeStore: ShapeStore<Shape>;
   declare canvas2: HTMLCanvasElement;
   declare ctx2: CanvasRenderingContext2D;
@@ -342,21 +342,15 @@ class Board implements BoardInterface {
       this.discardActiveShapes();
       return;
     }
-    if (shapes.length == 1) {
-      this.discardActiveShapes();
-      this.activeShapes = shapes[0];
-      this.onActiveShapeCallback?.(shapes[0]);
-    } else if (shapes.length > 1) {
-      this.discardActiveShapes();
-      const shapesData = shapes.map((s) => ({ s }));
-      const activeSelection = new ActiveSelection({
-        shapes: shapesData,
-        ctx: this.ctx,
-        _board: this,
-      });
-      this.activeShapes = activeSelection;
-      this.onActiveShapeCallback?.(activeSelection);
-    }
+    this.discardActiveShapes();
+    const shapesData = shapes.map((s) => ({ s }));
+    const activeSelection = new ActiveSelection({
+      shapes: shapesData,
+      ctx: this.ctx,
+      _board: this,
+    });
+    this.activeShapes = activeSelection;
+    this.onActiveShapeCallback?.(activeSelection);
   }
 
   removeActiveSelectionOnly() {
@@ -424,11 +418,6 @@ class Board implements BoardInterface {
   }
 
   add(...shapes: Shape[]) {
-    const lastInserted = this.shapeStore.getLastInsertedShape();
-    if (lastInserted?.type === "selection") {
-      this.shapeStore.removeById(lastInserted.ID());
-    }
-
     this.shapeStore.insert(...shapes);
 
     this.adjustBox(shapes[shapes.length - 1]);
@@ -533,6 +522,8 @@ class Board implements BoardInterface {
     shapeStore.forEach((s) => {
       // Skip shapes owned by a group — the group renders them
       if (s.groupId) return false;
+      // Skip ActiveSelection - it's rendered below via activeRect/draw
+      if (s.type === "selection") return false;
 
       const { x, y, width, height } = s.getBounds();
 
@@ -546,7 +537,7 @@ class Board implements BoardInterface {
     });
 
     if (activeShapes) {
-      activeShapes.activeRect(ctx);
+      activeShapes.draw({ active: true });
     }
     ctx.restore();
   }

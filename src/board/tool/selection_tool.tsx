@@ -53,7 +53,6 @@ class SelectionTool implements ToolInterface {
   private lastPoint: Point = new Pointer({ x: 0, y: 0 });
   private subMode: submodes;
   private mouseDownPoint: Point = new Pointer({ x: 0, y: 0 });
-  private activeShape: ActiveSelection | null = null;
   private hasSelectionStarted: boolean = false;
 
   private unsnappedPos: Point = new Pointer({ x: 0, y: 0 });
@@ -139,7 +138,7 @@ class SelectionTool implements ToolInterface {
     this.lastPoint = new Pointer(p);
     this.isDragging = false;
     this.isGrabbing = false;
-    this.activeShape = null;
+    this._board.activeShapes = null;
     this.mouseDowmShapeState = [];
     this.isTextEditale = false;
 
@@ -185,7 +184,7 @@ class SelectionTool implements ToolInterface {
           callback?.({ e: { target: [lastInserted], x: p.x, y: p.y } });
 
           this.draggedShape = lastInserted;
-          this.activeShape = lastInserted;
+          this._board.activeShapes = lastInserted;
           // Initialize unsnapped position
           this.unsnappedPos = new Pointer({ x: lastInserted.left, y: lastInserted.top });
 
@@ -339,7 +338,7 @@ class SelectionTool implements ToolInterface {
 
         this._board.discardActiveShapes();
         this.hasSelectionStarted = true;
-        this.activeShape = new ActiveSelection({
+        this._board.activeShapes = new ActiveSelection({
           ctx: this._board.ctx,
           _board: this._board,
           left: p.x,
@@ -499,10 +498,10 @@ class SelectionTool implements ToolInterface {
     if (
       !this.resizableShape &&
       !this.draggedShape &&
-      this.activeShape &&
+      this._board.activeShapes &&
       this.hasSelectionStarted
     ) {
-      this.activeShape.Resize(
+      this._board.activeShapes.Resize(
         p,
         new Box({
           x1: this.mouseDownPoint.x,
@@ -512,7 +511,7 @@ class SelectionTool implements ToolInterface {
         }),
         "br",
       );
-      this.draw(...this.activeShape.shapes.map((s) => s.s), this.activeShape);
+      this.draw(...this._board.activeShapes.shapes.map((s) => s.s), this._board.activeShapes);
       return;
     }
 
@@ -629,18 +628,18 @@ class SelectionTool implements ToolInterface {
 
     if (this.tryStartTextEdit(p)) {
       eventCb({ e: { x: p.x, y: p.y, target: null } });
-      this.activeShape = null;
+      this._board.activeShapes = null;
       return;
     }
 
     // reset selection state
     this.hasSelectionStarted = false;
 
-    if (this.activeShape) {
+    if (this._board.activeShapes) {
       if (!this.draggedShape && !this.resizableShape && this.isDragging) {
-        this.activeShape.mouseup({ e: { point: p } });
+        this._board.activeShapes.mouseup({ e: { point: p } });
       }
-      this.activeShape = null;
+      this._board.activeShapes = null;
     }
     if (this.draggedShape) {
       eventCb({ e: { x: p.x, y: p.y, target: [this.draggedShape] } });

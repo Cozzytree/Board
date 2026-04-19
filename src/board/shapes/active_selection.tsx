@@ -172,6 +172,8 @@ class ActiveSelection extends Shape {
   }
 
   draw(options: { active: boolean; ctx?: CanvasRenderingContext2D; addStyles?: boolean }): void {
+    if (this.shapes.length === 0) return;
+
     const context = options.ctx || this.ctx;
     const pad = 0;
     const x = this.left - pad;
@@ -319,14 +321,14 @@ class ActiveSelection extends Shape {
         return false;
       });
 
-      if (this.shapes.length > 1) {
+      if (this.shapes.length === 0) {
+        this.remove();
+      } else {
         this.left = updateBox.x1 - this.padding;
         this.top = updateBox.y1 - this.padding;
         this.width = updateBox.x2 - updateBox.x1 + this.padding * 2;
         this.height = updateBox.y2 - updateBox.y1 + this.padding * 2;
         this._board.add(this);
-      } else {
-        this.remove();
       }
     }
 
