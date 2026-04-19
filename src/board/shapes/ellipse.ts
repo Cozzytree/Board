@@ -1,6 +1,6 @@
 import { Box, Pointer, Shape } from "../index";
 import type { BoxInterface, Point, resizeDirection, ShapeEventData, ShapeProps } from "../types";
-import { resizeRect } from "../utils/resize";
+import { isDraggableWithRotation, resizeRect } from "../utils/resize";
 import { breakText } from "../utils/utilfunc";
 import type { DrawProps } from "./shape";
 
@@ -29,16 +29,8 @@ class Ellipse extends Shape {
   }
 
   IsDraggable(p: Pointer): boolean {
-    // const condition =
-    //    p.x > this.left &&
-    //    p.x < this.left - this.width &&
-    //    p.y > this.top &&
-    //    p.y < this.top - this.height;
-    // if (condition) {
-    //    return true;
-    // }
-    // return false;
-    // Get center of the rectangle
+    // Use the rotation-aware draggable check utility
+
     const centerX = this.left + this.width / 2;
     const centerY = this.top + this.height / 2;
 
@@ -55,7 +47,11 @@ class Ellipse extends Shape {
     const halfW = this.width / 2;
     const halfH = this.height / 2;
 
-    return localX > -halfW && localX < halfW && localY > -halfH && localY < halfH;
+    const d = localX > -halfW && localX < halfW && localY > -halfH && localY < halfH;
+    if (d) {
+      this.set("locked", true);
+    }
+    return d;
   }
 
   IsResizable(p: Point): resizeDirection | null {
@@ -80,8 +76,12 @@ class Ellipse extends Shape {
     const dx = current.x - prev.x;
     const dy = current.y - prev.y;
 
-    this.left += dx;
-    this.top += dy;
+    this.set({
+      left: (this.left += dx),
+      right: (this.top += dy),
+    });
+    // this.left += dx;
+    // this.top += dy;
 
     return super.dragging(prev, current);
   }

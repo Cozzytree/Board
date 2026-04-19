@@ -154,6 +154,9 @@ function setupConnection(ws: Bun.ServerWebSocket<WSData>, room: RoomState) {
                   let syncedCount = 0;
                   let deletedCount = 0;
 
+                  // Collect IDs of shapes that still exist in the Yjs map
+                  const survivingShapeIds = new Set<string>();
+
                   yShapes.forEach((raw, shapeId) => {
                     try {
                       const obj = JSON.parse(raw);
@@ -161,6 +164,7 @@ function setupConnection(ws: Bun.ServerWebSocket<WSData>, room: RoomState) {
                         repos.shapes.hardDelete(shapeId);
                         deletedCount++;
                       } else {
+                        survivingShapeIds.add(shapeId);
                         repos.shapes.upsert(shapeId, {
                           pageId: session.pageId,
                           props: obj,
@@ -173,6 +177,17 @@ function setupConnection(ws: Bun.ServerWebSocket<WSData>, room: RoomState) {
                       console.error(`[session] failed to parse shape ${shapeId}:`, e);
                     }
                   });
+
+                  // Shapes that existed in the DB but were deleted from the Yjs
+                  // map during the session (client calls yShapes.delete()) won't
+                  // appear in the forEach above.  Soft-delete them now.
+                  const dbShapes = await repos.shapes.findByPageId(session.pageId);
+                  for (const dbShape of dbShapes) {
+                    if (!survivingShapeIds.has(dbShape.id)) {
+                      await repos.shapes.delete(dbShape.id);
+                      deletedCount++;
+                    }
+                  }
 
                   console.log(
                     `[session] synced ${syncedCount} shapes, deleted ${deletedCount} shapes`,

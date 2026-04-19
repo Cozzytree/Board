@@ -41,6 +41,7 @@ abstract class Shape implements ShapeProps {
   declare selectionFill: string;
   declare selectionStrokeWidth: number;
 
+  locked?: boolean;
   italic: boolean;
   fontWeight: number;
   verticalAlign: "top" | "center" | "bottom";
@@ -98,7 +99,9 @@ abstract class Shape implements ShapeProps {
     selectionStrokeWidth,
     italic,
     id,
+    locked,
   }: ShapeProps) {
+    this.locked = locked || false;
     this.fill = fill || "#00000000";
     this.height = height || 100;
     this.width = width || 100;
@@ -152,6 +155,7 @@ abstract class Shape implements ShapeProps {
       fontSize: this.fontSize,
       textAlign: this.textAlign,
       verticalAlign: this.verticalAlign,
+      locked: this.locked,
     };
   }
 
@@ -258,6 +262,9 @@ abstract class Shape implements ShapeProps {
   mouseup(s: ShapeEventData): void {
     this.connections.forEach((c) => {
       c.s.setCoords();
+    });
+    this.set({
+      locked: false,
     });
     this.emit("mouseup", s);
   }
@@ -416,7 +423,12 @@ abstract class Shape implements ShapeProps {
     };
   }
 
-  private static readonly _transientKeys = new Set(["lastPoints", "indicator", "lastFlippedState"]);
+  private static readonly _transientKeys = new Set([
+    "lastPoints",
+    "indicator",
+    "lastFlippedState",
+    "_board",
+  ]);
 
   toObject(): Identity<Shape> {
     const obj = {} as { [K in keyof this]: this[K] };

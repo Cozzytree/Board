@@ -518,12 +518,15 @@ function RoomPage() {
     });
   }, []);
 
-  const onShapesChangedThrottled = React.useCallback((board: Board) => {
-    const now = Date.now();
-    if (now - lastShapeUpdate < TROTTLE_MS) return;
-    lastShapeUpdate = now;
-    onShapesChanged(board);
-  }, [onShapesChanged]);
+  const onShapesChangedThrottled = React.useCallback(
+    (board: Board) => {
+      const now = Date.now();
+      if (now - lastShapeUpdate < TROTTLE_MS) return;
+      lastShapeUpdate = now;
+      onShapesChanged(board);
+    },
+    [onShapesChanged],
+  );
 
   const onThemeChange = React.useCallback(
     (settings: { theme?: "dark" | "light"; background?: string; foreground?: string }) => {
@@ -545,7 +548,7 @@ function RoomPage() {
   );
 
   return (
-    <div className="w-full h-full">
+    <div className="w-full h-full relative">
       <BoardProvider
         theme="light"
         width={width}
@@ -639,7 +642,13 @@ const RoomBoardUI = React.memo(function RoomBoardUI({
       {!isMinimal && <BoardLibrarySidebar />}
       <BoardCenterButton />
       <BoardZoomControls />
-      {!isMinimal && activeShape && <BoardShapeOptions />}
+
+      {!isMinimal && activeShape && (
+        <div className="absolute left-1/2 -translate-x-1/2 z-[999]">
+          {" "}
+          <BoardShapeOptions />{" "}
+        </div>
+      )}
     </>
   );
 });

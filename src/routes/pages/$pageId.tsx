@@ -10,22 +10,31 @@ import { BoardCenterButton } from "@/board/components/center_button";
 import { useBoard } from "@/board/board-context";
 import { useTheme } from "@/components/theme-provider";
 import { getShapesByPage } from "@/lib/shape-api";
-import { loadShapesFromProps } from "@/lib/shape-loader";
+
+import { getPage } from "@/lib/page-api";
 import { ShapeSyncManager } from "@/lib/shape-sync-manager";
 import type { Board } from "@/board/index";
 
 export const Route = createFileRoute("/pages/$pageId")({
   component: PageCanvas,
   loader: async ({ context, params }) => {
-    await context.queryClient.ensureQueryData({
-      queryKey: ["shapes", "page", params.pageId],
-      queryFn: () => getShapesByPage(params.pageId),
-    });
+    const [page] = await Promise.all([
+      context.queryClient.ensureQueryData({
+        queryKey: ["page", params.pageId],
+        queryFn: () => getPage(params.pageId),
+      }),
+      context.queryClient.ensureQueryData({
+        queryKey: ["shapes", "page", params.pageId],
+        queryFn: () => getShapesByPage(params.pageId),
+      }),
+    ]);
+    return { page };
   },
 });
 
 function PageCanvas() {
   const { pageId } = Route.useParams();
+  const { page } = Route.useLoaderData();
   const { theme } = useTheme();
   const containerRef = React.useRef<HTMLDivElement>(null);
   const [isLoading, setIsLoading] = React.useState(true);
@@ -44,7 +53,7 @@ function PageCanvas() {
 
     syncManagerRef.current = new ShapeSyncManager({
       pageId,
-      debounceMs: 500,
+      debounceMs: 3000,
       thresholdMs: 3000,
     });
 
@@ -53,44 +62,37 @@ function PageCanvas() {
     };
   }, [pageId]);
 
-  const handleBoardReady = React.useCallback(
-    (board: Board) => {
-      boardRef.current = board;
+  const handleBoardReady = React.useCallback((board: Board) => {
+    boardRef.current = board;
 
-      if (shapesQuery.data && shapesQuery.data.length > 0) {
-        loadShapesFromProps(board, shapesQuery.data);
-      }
-
-      board.on("shape:created", (s) => {
-        s.e.target?.forEach((shape) => {
-          if (shape.type !== "selection")
-            syncManagerRef.current?.markCreated(shape.ID(), shape.toObject());
-        });
+    const onShapeCreated = (s: unknown) => {
+      const eventData = s as { e: { target?: import("@/board/index").Shape[] } };
+      eventData.e.target?.forEach((shape: import("@/board/index").Shape) => {
+        if (shape.type !== "selection")
+          syncManagerRef.current?.markCreated(shape.ID(), shape.toObject());
       });
+    };
 
-      board.on("shape:updated", (s) => {
-        s.e.target?.forEach((shape) => {
+    const onMouseUp = () => {
+      board.shapeStore.forEach((shape) => {
+        if (shape.type !== "selection") {
           syncManagerRef.current?.markDirty(shape.ID(), shape.toObject());
-        });
+        }
+        return false;
       });
+    };
 
-      board.on("shape:delete", (s) => {
-        s.e.target?.forEach((shape) => {
-          syncManagerRef.current?.markDeleted(shape.ID());
-        });
+    const onShapeDelete = (s: unknown) => {
+      const eventData = s as { e: { target?: import("@/board/index").Shape[] } };
+      eventData.e.target?.forEach((shape: import("@/board/index").Shape) => {
+        syncManagerRef.current?.markDeleted(shape.ID());
       });
+    };
 
-      // board.on("mouseup", () => {
-      //   board.shapeStore.forEach((shape) => {
-      //     if (shape.type !== "selection") {
-      //       syncManagerRef.current?.markDirty(shape.ID(), shape.toObject());
-      //     }
-      //     return false;
-      //   });
-      // });
-    },
-    [shapesQuery.data],
-  );
+    board.on("shape:created", onShapeCreated);
+    board.on("mouseup", onMouseUp);
+    board.on("shape:delete", onShapeDelete);
+  }, []);
 
   React.useEffect(() => {
     const timer = setTimeout(() => setIsLoading(false), 500);
@@ -108,6 +110,7 @@ function PageCanvas() {
   return (
     <div ref={containerRef} className="w-full h-full relative">
       <BoardProvider
+        canvasLock={page.isLocked}
         initialShapes={shapesQuery?.data?.map((s) => s.props)}
         container={containerRef}
         theme={theme || "light"}

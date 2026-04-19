@@ -42,6 +42,7 @@ export interface EventData {
 export type ShapeEventCallback = (shape: Shape, data?: ShapeEventData) => void;
 
 export type ShapeProps = {
+  locked?: boolean;
   italic?: boolean;
   selectionFill?: string;
   selectionAlpha?: number;

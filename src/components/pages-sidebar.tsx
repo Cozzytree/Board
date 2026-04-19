@@ -1,5 +1,5 @@
 import React from "react";
-import { useNavigate, useParams } from "@tanstack/react-router";
+import { useNavigate, useParams, Link } from "@tanstack/react-router";
 import { useSession } from "@/lib/auth-client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Paintbrush, Plus, MoreHorizontal, Trash2, Edit2, Users } from "lucide-react";
@@ -157,24 +157,22 @@ export function PagesSidebar() {
           ) : (
             <div className="space-y-1">
               {pages.map((page) => (
-                <div
+                <Link
+                  preload={false}
                   key={page.id}
-                  className={`group flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer transition-colors ${
-                    currentPageId === page.id
+                  to="/pages/$pageId"
+                  params={{ pageId: page.id }}
+                  className={`group flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer transition-colors no-underline ${currentPageId === page.id
                       ? "bg-[#7c3aed]/20 border border-[#7c3aed]/50"
                       : "hover:bg-[#313244]/50 border border-transparent"
-                  }`}
-                  onClick={() => {
-                    navigate({ to: "/pages/$pageId", params: { pageId: page.id } });
-                  }}>
+                    }`}>
                   <Paintbrush
                     size={16}
                     className={currentPageId === page.id ? "text-[#b4befe]" : "text-[#6c7086]"}
                   />
                   <span
-                    className={`flex-1 text-sm truncate ${
-                      currentPageId === page.id ? "text-[#cdd6f4]" : "text-[#a6adc8]"
-                    }`}>
+                    className={`flex-1 text-sm truncate ${currentPageId === page.id ? "text-[#cdd6f4]" : "text-[#a6adc8]"
+                      }`}>
                     {page.title}
                   </span>
 
@@ -231,7 +229,7 @@ export function PagesSidebar() {
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
-                </div>
+                </Link>
               ))}
             </div>
           )}

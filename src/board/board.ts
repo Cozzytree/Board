@@ -721,6 +721,10 @@ class Board implements BoardInterface {
       this.currentTool.cleanUp();
     }
 
+    // Clear both canvases so stale pixels don't persist on re-creation
+    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    this.ctx2.clearRect(0, 0, this.canvas2.width, this.canvas2.height);
+
     this.canvas2.remove();
     this.events.clear();
     if (this._renderDirty) {

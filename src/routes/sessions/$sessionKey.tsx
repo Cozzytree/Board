@@ -19,12 +19,17 @@ import { getShapesByPage } from "@/lib/shape-api";
 
 export const Route = createFileRoute("/sessions/$sessionKey")({
   component: SessionPage,
+  errorComponent: (err) => <div>{err?.error.message}</div>,
   loader: async ({ context, params }) => {
     const queryClient = (context as any).queryClient;
-    await queryClient.ensureQueryData({
+    const session = (await queryClient.ensureQueryData({
       queryKey: ["session", "key", params.sessionKey],
       queryFn: () => getSessionByKey(params.sessionKey),
-    });
+    })) as Session | null;
+    if (session === null) {
+      throw new Error("Session not found");
+    }
+    return session;
   },
 });
 
@@ -220,12 +225,13 @@ function rebuildConnections(board: Board, yShapes: Y.Map<string>) {
 }
 
 function SessionPage() {
+  const session = Route.useLoaderData();
   const { sessionKey } = Route.useParams();
   const navigate = useNavigate();
   const [width, setWidth] = React.useState(window.innerWidth);
   const [height, setHeight] = React.useState(window.innerHeight);
-  const [session, setSession] = React.useState<Session | null>(null);
-  const [error, setError] = React.useState<string | null>(null);
+  // const [session, setSession] = React.useState<Session | null>(null);
+  // const [error, setError] = React.useState<string | null>(null);
   const boardRef = React.useRef<Board | null>(null);
   const yjsSetupRef = React.useRef(false);
   const [boardTrigger, setBoardTrigger] = React.useState(0);
@@ -235,17 +241,18 @@ function SessionPage() {
   const { theme } = useTheme();
   const containerRef = React.useRef<HTMLDivElement | null>(null);
 
+
   const docRef = React.useRef<Y.Doc | null>(null);
   const providerRef = React.useRef<WebsocketProvider | null>(null);
   const suppressSyncRef = React.useRef(false);
   const syncToYjsRef = React.useRef<((board: Board) => void) | null>(null);
   const ySettingsRef = React.useRef<Y.Map<unknown> | null>(null);
 
-  const sessionQuery = useQuery({
-    queryKey: ["session", "key", sessionKey],
-    queryFn: () => getSessionByKey(sessionKey),
-    enabled: !!sessionKey,
-  });
+  // const sessionQuery = useQuery({
+  //   queryKey: ["session", "key", sessionKey],
+  //   queryFn: () => getSessionByKey(sessionKey),
+  //   enabled: !!sessionKey,
+  // });
 
   const shapesQuery = useQuery({
     queryKey: ["shapes", "session", sessionKey],
@@ -253,21 +260,25 @@ function SessionPage() {
     enabled: !!session,
   });
 
-  React.useEffect(() => {
-    if (sessionQuery.data && !session) {
-      setSession(sessionQuery.data);
-    }
-  }, [sessionQuery.data]);
+  const initialShapes = React.useMemo(
+    () => shapesQuery.data?.map((s) => s.props),
+    [shapesQuery.data],
+  );
+  // React.useEffect(() => {
+  //   if (sessionQuery.data && !session) {
+  //     setSession(sessionQuery.data);
+  //   }
+  // }, [sessionQuery.data]);
 
-  React.useEffect(() => {
-    if (sessionQuery.error) {
-      setError(
-        sessionQuery.error instanceof Error ? sessionQuery.error.message : "Failed to load session",
-      );
-    }
-  }, [sessionQuery.error]);
+  // React.useEffect(() => {
+  //   if (sessionQuery.error) {
+  //     setError(
+  //       sessionQuery.error instanceof Error ? sessionQuery.error.message : "Failed to load session",
+  //     );
+  //   }
+  // }, [sessionQuery.error]);
 
-  const isLoading = sessionQuery.isLoading || shapesQuery.isLoading;
+  const isLoading = shapesQuery.isLoading;
 
   const handleWindow = React.useCallback(() => {
     setWidth(window.innerWidth);
@@ -544,12 +555,15 @@ function SessionPage() {
     });
   }, []);
 
-  const onShapesChangedThrottled = React.useCallback((board: Board) => {
-    const now = Date.now();
-    if (now - lastShapeUpdate < TROTTLE_MS) return;
-    lastShapeUpdate = now;
-    onShapesChanged(board);
-  }, [onShapesChanged]);
+  const onShapesChangedThrottled = React.useCallback(
+    (board: Board) => {
+      const now = Date.now();
+      if (now - lastShapeUpdate < TROTTLE_MS) return;
+      lastShapeUpdate = now;
+      onShapesChanged(board);
+    },
+    [onShapesChanged],
+  );
 
   const onThemeChange = React.useCallback(
     (settings: { theme?: "dark" | "light"; background?: string; foreground?: string }) => {
@@ -588,22 +602,10 @@ function SessionPage() {
     );
   }
 
-  if (error) {
-    return (
-      <div className="w-full h-full flex flex-col items-center justify-center bg-background gap-4">
-        <p className="text-red-500">{error}</p>
-        <Link to="/pages" className="text-[#7c3aed] hover:underline">
-          Back to Pages
-        </Link>
-      </div>
-    );
-  }
-
-  console.log(shapesQuery.data);
   return (
     <div ref={containerRef} className="relative w-full h-full">
       <BoardProvider
-        initialShapes={shapesQuery.data?.map((s) => s.props)}
+        initialShapes={initialShapes}
         theme={theme}
         width={width}
         height={height}
@@ -622,11 +624,13 @@ function SessionPage() {
         />
       </BoardProvider>
 
-      <CursorStateManager
-        provider={providerRef.current}
-        board={boardRef.current}
-        onCursorCountChange={setCursorCount}
-      />
+      {boardRef.current && providerRef.current && (
+        <CursorStateManager
+          provider={providerRef.current}
+          board={boardRef.current}
+          onCursorCountChange={setCursorCount}
+        />
+      )}
     </div>
   );
 }
@@ -708,9 +712,17 @@ const SessionBoardUI = React.memo(function SessionBoardUI({
         {!isMinimal && <BoardToolbar />}
       </div>
       {/*{!isMinimal && <BoardLibrarySidebar />}*/}
-      <BoardCenterButton />
-      <BoardZoomControls />
-      {!isMinimal && activeShape && <BoardShapeOptions />}
+      <div className="absolute z-[999] right-10 top-5">
+        <BoardCenterButton />
+      </div>
+      <div className="absolute z-[999] left-10 bottom-5">
+        <BoardZoomControls />
+      </div>
+      {!isMinimal && activeShape &&
+        <div className="absolute left-1/2 -translate-x-1/2 z-[999] top-5">
+          <BoardShapeOptions />
+        </div>
+      }
     </>
   );
 });

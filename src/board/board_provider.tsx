@@ -391,7 +391,7 @@ const BoardProvider = ({
     },
     [onDeleteShape],
   );
-  const onMouseUp = React.useCallback(() => {}, []);
+  const onMouseUp = React.useCallback(() => { }, []);
   const onMouseMove = React.useCallback(
     (e: EventData) => {
       onCursorMove?.(e);
@@ -446,12 +446,10 @@ const BoardProvider = ({
 
     newBoard.on("mouseup", () => {
       onMouseUp();
-      if (!hasInitialShapes) {
-        if (onShapesChangedRef.current) {
-          onShapesChangedRef.current(newBoard);
-        } else {
-          saveShapesToStorage(newBoard);
-        }
+      if (onShapesChangedRef.current) {
+        onShapesChangedRef.current(newBoard);
+      } else if (!hasInitialShapes) {
+        saveShapesToStorage(newBoard);
       }
     });
     newBoard.on("mousedown", (e) => {
@@ -465,24 +463,20 @@ const BoardProvider = ({
     newBoard.on("shape:delete", (e) => {
       onDelete(e.e.target || []);
     });
-    newBoard.on("shape:resize", () => {});
-    newBoard.on("shape:move", () => {});
+    newBoard.on("shape:resize", () => { });
+    newBoard.on("shape:move", () => { });
     newBoard.on("shape:updated", () => {
-      if (!hasInitialShapes) {
-        if (onShapesChangedRef.current) {
-          onShapesChangedRef.current(newBoard);
-        } else {
-          saveShapesToStorage(newBoard);
-        }
+      if (onShapesChangedRef.current) {
+        onShapesChangedRef.current(newBoard);
+      } else if (!hasInitialShapes) {
+        saveShapesToStorage(newBoard);
       }
     });
     newBoard.on("shape:created", () => {
-      if (!hasInitialShapes) {
-        if (onShapesChangedRef.current) {
-          onShapesChangedRef.current(newBoard);
-        } else {
-          saveShapesToStorage(newBoard);
-        }
+      if (onShapesChangedRef.current) {
+        onShapesChangedRef.current(newBoard);
+      } else if (!hasInitialShapes) {
+        saveShapesToStorage(newBoard);
       }
     });
 
@@ -511,15 +505,13 @@ const BoardProvider = ({
     // Save when shapes are deleted via keyboard
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Delete" || (e.ctrlKey && (e.key === "z" || e.key === "y"))) {
-        if (!hasInitialShapes) {
-          requestAnimationFrame(() => {
-            if (onShapesChangedRef.current) {
-              onShapesChangedRef.current(newBoard);
-            } else {
-              saveShapesToStorage(newBoard);
-            }
-          });
-        }
+        requestAnimationFrame(() => {
+          if (onShapesChangedRef.current) {
+            onShapesChangedRef.current(newBoard);
+          } else if (!hasInitialShapes) {
+            saveShapesToStorage(newBoard);
+          }
+        });
       }
     };
     document.addEventListener("keydown", handleKeyDown);

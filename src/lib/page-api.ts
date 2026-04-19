@@ -33,6 +33,10 @@ export interface Page {
   updatedAt: string;
 }
 
+export async function getPage(id: string): Promise<Page> {
+  return fetchWithAuth(`/page/get?id=${id}`);
+}
+
 export async function getPagesByUser(userId: string): Promise<Page[]> {
   return fetchWithAuth(`/page/user?userId=${userId}`);
 }

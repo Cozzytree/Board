@@ -31,6 +31,7 @@ class SelectionTool implements ToolInterface {
   // private snapLines: Shape[];
   private hoveredShape: Shape | null = null;
   private isDragging: boolean = false;
+  private isDragLocked: boolean = false;
   private textEdit: Shape | null = null;
   private isTextEditale: boolean = false;
   private dragThreshold = 2;
@@ -290,6 +291,11 @@ class SelectionTool implements ToolInterface {
         return;
       }
 
+      // Skip shape selection if already dragging/resizing
+      if (this.draggedShape || this.resizableShape) {
+        return;
+      }
+
       const drag = this._board.shapeStore.forEach((s) => {
         // Skip shapes owned by a group — they are not directly selectable
         if (s.groupId) return false;
@@ -298,6 +304,7 @@ class SelectionTool implements ToolInterface {
       });
 
       if (drag !== null) {
+        console.log(drag);
         if (drag instanceof Group && this._board.getActiveShapes()?.ID() === drag.ID()) {
           const child = drag.getShapeAt(p);
           if (child) {
@@ -314,6 +321,7 @@ class SelectionTool implements ToolInterface {
 
         callback?.({ e: { x: p.x, y: p.y, target: [drag] } });
 
+        this.isDragLocked = true;
         this.draggedShape = drag;
         // Initialize unsnapped position
         this.unsnappedPos = new Pointer({ x: drag.left, y: drag.top });
@@ -321,6 +329,10 @@ class SelectionTool implements ToolInterface {
         this._board.setActiveShape(drag);
 
         this.mouseDowmShapeState.push(drag.toObject());
+      }
+
+      if (this.resizableShape) {
+        this.isDragLocked = true;
       }
 
       if (!this.draggedShape && !this.resizableShape) {
@@ -669,6 +681,9 @@ class SelectionTool implements ToolInterface {
       this.resizableShape.s.mouseup({ e: { point: p } });
       this.resizableShape = null;
     } else eventCb({ e: { x: p.x, y: p.y, target: null } });
+
+    // Unlock drag on pointerup
+    this.isDragLocked = false;
 
     this._board.render();
     this.clearOverlay();

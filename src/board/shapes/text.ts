@@ -254,8 +254,12 @@ class Text extends Shape {
     const dx = current.x - prev.x;
     const dy = current.y - prev.y;
 
-    this.left += dx;
-    this.top += dy;
+    this.set({
+      left: (this.left += dx),
+      top: (this.top += dy),
+    });
+    // this.left += dx;
+    // this.top += dy;
 
     return super.dragging(prev, current);
   }

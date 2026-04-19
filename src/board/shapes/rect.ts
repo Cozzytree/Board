@@ -16,7 +16,6 @@ class Rect extends Shape {
 
   constructor(props: ShapeProps & RectProps) {
     super({ ...props });
-    // this.rotate = 30;
     this.rx = props.rx || 0;
     this.ry = props.ry || 0;
 
@@ -41,13 +40,14 @@ class Rect extends Shape {
     super.set({
       width: Math.max(this.width, 20),
       height: Math.max(this.height, 20),
+      locked: false,
     });
     super.mouseup(s);
   }
 
   IsDraggable(p: Pointer): boolean {
     // Use the rotation-aware draggable check utility
-    return isDraggableWithRotation({
+    const d = isDraggableWithRotation({
       point: p,
       left: this.left,
       top: this.top,
@@ -55,36 +55,12 @@ class Rect extends Shape {
       height: this.height,
       rotate: this.rotate,
     });
-
-    // Old implementation (commented out for reference)
-    // // Get center of the rectangle
-    // const centerX = this.left + this.width / 2;
-    // const centerY = this.top + this.height / 2;
-    //
-    // const dx = p.x - centerX;
-    // const dy = p.y - centerY;
-    //
-    // const cos = Math.cos(-this.rotate);
-    // const sin = Math.sin(-this.rotate);
-    //
-    // const localX = dx * cos - dy * sin;
-    // const localY = dx * sin + dy * cos;
-    //
-    // // 3. Check against unrotated rect bounds
-    // const halfW = this.width / 2;
-    // const halfH = this.height / 2;
-    //
-    // return localX > -halfW && localX < halfW && localY > -halfH && localY < halfH;
-
-    // const condition =
-    //    p.x > this.left &&
-    //    p.x < this.left + this.width &&
-    //    p.y > this.top &&
-    //    p.y < this.top + this.height;
-    // if (condition) {
-    //    return true;
-    // }
-    // return false;
+    if (d) {
+      this.set({
+        locked: true,
+      });
+    }
+    return d;
   }
 
   dragging(prev: Point, current: Point) {

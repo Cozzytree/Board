@@ -35,7 +35,7 @@ export const shapes = pgTable("shapes", {
   props: jsonb("props").default({}),
   page_id: uuid("page_id")
     .notNull()
-    .references(() => pages.id),
+    .references(() => pages.id, { onDelete: "cascade" }),
   isDeleted: boolean("isDeleted").default(false),
   sessionId: uuid("sessionId").references(() => sessions.id, { onDelete: "set null" }),
   createdBy: text("createdBy").references(() => user.id),
