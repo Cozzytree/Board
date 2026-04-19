@@ -325,6 +325,7 @@ class Board implements BoardInterface {
   discardActiveShapes() {
     // this.shapeStore.setLastInserted = null;
     this.activeShapes = null;
+    this.fire("select:clear", { e: { target: [] } });
     this.onActiveShapeCallback?.(null);
   }
 

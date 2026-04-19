@@ -26,6 +26,7 @@ class ActiveSelection extends Shape {
     this.type = "selection";
     this.fill = "#404040";
     this.stroke = "#404040";
+    this.strokeWidth = 1;
     if (setup) {
       this.setUp = setup;
     }
@@ -156,9 +157,9 @@ class ActiveSelection extends Shape {
       // guard just incase if it calls itself
       if (s?.s && this.ID() != s?.s.ID()) {
         s.s.dragging(prev, current);
-        this.draw({ active: false, addStyles: false, ctx: this._board.ctx2 });
       }
     });
+    this.draw({ active: false, addStyles: false, ctx: this._board.ctx2 });
 
     this.left += dx;
     this.top += dy;
@@ -172,15 +173,54 @@ class ActiveSelection extends Shape {
 
   draw(options: { active: boolean; ctx?: CanvasRenderingContext2D; addStyles?: boolean }): void {
     const context = options.ctx || this.ctx;
+    const pad = 0;
+    const x = this.left - pad;
+    const y = this.top - pad;
+    const w = this.width + pad;
+    const h = this.height + pad;
+
+    // Compute actual uniform scale
+    const transform = context.getTransform();
+    const currentScale = Math.sqrt(transform.a ** 2 + transform.b ** 2);
+
     context.save();
 
+    // Apply rotation around center
     const centerX = this.left + this.width * 0.5;
     const centerY = this.top + this.height * 0.5;
     context.translate(centerX, centerY);
     context.rotate(this.rotate);
     context.translate(-centerX, -centerY);
 
-    this.activeRect(context);
+    // Draw outer rectangle with constant visual width
+    context.beginPath();
+    context.setLineDash([3, 3]);
+    context.strokeStyle = this.selectionColor;
+    context.lineWidth = this.strokeWidth / currentScale; // Adjust for scale
+    context.rect(x, y, w, h);
+    context.stroke();
+    context.closePath();
+
+    // Corner dot size in screen pixels
+    const screenDotSize = 6;
+    const drawDot = (cx: number, cy: number) => {
+      const wh = screenDotSize / currentScale; // Inverse scale for visual consistency
+      context.beginPath();
+      context.setLineDash([0, 0]);
+      context.fillStyle = this._board.background;
+      context.strokeStyle = this.selectionColor;
+      context.lineWidth = this.selectionStrokeWidth / currentScale; // Keep dot border consistent too
+      context.roundRect(cx - wh / 2, cy - wh / 2, wh, wh, 0);
+      context.stroke();
+      context.fill();
+      context.closePath();
+    };
+
+    drawDot(x, y); // top-left
+    drawDot(x + w, y); // top-right
+    drawDot(x, y + h); // bottom-left
+    drawDot(x + w, y + h); // bottom-right
+
     context.restore();
   }
 
@@ -272,7 +312,6 @@ class ActiveSelection extends Shape {
         });
 
         if (outer.isInOtherPartial(inner)) {
-          console.log("inside");
           this.shapes.push({ s });
           updateBox = updateBox.compareAndReturnSmall(inner);
         }
@@ -286,6 +325,8 @@ class ActiveSelection extends Shape {
         this.width = updateBox.x2 - updateBox.x1 + this.padding * 2;
         this.height = updateBox.y2 - updateBox.y1 + this.padding * 2;
         this._board.add(this);
+      } else {
+        this.remove();
       }
     }
 

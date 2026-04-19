@@ -29,7 +29,11 @@ export type ShapeEvent =
   | "shape:updated"
   | "shape:resize"
   | "shape:move"
-  | "shape:delete";
+  | "shape:delete"
+  | "select:create"
+  | "select:update"
+  | "select:end"
+  | "select:clear";
 
 export type ShapeEventData = {
   e: { point: Point };

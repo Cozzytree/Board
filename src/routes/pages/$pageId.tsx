@@ -117,7 +117,9 @@ function PageCanvas() {
         width={containerRef.current?.clientWidth}
         height={containerRef.current?.clientHeight}
         onBoardReady={handleBoardReady}
-        skipLocalStorage>
+        skipLocalStorage
+        // onImageUpload={() => {}}
+      >
         <BoardUI />
       </BoardProvider>
     </div>

@@ -304,7 +304,6 @@ class SelectionTool implements ToolInterface {
       });
 
       if (drag !== null) {
-        console.log(drag);
         if (drag instanceof Group && this._board.getActiveShapes()?.ID() === drag.ID()) {
           const child = drag.getShapeAt(p);
           if (child) {
@@ -633,11 +632,6 @@ class SelectionTool implements ToolInterface {
       this.activeShape = null;
       return;
     }
-
-    // push undo
-    // if (this.mouseDowmShapeState.length) {
-    //   this.pushToUndo({ objects: this.mouseDowmShapeState, undoType: "default" });
-    // }
 
     // reset selection state
     this.hasSelectionStarted = false;
