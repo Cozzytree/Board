@@ -19,7 +19,7 @@ import SimplePath from "./shapes/paths/simple_path";
 import Line from "@/board/shapes/line/line";
 import PlainLine from "@/board/shapes/line/line-plain";
 import LineCurve from "./shapes/line/line-curve";
-import AnchorLine from "@/board/shapes/line/line-anchor";
+import AnchorLine from "@/board/shapes/line/line-anchor-2";
 import TextTool from "./tool/text_tool";
 import Text from "./shapes/text";
 import SvgShape from "./shapes/svg_shape";

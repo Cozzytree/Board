@@ -26,39 +26,12 @@ class ActiveSelection extends Shape {
     this.type = "selection";
     this.fill = "#404040";
     this.stroke = "#404040";
-    this.strokeWidth = 1;
+    this.strokeWidth = 1.5;
     if (setup) {
       this.setUp = setup;
     }
 
-    if (this.shapes.length) {
-      let newBox = new Box({
-        x1: Infinity,
-        x2: -Infinity,
-        y1: Infinity,
-        y2: -Infinity,
-      });
-
-      this.shapes.forEach((s) => {
-        const inner = new Box({
-          x1: s.s.left,
-          x2: s.s.left + s.s.width,
-          y1: s.s.top,
-          y2: s.s.top + s.s.height,
-        });
-        if (s instanceof Ellipse) {
-          inner.x1 = inner.x1 - s.rx;
-          inner.y1 = inner.y1 - s.ry;
-          inner.x2 = inner.x1 + s.width;
-          inner.y2 = inner.y1 + s.height;
-        }
-        newBox = newBox.compareAndReturnSmall(inner);
-      });
-      this.left = newBox.x1 - this.padding;
-      this.top = newBox.y1 - this.padding;
-      this.width = newBox.x2 - newBox.x1 + this.padding * 2;
-      this.height = newBox.y2 - newBox.y1 + this.padding * 2;
-    }
+    this.setCoords();
   }
 
   group() {
@@ -224,6 +197,68 @@ class ActiveSelection extends Shape {
     context.restore();
   }
 
+  activeRect(ctx?: CanvasRenderingContext2D) {
+    const context = ctx || this.ctx;
+    const pad = this.padding * 0.5;
+    const x = this.left - pad;
+    const y = this.top - pad;
+    const w = this.width + pad * 2;
+    const h = this.height + pad * 2;
+
+    // Compute actual uniform scale
+    const transform = context.getTransform();
+    const currentScale = Math.sqrt(transform.a ** 2 + transform.b ** 2);
+
+    context.save();
+
+    // Apply rotation around center
+    const centerX = this.left + this.width * 0.5;
+    const centerY = this.top + this.height * 0.5;
+    context.translate(centerX, centerY);
+    context.rotate(this.rotate);
+    context.translate(-centerX, -centerY);
+
+    const indicatorColor = "#4A90E2";
+    const handleSizePx = 8;
+    const outlineWidthPx = 1.5;
+    const handleBorderPx = 1.5;
+
+    // Excalidraw-like active outline
+    context.beginPath();
+    context.setLineDash([3, 3]);
+    context.strokeStyle = indicatorColor;
+    context.fillStyle = "rgba(74, 144, 226, 0.05)";
+    context.lineWidth = outlineWidthPx / currentScale;
+    context.rect(x, y, w, h);
+    context.fill();
+    context.stroke();
+    context.closePath();
+
+    const drawHandle = (cx: number, cy: number) => {
+      const size = handleSizePx / currentScale;
+      context.beginPath();
+      context.setLineDash([0, 0]);
+      context.fillStyle = "#FFFFFF";
+      context.strokeStyle = indicatorColor;
+      context.lineWidth = handleBorderPx / currentScale;
+      context.roundRect(cx - size / 2, cy - size / 2, size, size, size * 0.5);
+      context.stroke();
+      context.fill();
+      context.closePath();
+    };
+
+    drawHandle(x, y);
+    drawHandle(x + w / 2, y);
+    drawHandle(x + w, y);
+    drawHandle(x, y + h / 2);
+    drawHandle(x + w, y + h / 2);
+    drawHandle(x, y + h);
+    drawHandle(x + w / 2, y + h);
+    drawHandle(x + w, y + h);
+
+    context.restore();
+  }
+
   Resize(current: Point, old: BoxInterface, d: resizeDirection): Shape[] | void {
     const newBounds = resizeWithRotation({
       current,
@@ -243,47 +278,78 @@ class ActiveSelection extends Shape {
     const oldHeight = old.y2 - old.y1;
     const newWidth = this.width;
     const newHeight = this.height;
-
-    this.shapes.forEach((s) => {
-      if (!s.s || !s.oldProps) return;
-
-      const relativeLeft = s.oldProps.x1 - old.x1;
-      const relativeTop = s.oldProps.y1 - old.y1;
-
-      const scaleX = newWidth / oldWidth;
-      const scaleY = newHeight / oldHeight;
-
-      const newLeft = this.left + relativeLeft * scaleX;
-      const newTop = this.top + relativeTop * scaleY;
-
-      const newWidthS = (s.oldProps.x2 - s.oldProps.x1) * scaleX;
-      const newHeightS = (s.oldProps.y2 - s.oldProps.y1) * scaleY;
-
-      if (s.s.type === "ellipse") {
-        s.s.set({
-          rx: newWidthS / 2,
-          ry: newHeightS / 2,
-        });
-      }
-
-      if (s.s instanceof Path || s.s instanceof Line) {
-        const lastPoints = s.s.lastPoints;
-        s.s.points.forEach((p, i) => {
-          const original = lastPoints[i];
-          const scaledX = (original.x / oldWidth) * newWidth;
-          const scaledY = (original.y / oldHeight) * newHeight;
-          p.x = scaledX;
-          p.y = scaledY;
-        });
-      }
-      s.s.set({
-        left: newLeft,
-        top: newTop,
-        width: newWidthS,
-        height: newHeightS,
+    if (this.setUp == 0) {
+      const outer = new Box({
+        x1: this.left,
+        x2: this.left + this.width,
+        y1: this.top,
+        y2: this.top + this.height,
       });
-    });
-    return this.shapes.map((s) => s.s);
+
+      const selected: Shape[] = [];
+      const selectedShapes: ActiveSelectionShape[] = [];
+
+      this._board.shapeStore.forEach((shape) => {
+        if (shape.ID() === this.ID() || shape.type === "selection") return false;
+
+        const inner = new Box({
+          x1: shape.left,
+          x2: shape.left + shape.width,
+          y1: shape.top,
+          y2: shape.top + shape.height,
+        });
+
+        if (!outer.isInOtherPartial(inner)) return false;
+
+        selected.push(shape);
+        selectedShapes.push({ s: shape, oldProps: inner });
+
+        return false;
+      });
+      this.shapes = selectedShapes;
+      return selected;
+    } else {
+      this.shapes.forEach((s) => {
+        if (!s.s || !s.oldProps) return;
+
+        const relativeLeft = s.oldProps.x1 - old.x1;
+        const relativeTop = s.oldProps.y1 - old.y1;
+
+        const scaleX = newWidth / oldWidth;
+        const scaleY = newHeight / oldHeight;
+
+        const newLeft = this.left + relativeLeft * scaleX;
+        const newTop = this.top + relativeTop * scaleY;
+
+        const newWidthS = (s.oldProps.x2 - s.oldProps.x1) * scaleX;
+        const newHeightS = (s.oldProps.y2 - s.oldProps.y1) * scaleY;
+
+        if (s.s.type === "ellipse") {
+          s.s.set({
+            rx: newWidthS / 2,
+            ry: newHeightS / 2,
+          });
+        }
+
+        if (s.s instanceof Path || s.s instanceof Line) {
+          const lastPoints = s.s.lastPoints;
+          s.s.points.forEach((p, i) => {
+            const original = lastPoints[i];
+            const scaledX = (original.x / oldWidth) * newWidth;
+            const scaledY = (original.y / oldHeight) * newHeight;
+            p.x = scaledX;
+            p.y = scaledY;
+          });
+        }
+        s.s.set({
+          left: newLeft,
+          top: newTop,
+          width: newWidthS,
+          height: newHeightS,
+        });
+      });
+      return this.shapes.map((s) => s.s);
+    }
   }
 
   mouseup(s: ShapeEventData): void {
@@ -320,13 +386,10 @@ class ActiveSelection extends Shape {
       });
 
       if (this.shapes.length > 1) {
-        this.left = updateBox.x1 - this.padding;
-        this.top = updateBox.y1 - this.padding;
-        this.width = updateBox.x2 - updateBox.x1 + this.padding * 2;
-        this.height = updateBox.y2 - updateBox.y1 + this.padding * 2;
-        this._board.add(this);
-      } else {
-        this.remove();
+        this.left = updateBox.x1;
+        this.top = updateBox.y1;
+        this.width = updateBox.x2 - updateBox.x1;
+        this.height = updateBox.y2 - updateBox.y1;
       }
     }
 
@@ -336,6 +399,37 @@ class ActiveSelection extends Shape {
 
   mousedown(e: ShapeEventData): void {
     this.emit("mousedown", e);
+  }
+
+  setCoords(): void {
+    if (this.shapes.length === 0) return;
+
+    let newBox = new Box({
+      x1: Infinity,
+      x2: -Infinity,
+      y1: Infinity,
+      y2: -Infinity,
+    });
+
+    this.shapes.forEach((s) => {
+      const inner = new Box({
+        x1: s.s.left,
+        x2: s.s.left + s.s.width,
+        y1: s.s.top,
+        y2: s.s.top + s.s.height,
+      });
+      if (s instanceof Ellipse) {
+        inner.x1 = inner.x1 - s.rx;
+        inner.y1 = inner.y1 - s.ry;
+        inner.x2 = inner.x1 + s.width;
+        inner.y2 = inner.y1 + s.height;
+      }
+      newBox = newBox.compareAndReturnSmall(inner);
+    });
+    this.left = newBox.x1 - this.padding;
+    this.top = newBox.y1 - this.padding;
+    this.width = newBox.x2 - newBox.x1 + this.padding * 2;
+    this.height = newBox.y2 - newBox.y1 + this.padding * 2;
   }
 
   // toObject(): Identity<Shape> {

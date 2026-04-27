@@ -283,6 +283,8 @@ abstract class Line extends Shape {
     };
 
     if (this.resizeIndex == 0) {
+      // Reconnect start endpoint: first detach any previous start-side connection.
+      this.connections.clear("s", this.ID());
       // check if already connected to end
       const alreadyConnected = this.connections.forEach((connect) => {
         if (connect.s.ID() === foundShape.ID() && connect.connected === "e") return true;
@@ -299,6 +301,8 @@ abstract class Line extends Shape {
         foundShape.connections.add({ s: this, connected: "s", anchor, coords });
       }
     } else {
+      // Reconnect end endpoint: first detach any previous end-side connection.
+      this.connections.clear("e", this.ID());
       // check if already connected to start
       const alreadyConnected = this.connections.forEach((connect) => {
         if (connect && connect.s.ID() === foundShape.ID() && connect.connected === "s") return true;

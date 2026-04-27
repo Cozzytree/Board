@@ -30,12 +30,63 @@ import { COLORS, FONT_SIZES, strokeSize } from "../constants";
 import { cn } from "@/lib/utils";
 import { useState, useEffect } from "react";
 import type { textAlign } from "../types";
-import { helperEvent } from "../utils/utilfunc";
 import { useMobile } from "@/hooks/use-mobile";
 import ActiveSelection from "../shapes/active_selection";
 import Group from "../shapes/group";
 import { Button } from "@/components/ui/button";
 import { Lock } from "lucide-react";
+import type { Board } from "../index";
+
+const EXCALIDRAW_COLORS = [
+  "#1E1E1E",
+  "#5F6368",
+  "#E03131",
+  "#F08C00",
+  "#2B8A3E",
+  "#1971C2",
+  "#6741D9",
+  "#9C36B5",
+  "#7A4E2D",
+  "#FFFFFF",
+];
+
+const THEME_DEFAULTS = {
+  dark: { foreground: "#cccccc", background: "#181818" },
+  light: { foreground: "#202020", background: "#efefef" },
+} as const;
+
+function remapShapeColorsForTheme(
+  canvas: Board | null,
+  prevForeground: string,
+  nextForeground: string,
+  prevBackground: string,
+  nextBackground: string,
+) {
+  if (!canvas) return;
+  canvas.shapeStore.forEach((shape) => {
+    if (shape.type === "selection") return false;
+
+    const updates: Record<string, string> = {};
+    const stroke = shape.get("stroke");
+    const fill = shape.get("fill");
+
+    if (stroke === prevForeground) {
+      updates.stroke = nextForeground;
+    }
+
+    if (shape.type === "line" && fill === prevForeground) {
+      updates.fill = nextForeground;
+    } else if (fill === prevBackground) {
+      updates.fill = nextBackground;
+    }
+
+    if (Object.keys(updates).length) {
+      shape.set(updates);
+    }
+
+    return false;
+  });
+}
 
 function ThemeToggle() {
   const {
@@ -43,6 +94,8 @@ function ThemeToggle() {
     setTheme,
     foreground,
     background,
+    canvas,
+    update,
     setForeground,
     setBackground,
     onThemeChange,
@@ -53,8 +106,29 @@ function ThemeToggle() {
 
   const handleThemeChange = (newTheme: "dark" | "light") => {
     if (!isOwnerBool) return;
+    const prevForeground = foreground;
+    const prevBackground = background;
+    const nextColors = THEME_DEFAULTS[newTheme];
+
     setTheme(newTheme);
+    setForeground(nextColors.foreground);
+    setBackground(nextColors.background);
+
+    remapShapeColorsForTheme(
+      canvas,
+      prevForeground,
+      nextColors.foreground,
+      prevBackground,
+      nextColors.background,
+    );
+
+    canvas?.render();
+    update();
     onThemeChange?.({ theme: newTheme });
+    onThemeChange?.({
+      foreground: nextColors.foreground,
+      background: nextColors.background,
+    });
   };
 
   const handleColorChange = (type: "foreground" | "background", color: string) => {
@@ -387,6 +461,22 @@ function StrokeSize() {
 function StrokeOption() {
   const { activeShape, canvas, setActiveShape, update } = useBoard();
 
+  const applyStroke = (val: string) => {
+    if (!activeShape) return;
+
+    if (activeShape instanceof ActiveSelection) {
+      activeShape.shapes.forEach((s) => {
+        if (s.s) s.s.set("stroke", val);
+      });
+    }
+    activeShape.set("stroke", val);
+
+    const ac = canvas?.getActiveShapes();
+    if (ac) setActiveShape(ac);
+    canvas?.render();
+    update();
+  };
+
   return (
     <Popover>
       <PopoverTrigger asChild>
@@ -399,26 +489,24 @@ function StrokeOption() {
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-64 p-3">
-        <div
-          onClick={(e) => {
-            if (!activeShape) return;
-            helperEvent(e, "data-s-color", (val) => {
-              if (activeShape instanceof ActiveSelection) {
-                activeShape.shapes.forEach((s) => {
-                  if (s.s) s.s.set("stroke", val);
-                });
-              }
-              activeShape.set("stroke", val);
-
-              const ac = canvas?.getActiveShapes();
-              if (ac) {
-                setActiveShape(ac);
-              }
-              canvas?.render();
-              update();
-            });
-          }}
-          className="grid grid-cols-6 gap-1.5 place-items-center">
+        <div className="space-y-3">
+          <div className="text-xs text-muted-foreground">Stroke</div>
+          <div className="grid grid-cols-10 gap-1.5">
+            {EXCALIDRAW_COLORS.map((c) => (
+              <button
+                key={c}
+                type="button"
+                onClick={() => applyStroke(c)}
+                style={{ background: c }}
+                className={cn(
+                  "h-6 w-6 rounded-sm border border-border/70 transition-transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1",
+                  activeShape?.get("stroke") === c ? "ring-2 ring-primary ring-offset-1" : "",
+                )}
+              />
+            ))}
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground w-12">Custom</span>
           <div className="relative h-6 w-6 rounded-md overflow-hidden border border-border/50 cursor-pointer hover:scale-110 transition-transform">
             <input
               type="color"
@@ -426,30 +514,11 @@ function StrokeOption() {
               value={activeShape?.get("stroke") || "#000000"}
               onChange={(e) => {
                 if (!activeShape) return;
-                const val = e.target.value;
-                if (activeShape instanceof ActiveSelection) {
-                  activeShape.shapes.forEach((s) => {
-                    if (s.s) s.s.set("stroke", val);
-                  });
-                }
-                activeShape.set("stroke", val);
-                const ac = canvas?.getActiveShapes();
-                if (ac) setActiveShape(ac);
-                canvas?.render();
+                applyStroke(e.target.value);
               }}
             />
           </div>
-          {COLORS.map((c) => (
-            <button
-              key={c}
-              data-s-color={c}
-              style={{ background: c }}
-              className={cn(
-                "h-6 w-6 rounded-md border border-border/50 hover:scale-110 transition-transform focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1",
-                activeShape?.get("stroke") === c ? "ring-2 ring-primary ring-offset-1" : "",
-              )}
-            />
-          ))}
+          </div>
         </div>
       </PopoverContent>
     </Popover>
@@ -458,6 +527,23 @@ function StrokeOption() {
 
 function FillOption() {
   const { activeShape, canvas, setActiveShape, update } = useBoard();
+
+  const applyFill = (color: string) => {
+    if (!activeShape) return;
+    if (activeShape instanceof ActiveSelection) {
+      activeShape.shapes.forEach((s) => {
+        if (s.s) s.s.set("fill", color);
+      });
+    }
+    activeShape.set("fill", color);
+    const ac = canvas?.getActiveShapes();
+    if (ac) {
+      setActiveShape(ac);
+    }
+    canvas?.render();
+    update();
+  };
+
   return (
     <Popover>
       <PopoverTrigger asChild>
@@ -469,27 +555,39 @@ function FillOption() {
           />
         </Button>
       </PopoverTrigger>
-      <PopoverContent
-        onClick={(e) => {
-          if (!activeShape) return;
-          helperEvent(e, "data-color", (color) => {
-            if (activeShape instanceof ActiveSelection) {
-              activeShape.shapes.forEach((s) => {
-                if (s.s) s.s.set("fill", color);
-              });
-            }
-            activeShape.set("fill", color);
-            const ac = canvas?.getActiveShapes();
-            if (ac) {
-              setActiveShape(ac);
-            }
-            canvas?.render();
-            update();
-          });
-        }}
-        className="w-64 p-3 z-50">
-        <div className="grid grid-cols-6 gap-1.5 place-items-center">
-          <div className="relative h-6 w-6 rounded-md overflow-hidden border border-border/50 cursor-pointer hover:scale-110 transition-transform">
+      <PopoverContent className="w-64 p-3 z-50">
+        <div className="space-y-3">
+          <div className="text-xs text-muted-foreground">Background</div>
+          <div className="grid grid-cols-10 gap-1.5">
+            <button
+              type="button"
+              onClick={() => applyFill("#00000000")}
+              className={cn(
+                "h-6 w-6 rounded-sm border border-border flex items-center justify-center hover:bg-muted transition-colors relative overflow-hidden",
+                activeShape?.get("fill") === "transparent" ||
+                  activeShape?.get("fill") === "#00000000" ||
+                  !activeShape?.get("fill")
+                  ? "ring-2 ring-primary ring-offset-1"
+                  : "",
+              )}>
+              <div className="absolute inset-0 bg-destructive/70 rotate-45 w-[1px] h-[200%] top-[-50%] left-1/2 -translate-x-1/2" />
+            </button>
+            {EXCALIDRAW_COLORS.map((c) => (
+              <button
+                key={c}
+                type="button"
+                onClick={() => applyFill(c)}
+                style={{ background: c }}
+                className={cn(
+                  "h-6 w-6 rounded-sm border border-border/70 hover:scale-105 transition-transform focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1",
+                  activeShape?.get("fill") === c ? "ring-2 ring-primary ring-offset-1" : "",
+                )}
+              />
+            ))}
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground w-12">Custom</span>
+            <div className="relative h-6 w-6 rounded-md overflow-hidden border border-border/50 cursor-pointer hover:scale-110 transition-transform">
             <input
               type="color"
               className="absolute inset-0 w-[150%] h-[150%] -top-1/4 -left-1/4 cursor-pointer p-0 border-0"
@@ -500,40 +598,11 @@ function FillOption() {
               }
               onChange={(e) => {
                 if (!activeShape) return;
-                const val = e.target.value;
-                if (activeShape instanceof ActiveSelection) {
-                  activeShape.shapes.forEach((s) => {
-                    if (s.s) s.s.set("fill", val);
-                  });
-                }
-                activeShape.set("fill", val);
-                const ac = canvas?.getActiveShapes();
-                if (ac) setActiveShape(ac);
-                canvas?.render();
+                applyFill(e.target.value);
               }}
             />
           </div>
-          <button
-            data-color={"#00000000"}
-            className={cn(
-              "h-6 w-6 rounded-md border border-border flex items-center justify-center hover:bg-muted transition-colors relative overflow-hidden",
-              activeShape?.get("fill") === "transparent" || !activeShape?.get("fill")
-                ? "ring-2 ring-primary ring-offset-1"
-                : "",
-            )}>
-            <div className="absolute inset-0 bg-destructive/50 rotate-45 w-[1px] h-[200%] top-[-50%] left-1/2 -translate-x-1/2" />
-          </button>
-          {COLORS.map((c) => (
-            <button
-              key={c}
-              data-color={c}
-              style={{ background: c }}
-              className={cn(
-                "h-8 w-8 rounded-full border border-border/50 hover:scale-110 transition-transform focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
-                activeShape?.get("fill") === c ? "ring-2 ring-primary ring-offset-2" : "",
-              )}
-            />
-          ))}
+          </div>
         </div>
       </PopoverContent>
     </Popover>

@@ -429,3 +429,4 @@ const server = Bun.serve<WSData>({
 console.log(`[board-ws] Yjs WebSocket server running on port ${server.port}`);
 
 // opencode -s ses_26fb51d0cffeaE51VNlTmfov7b
+// codex resume 019daa45-6fd5-7500-9a3c-5fe5c434b3b5

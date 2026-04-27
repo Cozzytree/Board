@@ -46,9 +46,18 @@ function BoardUI() {
         {!isMinimal && <BoardToolbar />}
       </div>
       {!isMinimal && <BoardLibrarySidebar />}
-      <BoardCenterButton />
-      <BoardZoomControls />
-      {!isMinimal && activeShape && <BoardShapeOptions />}
+
+      <div className="absolute z-[999] top-5 left-10">
+        <BoardCenterButton />
+      </div>
+      <div className="absolute z-[999] bottom-5 left-10">
+        <BoardZoomControls />
+      </div>
+      {!isMinimal && activeShape && (
+        <div className="absolute z-[999] top-5 left-1/2 -translate-x-1/2">
+          <BoardShapeOptions />{" "}
+        </div>
+      )}
     </>
   );
 }

@@ -391,7 +391,7 @@ const BoardProvider = ({
     },
     [onDeleteShape],
   );
-  const onMouseUp = React.useCallback(() => { }, []);
+  const onMouseUp = React.useCallback(() => {}, []);
   const onMouseMove = React.useCallback(
     (e: EventData) => {
       onCursorMove?.(e);
@@ -463,8 +463,8 @@ const BoardProvider = ({
     newBoard.on("shape:delete", (e) => {
       onDelete(e.e.target || []);
     });
-    newBoard.on("shape:resize", () => { });
-    newBoard.on("shape:move", () => { });
+    newBoard.on("shape:resize", () => {});
+    newBoard.on("shape:move", () => {});
     newBoard.on("shape:updated", () => {
       if (onShapesChangedRef.current) {
         onShapesChangedRef.current(newBoard);

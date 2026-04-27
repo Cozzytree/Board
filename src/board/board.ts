@@ -325,7 +325,7 @@ class Board implements BoardInterface {
   discardActiveShapes() {
     // this.shapeStore.setLastInserted = null;
     this.activeShapes = null;
-    this.fire("select:clear", { e: { target: [] } });
+    this.fire("selection:created", { e: { target: [] } });
     this.onActiveShapeCallback?.(null);
   }
 
@@ -346,6 +346,8 @@ class Board implements BoardInterface {
       this.discardActiveShapes();
       this.activeShapes = shapes[0];
       this.onActiveShapeCallback?.(shapes[0]);
+
+      this.fire("selection:created", { e: { target: [this.activeShapes] } });
     } else if (shapes.length > 1) {
       this.discardActiveShapes();
       const shapesData = shapes.map((s) => ({ s }));
@@ -355,6 +357,7 @@ class Board implements BoardInterface {
         _board: this,
       });
       this.activeShapes = activeSelection;
+      this.fire("selection:created", { e: { target: [this.activeShapes] } });
       this.onActiveShapeCallback?.(activeSelection);
     }
   }

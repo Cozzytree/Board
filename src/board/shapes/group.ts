@@ -69,7 +69,15 @@ class Group extends Shape {
     const newHeight = this.height;
 
     this.shapes.forEach((s) => {
-      if (!s.s || !s.oldProps) return;
+      if (!s.s) return;
+      if (!s.oldProps) {
+        s.oldProps = {
+          x1: s.s.left,
+          y1: s.s.top,
+          x2: s.s.left + s.s.width,
+          y2: s.s.top + s.s.height,
+        };
+      }
 
       const relativeLeft = s.oldProps.x1 - old.x1;
       const relativeTop = s.oldProps.y1 - old.y1;
@@ -91,7 +99,10 @@ class Group extends Shape {
       }
 
       if (s.s instanceof Path || s.s instanceof Line) {
-        const lastPoints = s.s.lastPoints;
+        const lastPoints =
+          s.s.lastPoints && s.s.lastPoints.length === s.s.points.length
+            ? s.s.lastPoints
+            : s.s.points.map((p) => ({ x: p.x, y: p.y }));
         s.s.points.forEach((p, i) => {
           const original = lastPoints[i];
           const scaledX = (original.x / oldWidth) * newWidth;
@@ -144,36 +155,30 @@ class Group extends Shape {
   }
 
   IsDraggable(p: Point): boolean {
-    const { width, height, left, top, rotate } = this;
-    const cx = left + width / 2;
-    const cy = top + height / 2;
-    const cos = Math.cos(-rotate);
-    const sin = Math.sin(-rotate);
-    const dx = p.x - cx;
-    const dy = p.y - cy;
-    const localX = dx * cos - dy * sin;
-    const localY = dx * sin + dy * cos;
-
-    const halfW = width / 2;
-    const halfH = height / 2;
-    const hit = this.padding;
-
-    const inOuter = localX >= -(halfW + hit) && localX <= halfW + hit && localY >= -(halfH + hit) && localY <= halfH + hit;
-    const inInner = localX > -(halfW - hit) && localX < halfW - hit && localY > -(halfH - hit) && localY < halfH - hit;
-
-    return inOuter && !inInner;
+    return isDraggableWithRotation({
+      point: p,
+      left: this.left,
+      top: this.top,
+      width: this.width,
+      height: this.height,
+      rotate: this.rotate,
+    });
   }
 
   dragging(prev: Point, current: Point) {
     const dx = current.x - prev.x;
     const dy = current.y - prev.y;
+    const affected: Shape[] = [];
     this.shapes.forEach(({ s }) => {
-      s.left += dx;
-      s.top += dy;
+      const moved = s.dragging(prev, current);
+      if (moved?.length) affected.push(...moved);
+      affected.push(s);
     });
     this.left += dx;
     this.top += dy;
-    return super.dragging(prev, current);
+    const conns = super.dragging(prev, current);
+    if (conns?.length) affected.push(...conns);
+    return affected;
   }
 
   containsPoint(p: Point): boolean {

@@ -179,41 +179,42 @@ class SelectionTool implements ToolInterface {
         return;
       }
 
-      const lastInserted = this._board.shapeStore.getLastInsertedShape();
-      if (lastInserted?.type === "selection" && lastInserted instanceof ActiveSelection) {
-        if (lastInserted.IsDraggable(p)) {
-          callback?.({ e: { target: [lastInserted], x: p.x, y: p.y } });
+      const currentActive = this._board.getActiveShapes();
+      // const lastInserted = this._board.shapeStore.getLastInsertedShape();
+      if (currentActive?.type === "selection" && currentActive instanceof ActiveSelection) {
+        if (currentActive.IsDraggable(p)) {
+          callback?.({ e: { target: [currentActive], x: p.x, y: p.y } });
 
-          this.draggedShape = lastInserted;
-          this.activeShape = lastInserted;
+          this.draggedShape = currentActive;
+          this.activeShape = currentActive;
           // Initialize unsnapped position
-          this.unsnappedPos = new Pointer({ x: lastInserted.left, y: lastInserted.top });
+          this.unsnappedPos = new Pointer({ x: currentActive.left, y: currentActive.top });
 
-          this._board.setActiveShape(lastInserted);
+          this._board.setActiveShape(currentActive);
           // insert into undo temp state
-          lastInserted.shapes.forEach((as) => {
+          currentActive.shapes.forEach((as) => {
             this.mouseDowmShapeState.push(as.s.toObject());
           });
           return;
         }
 
-        const resize = lastInserted.IsResizable(p);
+        const resize = currentActive.IsResizable(p);
         if (resize) {
-          callback?.({ e: { x: p.x, y: p.y, target: [lastInserted] } });
+          callback?.({ e: { x: p.x, y: p.y, target: [currentActive] } });
 
           this.resizableShape = {
-            s: lastInserted,
+            s: currentActive,
             d: resize,
             oldProps: new Box({
-              x1: lastInserted.left,
-              y1: lastInserted.top,
-              x2: lastInserted.left + lastInserted.width,
-              y2: lastInserted.top + lastInserted.height,
+              x1: currentActive.left,
+              y1: currentActive.top,
+              x2: currentActive.left + currentActive.width,
+              y2: currentActive.top + currentActive.height,
             }),
           };
 
-          if (lastInserted instanceof ActiveSelection) {
-            lastInserted.shapes.forEach((s) => {
+          if (currentActive instanceof ActiveSelection) {
+            currentActive.shapes.forEach((s) => {
               // insert this to undo
               if (s.s instanceof Path || s.s instanceof Line) {
                 s.s.lastPoints = s.s.points.map((p) => {
@@ -231,19 +232,18 @@ class SelectionTool implements ToolInterface {
             });
           }
           // fire mouse down for the shape
-          lastInserted.mousedown({ e: { point: p } });
+          currentActive.mousedown({ e: { point: p } });
           return;
         }
 
         // remove the selection if not resizable or draggable
-        if (this._board.shapeStore.removeById(lastInserted.ID())) {
+        if (this._board.shapeStore.removeById(currentActive.ID())) {
           this._board.shapeStore.setLastInserted = null;
         }
         this._board.render();
       }
 
       // if a shape is already active check if resizable
-      const currentActive = this._board.getActiveShapes();
       if (currentActive) {
         const d = currentActive.IsResizable(p);
         if (d) {
@@ -260,6 +260,20 @@ class SelectionTool implements ToolInterface {
             }),
             d,
           };
+
+          if (currentActive instanceof Group) {
+            currentActive.shapes.forEach((child) => {
+              if (child.s instanceof Path || child.s instanceof Line) {
+                child.s.lastPoints = child.s.points.map((p) => ({ x: p.x, y: p.y }));
+              }
+              child.oldProps = new Box({
+                x1: child.s.left,
+                y1: child.s.top,
+                x2: child.s.left + child.s.width,
+                y2: child.s.top + child.s.height,
+              });
+            });
+          }
           return;
         }
 
@@ -512,7 +526,17 @@ class SelectionTool implements ToolInterface {
         }),
         "br",
       );
-      this.draw(...this.activeShape.shapes.map((s) => s.s), this.activeShape);
+
+      this.draw(this.activeShape);
+
+      const ctx = this._board.ctx2;
+      ctx.save();
+      ctx.translate(this._board.view.x, this._board.view.y);
+      ctx.scale(this._board.view.scl, this._board.view.scl);
+      this.activeShape.shapes.forEach(({ s }) => {
+        s.activeRect(ctx);
+      });
+      ctx.restore();
       return;
     }
 
@@ -639,6 +663,13 @@ class SelectionTool implements ToolInterface {
     if (this.activeShape) {
       if (!this.draggedShape && !this.resizableShape && this.isDragging) {
         this.activeShape.mouseup({ e: { point: p } });
+        if (this.activeShape.shapes.length === 1) {
+          this._board.setActiveShape(this.activeShape.shapes[0].s);
+        } else if (this.activeShape.shapes.length > 1) {
+          this._board.setActiveShape(this.activeShape);
+        } else {
+          this._board.discardActiveShapes();
+        }
       }
       this.activeShape = null;
     }
@@ -1071,7 +1102,7 @@ class SelectionTool implements ToolInterface {
   }
 
   private selectAll() {
-    this._board.removeActiveSelectionOnly();
+    // this._board.removeActiveSelectionOnly();
     this._board.discardActiveShapes();
 
     const shapes: { oldProps?: Box; s: Shape }[] = [];
@@ -1099,7 +1130,7 @@ class SelectionTool implements ToolInterface {
         ctx: this._board.ctx,
         _board: this._board,
       });
-      this._board.add(as);
+      this._board.setActiveShape(as);
     }
   }
 

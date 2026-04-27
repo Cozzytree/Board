@@ -191,7 +191,7 @@ abstract class Shape implements ShapeProps {
 
   activeRect(ctx?: CanvasRenderingContext2D) {
     const context = ctx || this.ctx;
-    const pad = 2;
+    const pad = this.padding;
     const x = this.left - pad;
     const y = this.top - pad;
     const w = this.width + pad * 2;
@@ -210,32 +210,40 @@ abstract class Shape implements ShapeProps {
     context.rotate(this.rotate);
     context.translate(-centerX, -centerY);
 
-    // Draw outer rectangle with constant visual width
+    const indicatorColor = "#4A90E2";
+    const handleSizePx = 8;
+    const outlineWidthPx = 1.5;
+    const handleBorderPx = 1.5;
+
+    // Excalidraw-like active outline
     context.beginPath();
-    context.strokeStyle = this.selectionColor;
-    context.lineWidth = this.strokeWidth / currentScale; // Adjust for scale
+    context.setLineDash([]);
+    context.strokeStyle = indicatorColor;
+    context.fillStyle = "rgba(74, 144, 226, 0.05)";
+    context.lineWidth = outlineWidthPx / currentScale;
     context.rect(x, y, w, h);
+    context.fill();
     context.stroke();
     context.closePath();
 
-    // Corner dot size in screen pixels
-    const screenDotSize = 6;
-    const drawDot = (cx: number, cy: number) => {
-      const wh = screenDotSize / currentScale; // Inverse scale for visual consistency
+    const drawHandle = (cx: number, cy: number) => {
+      const size = handleSizePx / currentScale;
       context.beginPath();
-      context.fillStyle = this._board.background;
-      context.strokeStyle = this.selectionColor;
-      context.lineWidth = this.selectionStrokeWidth / currentScale; // Keep dot border consistent too
-      context.roundRect(cx - wh / 2, cy - wh / 2, wh, wh, 0);
+      context.strokeStyle = indicatorColor;
+      context.lineWidth = handleBorderPx / currentScale;
+      context.roundRect(cx - size / 2, cy - size / 2, size, size, size * 0.5);
       context.stroke();
-      context.fill();
       context.closePath();
     };
 
-    drawDot(x, y); // top-left
-    drawDot(x + w, y); // top-right
-    drawDot(x, y + h); // bottom-left
-    drawDot(x + w, y + h); // bottom-right
+    drawHandle(x, y);
+    drawHandle(x + w / 2, y);
+    drawHandle(x + w, y);
+    drawHandle(x, y + h / 2);
+    drawHandle(x + w, y + h / 2);
+    drawHandle(x, y + h);
+    drawHandle(x + w / 2, y + h);
+    drawHandle(x + w, y + h);
 
     context.restore();
   }

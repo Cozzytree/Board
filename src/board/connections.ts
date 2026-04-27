@@ -49,8 +49,12 @@ class Connections implements ConnectionInterface {
       if (index == -1) return;
 
       const val = this.shapes[index];
-      console.log(val);
-      if (id) val.s.connections.delete(id);
+      if (id) {
+         // Remove only the mirrored endpoint reference, not every connection to this id.
+         val.s.connections.shapes = val.s.connections.shapes.filter(
+            (conn) => !(conn.s.ID() === id && conn.connected === ct),
+         );
+      }
       this.shapes.splice(index, 1);
    }
 
