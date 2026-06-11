@@ -92,6 +92,8 @@ class ShapeStore<T extends ShapeInterface & ActiveSeletionProps> {
   declare private lastInserted: T | null;
   declare private copy: Identity<T>[];
 
+  declare private _zCounter: number;
+
   declare private undoStore: List<HistoryType>;
   declare private redoStore: List<HistoryType>;
 
@@ -100,6 +102,7 @@ class ShapeStore<T extends ShapeInterface & ActiveSeletionProps> {
     this.lastInserted = null;
     this.undoStore = new List();
     this.redoStore = new List();
+    this._zCounter = 0;
   }
 
   /**
@@ -107,15 +110,72 @@ class ShapeStore<T extends ShapeInterface & ActiveSeletionProps> {
    * @param callback if returns true then breaks the iteration
    * @returns returns T if returned true from callback or null
    */
+  getOrderedShapes(): T[] {
+    return Array.from(this.store.values()).sort((a, b) => a.Index() - b.Index());
+  }
+
   forEach(callback: (o: T) => boolean): T | null {
-    for (const [, ob] of this.store) {
+    const sorted = this.getOrderedShapes();
+    for (const ob of sorted) {
       if (callback(ob)) return ob;
     }
     return null;
   }
 
+  bringForward(id: string): boolean {
+    const sorted = this.getOrderedShapes();
+    const idx = sorted.findIndex((s) => s.ID() === id);
+    if (idx < 0 || idx === sorted.length - 1) return false;
+    const current = sorted[idx];
+    const next = sorted[idx + 1];
+    const tempZ = current.Index();
+    current.SetIndex(next.Index());
+    next.SetIndex(tempZ);
+    return true;
+  }
+
+  sendBackward(id: string): boolean {
+    const sorted = this.getOrderedShapes();
+    const idx = sorted.findIndex((s) => s.ID() === id);
+    if (idx <= 0) return false;
+    const current = sorted[idx];
+    const prev = sorted[idx - 1];
+    const tempZ = current.Index();
+    current.SetIndex(prev.Index());
+    prev.SetIndex(tempZ);
+    return true;
+  }
+
+  bringToFront(id: string): boolean {
+    const shape = this.get(id);
+    if (!shape) return false;
+    const maxZ = Math.max(...this.getOrderedShapes().map((s) => s.Index()), 0);
+    shape.SetIndex(maxZ + 1);
+    return true;
+  }
+
+  sendToBack(id: string): boolean {
+    const shape = this.get(id);
+    if (!shape) return false;
+    const minZ = Math.min(...this.getOrderedShapes().map((s) => s.Index()), 0);
+    shape.SetIndex(minZ - 1);
+    return true;
+  }
+
+  setZOrder(id: string, zOrder: number): boolean {
+    const shape = this.get(id);
+    if (!shape) return false;
+    shape.SetIndex(zOrder);
+    return true;
+  }
+
   insert(...objs: T[]) {
     for (const o of objs) {
+      if (o.Index() == null || o.Index() === 0) {
+        o.SetIndex(this._zCounter++);
+      } else {
+        this._zCounter = Math.max(this._zCounter, o.Index() + 1);
+      }
       this.store.set(o.ID(), o);
       this.lastInserted = o;
     }

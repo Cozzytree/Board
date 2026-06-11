@@ -73,6 +73,7 @@ export type ShapeProps = {
   dash?: [number, number];
   text?: string;
   connections?: ConnectionInterface;
+  zOrder?: number;
 };
 
 export type ToolCallback = (args: { mode: modes; submode: submodes }) => void;
@@ -103,6 +104,8 @@ export interface ShapeInterface {
   IsResizable(p: Point): resizeDirection | null;
   Resize(current: Point, old: BoxInterface, d: resizeDirection): void;
   clone(): Shape;
+  Index(): number;
+  SetIndex(v: number): void;
 }
 
 export interface BoardInterface {

@@ -15,6 +15,9 @@ class Path extends Shape {
   declare points: Point[];
   lastPoints: Point[];
   declare pathType: string;
+  _cachedPath: Path2D | null = null;
+  _cachedScale: number = 0;
+  _cachedPointsLen: number = 0;
 
   constructor(props: ShapeProps & PathProps) {
     super(props);
@@ -23,6 +26,34 @@ class Path extends Shape {
       return { x: p.x, y: p.y };
     });
     this.type = "path";
+  }
+
+  invalidateCache() {
+    this._cachedPath = null;
+    this._cachedScale = 0;
+    this._cachedPointsLen = 0;
+  }
+
+  set(key: string | Record<string, any>, value?: any) {
+    let shouldInvalidate = false;
+    const checkKey = (k: string) => {
+      if (['points', 'width', 'height', 'flipX', 'flipY', 'strokeWidth'].includes(k)) {
+        shouldInvalidate = true;
+      }
+    };
+
+    if (typeof key === "object") {
+      Object.keys(key).forEach(checkKey);
+    } else {
+      checkKey(key);
+    }
+
+    super.set(key, value);
+
+    if (shouldInvalidate) {
+      this.invalidateCache();
+    }
+    return this;
   }
 
   setCoords(): void {
@@ -242,6 +273,8 @@ class Path extends Shape {
       flipX,
       flipY,
     });
+
+    this.invalidateCache();
 
     return super.Resize(current, old, d);
   }

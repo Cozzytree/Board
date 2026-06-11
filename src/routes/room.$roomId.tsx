@@ -557,7 +557,6 @@ function RoomPage() {
         onDeleteShape={onDeleteShape}
         onBoardReady={onBoardReady}
         onThemeChange={onThemeChange}
-        isOwner={isOwner}
         skipLocalStorage
         onCursorMove={onCursorMove}>
         <RoomBoardUI roomId={roomId} cursorCount={cursorCount} />

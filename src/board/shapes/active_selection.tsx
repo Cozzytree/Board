@@ -7,447 +7,446 @@ import { calcPointWithRotation, rotatePoint } from "../utils/utilfunc";
 import Group from "./group";
 
 export type ActiveSeletionProps = {
-  shapes?: { oldProps?: BoxInterface; s: Shape }[];
+   shapes?: { oldProps?: BoxInterface; s: Shape }[];
 };
 
 class ActiveSelection extends Shape {
-  private setUp = 0;
-  declare shapes: ActiveSelectionShape[];
+   private setUp = 0;
+   declare shapes: ActiveSelectionShape[];
 
-  /**
-   *
-   * @param props ShapeProps
-   * @param setup if 0 means it will take every shape that is within its box as selected
-   *  especially used on first mousedown after creation
-   */
-  constructor(props: ShapeProps & ActiveSeletionProps, setup?: 0 | 1) {
-    super(props);
-    this.shapes = props.shapes || [];
-    this.type = "selection";
-    this.fill = "#404040";
-    this.stroke = "#404040";
-    this.strokeWidth = 1.5;
-    if (setup) {
-      this.setUp = setup;
-    }
-
-    this.setCoords();
-  }
-
-  group() {
-    if (!this.shapes.length) return;
-
-    const newGroup = new Group({
-      shapes: this.shapes.map((s) => ({ s: s.s, oldProps: s.oldProps })),
-      ctx: this._board.ctx,
-      _board: this._board,
-    });
-    // Mark members as owned by this group (shapes stay in shapeStore)
-    this.shapes.forEach(({ s }) => {
-      s.groupId = newGroup.ID();
-    });
-    this._board.add(newGroup);
-    this._board.discardActiveShapes();
-    this._board.setActiveShape(newGroup);
-  }
-
-  clone(): Shape {
-    const props = super.cloneProps();
-    const cloneShapes = this.shapes
-      .filter((s) => s.s.ID() !== this.ID())
-      .map((s) => ({ s: s.s.clone(), oldProps: s.oldProps }));
-    return new ActiveSelection(
-      {
-        ...props,
-        shapes: cloneShapes,
-      },
-      1,
-    );
-  }
-
-  IsDraggable(p: Point): boolean {
-    return isDraggableWithRotation({
-      point: p,
-      left: this.left,
-      top: this.top,
-      width: this.width,
-      height: this.height,
-      rotate: this.rotate,
-    });
-  }
-
-  IsResizable(p: Point): resizeDirection | null {
-    const { height, width, top, left, rotate } = this;
-    const halfW = this.width / 2;
-    const halfH = this.height / 2;
-    const localBox = new Box({
-      x1: -halfW,
-      x2: halfW,
-      y1: -halfH,
-      y2: halfH,
-    });
-    const d = resizeRect(
-      calcPointWithRotation({ height, width, left, point: p, rotate, top }),
-      localBox,
-      this.padding,
-    );
-    if (d) {
-      return d.rd;
-    }
-    return null;
-  }
-
-  set(key: string | Record<string, any>, value?: any): this {
-    const props: Record<string, any> = typeof key === "object" ? key : { [key]: value };
-
-    if ("rotate" in props && props.rotate !== undefined) {
-      const delta = props.rotate - this.rotate;
-      if (delta !== 0) {
-        const selCenter = { x: this.left + this.width / 2, y: this.top + this.height / 2 };
-        this.shapes.forEach(({ s }) => {
-          const newCenter = rotatePoint(
-            { x: s.left + s.width / 2, y: s.top + s.height / 2 },
-            selCenter,
-            delta,
-          );
-          s.set({
-            left: newCenter.x - s.width / 2,
-            top: newCenter.y - s.height / 2,
-            rotate: s.rotate + delta,
-          });
-        });
+   /**
+    *
+    * @param props ShapeProps
+    * @param setup if 0 means it will take every shape that is within its box as selected
+    *  especially used on first mousedown after creation
+    */
+   constructor(props: ShapeProps & ActiveSeletionProps, setup?: 0 | 1) {
+      super(props);
+      this.shapes = props.shapes || [];
+      this.type = "selection";
+      this.fill = "#404040";
+      this.stroke = "#404040";
+      this.strokeWidth = 1.5;
+      if (setup) {
+         this.setUp = setup;
       }
-    }
 
-    return super.set(props);
-  }
+      this.setCoords();
+   }
 
-  dragging(prev: Point, current: Point) {
-    const dx = current.x - prev.x;
-    const dy = current.y - prev.y;
+   group() {
+      if (!this.shapes.length) return;
 
-    this.shapes.forEach((s) => {
-      // guard just incase if it calls itself
-      if (s?.s && this.ID() != s?.s.ID()) {
-        s.s.dragging(prev, current);
+      const newGroup = new Group({
+         shapes: this.shapes.map((s) => ({ s: s.s, oldProps: s.oldProps })),
+         ctx: this._board.ctx,
+         _board: this._board,
+      });
+      // Mark members as owned by this group (shapes stay in shapeStore)
+      this.shapes.forEach(({ s }) => {
+         s.groupId = newGroup.ID();
+      });
+      this._board.add(newGroup);
+      this._board.discardActiveShapes();
+      this._board.setActiveShape(newGroup);
+   }
+
+   clone(): Shape {
+      const props = super.cloneProps();
+      const cloneShapes = this.shapes
+         .filter((s) => s.s.ID() !== this.ID())
+         .map((s) => ({ s: s.s.clone(), oldProps: s.oldProps }));
+      return new ActiveSelection(
+         {
+            ...props,
+            shapes: cloneShapes,
+         },
+         1,
+      );
+   }
+
+   IsDraggable(p: Point): boolean {
+      return isDraggableWithRotation({
+         point: p,
+         left: this.left,
+         top: this.top,
+         width: this.width,
+         height: this.height,
+         rotate: this.rotate,
+      });
+   }
+
+   IsResizable(p: Point): resizeDirection | null {
+      const { height, width, top, left, rotate } = this;
+      const halfW = this.width / 2;
+      const halfH = this.height / 2;
+      const localBox = new Box({
+         x1: -halfW,
+         x2: halfW,
+         y1: -halfH,
+         y2: halfH,
+      });
+      const d = resizeRect(
+         calcPointWithRotation({ height, width, left, point: p, rotate, top }),
+         localBox,
+         this.padding,
+      );
+      if (d) {
+         return d.rd;
       }
-    });
-    this.draw({ active: false, addStyles: false, ctx: this._board.ctx2 });
+      return null;
+   }
 
-    this.left += dx;
-    this.top += dy;
+   set(key: string | Record<string, any>, value?: any): this {
+      const props: Record<string, any> = typeof key === "object" ? key : { [key]: value };
 
-    const drg = super.dragging(prev, current);
-    if (!drg) {
-      return;
-    }
-    return [...drg, ...this.shapes.map((s) => s.s)];
-  }
+      if ("rotate" in props && props.rotate !== undefined) {
+         const delta = props.rotate - this.rotate;
+         if (delta !== 0) {
+            const selCenter = { x: this.left + this.width / 2, y: this.top + this.height / 2 };
+            this.shapes.forEach(({ s }) => {
+               const newCenter = rotatePoint(
+                  { x: s.left + s.width / 2, y: s.top + s.height / 2 },
+                  selCenter,
+                  delta,
+               );
+               s.set({
+                  left: newCenter.x - s.width / 2,
+                  top: newCenter.y - s.height / 2,
+                  rotate: s.rotate + delta,
+               });
+            });
+         }
+      }
 
-  draw(options: { active: boolean; ctx?: CanvasRenderingContext2D; addStyles?: boolean }): void {
-    const context = options.ctx || this.ctx;
-    const pad = 0;
-    const x = this.left - pad;
-    const y = this.top - pad;
-    const w = this.width + pad;
-    const h = this.height + pad;
+      return super.set(props);
+   }
 
-    // Compute actual uniform scale
-    const transform = context.getTransform();
-    const currentScale = Math.sqrt(transform.a ** 2 + transform.b ** 2);
+   dragging(prev: Point, current: Point) {
+      const dx = current.x - prev.x;
+      const dy = current.y - prev.y;
 
-    context.save();
-
-    // Apply rotation around center
-    const centerX = this.left + this.width * 0.5;
-    const centerY = this.top + this.height * 0.5;
-    context.translate(centerX, centerY);
-    context.rotate(this.rotate);
-    context.translate(-centerX, -centerY);
-
-    // Draw outer rectangle with constant visual width
-    context.beginPath();
-    context.setLineDash([3, 3]);
-    context.strokeStyle = this.selectionColor;
-    context.lineWidth = this.strokeWidth / currentScale; // Adjust for scale
-    context.rect(x, y, w, h);
-    context.stroke();
-    context.closePath();
-
-    // Corner dot size in screen pixels
-    const screenDotSize = 6;
-    const drawDot = (cx: number, cy: number) => {
-      const wh = screenDotSize / currentScale; // Inverse scale for visual consistency
-      context.beginPath();
-      context.setLineDash([0, 0]);
-      context.fillStyle = this._board.background;
-      context.strokeStyle = this.selectionColor;
-      context.lineWidth = this.selectionStrokeWidth / currentScale; // Keep dot border consistent too
-      context.roundRect(cx - wh / 2, cy - wh / 2, wh, wh, 0);
-      context.stroke();
-      context.fill();
-      context.closePath();
-    };
-
-    drawDot(x, y); // top-left
-    drawDot(x + w, y); // top-right
-    drawDot(x, y + h); // bottom-left
-    drawDot(x + w, y + h); // bottom-right
-
-    context.restore();
-  }
-
-  activeRect(ctx?: CanvasRenderingContext2D) {
-    const context = ctx || this.ctx;
-    const pad = this.padding * 0.5;
-    const x = this.left - pad;
-    const y = this.top - pad;
-    const w = this.width + pad * 2;
-    const h = this.height + pad * 2;
-
-    // Compute actual uniform scale
-    const transform = context.getTransform();
-    const currentScale = Math.sqrt(transform.a ** 2 + transform.b ** 2);
-
-    context.save();
-
-    // Apply rotation around center
-    const centerX = this.left + this.width * 0.5;
-    const centerY = this.top + this.height * 0.5;
-    context.translate(centerX, centerY);
-    context.rotate(this.rotate);
-    context.translate(-centerX, -centerY);
-
-    const indicatorColor = "#4A90E2";
-    const handleSizePx = 8;
-    const outlineWidthPx = 1.5;
-    const handleBorderPx = 1.5;
-
-    // Excalidraw-like active outline
-    context.beginPath();
-    context.setLineDash([3, 3]);
-    context.strokeStyle = indicatorColor;
-    context.fillStyle = "rgba(74, 144, 226, 0.05)";
-    context.lineWidth = outlineWidthPx / currentScale;
-    context.rect(x, y, w, h);
-    context.fill();
-    context.stroke();
-    context.closePath();
-
-    const drawHandle = (cx: number, cy: number) => {
-      const size = handleSizePx / currentScale;
-      context.beginPath();
-      context.setLineDash([0, 0]);
-      context.fillStyle = "#FFFFFF";
-      context.strokeStyle = indicatorColor;
-      context.lineWidth = handleBorderPx / currentScale;
-      context.roundRect(cx - size / 2, cy - size / 2, size, size, size * 0.5);
-      context.stroke();
-      context.fill();
-      context.closePath();
-    };
-
-    drawHandle(x, y);
-    drawHandle(x + w / 2, y);
-    drawHandle(x + w, y);
-    drawHandle(x, y + h / 2);
-    drawHandle(x + w, y + h / 2);
-    drawHandle(x, y + h);
-    drawHandle(x + w / 2, y + h);
-    drawHandle(x + w, y + h);
-
-    context.restore();
-  }
-
-  Resize(current: Point, old: BoxInterface, d: resizeDirection): Shape[] | void {
-    const newBounds = resizeWithRotation({
-      current,
-      old,
-      direction: d,
-      rotate: this.rotate,
-      minWidth: 20,
-      minHeight: 20,
-    });
-
-    this.left = newBounds.left;
-    this.top = newBounds.top;
-    this.width = newBounds.width;
-    this.height = newBounds.height;
-
-    const oldWidth = old.x2 - old.x1;
-    const oldHeight = old.y2 - old.y1;
-    const newWidth = this.width;
-    const newHeight = this.height;
-    if (this.setUp == 0) {
-      const outer = new Box({
-        x1: this.left,
-        x2: this.left + this.width,
-        y1: this.top,
-        y2: this.top + this.height,
-      });
-
-      const selected: Shape[] = [];
-      const selectedShapes: ActiveSelectionShape[] = [];
-
-      this._board.shapeStore.forEach((shape) => {
-        if (shape.ID() === this.ID() || shape.type === "selection") return false;
-
-        const inner = new Box({
-          x1: shape.left,
-          x2: shape.left + shape.width,
-          y1: shape.top,
-          y2: shape.top + shape.height,
-        });
-
-        if (!outer.isInOtherPartial(inner)) return false;
-
-        selected.push(shape);
-        selectedShapes.push({ s: shape, oldProps: inner });
-
-        return false;
-      });
-      this.shapes = selectedShapes;
-      return selected;
-    } else {
       this.shapes.forEach((s) => {
-        if (!s.s || !s.oldProps) return;
-
-        const relativeLeft = s.oldProps.x1 - old.x1;
-        const relativeTop = s.oldProps.y1 - old.y1;
-
-        const scaleX = newWidth / oldWidth;
-        const scaleY = newHeight / oldHeight;
-
-        const newLeft = this.left + relativeLeft * scaleX;
-        const newTop = this.top + relativeTop * scaleY;
-
-        const newWidthS = (s.oldProps.x2 - s.oldProps.x1) * scaleX;
-        const newHeightS = (s.oldProps.y2 - s.oldProps.y1) * scaleY;
-
-        if (s.s.type === "ellipse") {
-          s.s.set({
-            rx: newWidthS / 2,
-            ry: newHeightS / 2,
-          });
-        }
-
-        if (s.s instanceof Path || s.s instanceof Line) {
-          const lastPoints = s.s.lastPoints;
-          s.s.points.forEach((p, i) => {
-            const original = lastPoints[i];
-            const scaledX = (original.x / oldWidth) * newWidth;
-            const scaledY = (original.y / oldHeight) * newHeight;
-            p.x = scaledX;
-            p.y = scaledY;
-          });
-        }
-        s.s.set({
-          left: newLeft,
-          top: newTop,
-          width: newWidthS,
-          height: newHeightS,
-        });
-      });
-      return this.shapes.map((s) => s.s);
-    }
-  }
-
-  mouseup(s: ShapeEventData): void {
-    if (this.setUp == 0) {
-      this.shapes = [];
-      let updateBox = new Box({
-        x1: Infinity,
-        x2: -Infinity,
-        y1: Infinity,
-        y2: -Infinity,
+         // guard just incase if it calls itself
+         if (s?.s && this.ID() != s?.s.ID()) {
+            s.s.dragging(prev, current);
+         }
       });
 
-      const outer = new Box({
-        x1: this.left,
-        x2: this.left + this.width,
-        y1: this.top,
-        y2: this.top + this.height,
-      });
+      this.left += dx;
+      this.top += dy;
 
-      this._board.shapeStore.forEach((s) => {
-        const inner = new Box({
-          x1: s.left,
-          x2: s.left + s.width,
-          y1: s.top,
-          y2: s.top + s.height,
-        });
-
-        if (outer.isInOtherPartial(inner)) {
-          this.shapes.push({ s });
-          updateBox = updateBox.compareAndReturnSmall(inner);
-        }
-
-        return false;
-      });
-
-      if (this.shapes.length > 1) {
-        this.left = updateBox.x1;
-        this.top = updateBox.y1;
-        this.width = updateBox.x2 - updateBox.x1;
-        this.height = updateBox.y2 - updateBox.y1;
+      const drg = super.dragging(prev, current);
+      if (!drg) {
+         return;
       }
-    }
+      return [...drg, ...this.shapes.map((s) => s.s)];
+   }
 
-    if (this.setUp <= 0) this.setUp++;
-    this.emit("mouseup", s);
-  }
+   draw(options: { active: boolean; ctx?: CanvasRenderingContext2D; addStyles?: boolean }): void {
+      // if (this._board.getActiveShapes()?.ID() === this.ID()) {
+      //    return; // Let activeRect handle the rendering to avoid double drawing
+      // }
 
-  mousedown(e: ShapeEventData): void {
-    this.emit("mousedown", e);
-  }
+      const context = options.ctx || this.ctx;
+      const pad = 0;
+      const x = this.left - pad;
+      const y = this.top - pad;
+      const w = this.width + pad;
+      const h = this.height + pad;
 
-  setCoords(): void {
-    if (this.shapes.length === 0) return;
+      // Compute actual uniform scale
+      const transform = context.getTransform();
+      const currentScale = Math.sqrt(transform.a ** 2 + transform.b ** 2);
 
-    let newBox = new Box({
-      x1: Infinity,
-      x2: -Infinity,
-      y1: Infinity,
-      y2: -Infinity,
-    });
+      context.save();
 
-    this.shapes.forEach((s) => {
-      const inner = new Box({
-        x1: s.s.left,
-        x2: s.s.left + s.s.width,
-        y1: s.s.top,
-        y2: s.s.top + s.s.height,
+      // Apply rotation around center
+      const centerX = this.left + this.width * 0.5;
+      const centerY = this.top + this.height * 0.5;
+      context.translate(centerX, centerY);
+      context.rotate(this.rotate);
+      context.translate(-centerX, -centerY);
+
+      // Draw outer rectangle with constant visual width
+      context.beginPath();
+      context.setLineDash([3, 3]);
+      context.strokeStyle = this.selectionColor;
+      context.lineWidth = this.strokeWidth / currentScale; // Adjust for scale
+      context.rect(x, y, w, h);
+      context.stroke();
+      context.closePath();
+
+      // Corner dot size in screen pixels
+      const screenDotSize = 6;
+      const drawDot = (cx: number, cy: number) => {
+         const wh = screenDotSize / currentScale; // Inverse scale for visual consistency
+         context.beginPath();
+         context.setLineDash([0, 0]);
+         context.fillStyle = this._board.background;
+         context.strokeStyle = this.selectionColor;
+         context.lineWidth = this.selectionStrokeWidth / currentScale; // Keep dot border consistent too
+         context.roundRect(cx - wh / 2, cy - wh / 2, wh, wh, 0);
+         context.stroke();
+         context.fill();
+         context.closePath();
+      };
+
+      drawDot(x, y); // top-left
+      drawDot(x + w, y); // top-right
+      drawDot(x, y + h); // bottom-left
+      drawDot(x + w, y + h); // bottom-right
+
+      context.restore();
+   }
+
+   activeRect(ctx?: CanvasRenderingContext2D) {
+      const context = ctx || this.ctx;
+      const pad = this.padding * 0.5;
+      const x = this.left - pad;
+      const y = this.top - pad;
+      const w = this.width + pad * 2;
+      const h = this.height + pad * 2;
+
+      // Compute actual uniform scale
+      const transform = context.getTransform();
+      const currentScale = Math.sqrt(transform.a ** 2 + transform.b ** 2);
+
+      context.save();
+
+      // Apply rotation around center
+      const centerX = this.left + this.width * 0.5;
+      const centerY = this.top + this.height * 0.5;
+      context.translate(centerX, centerY);
+      context.rotate(this.rotate);
+      context.translate(-centerX, -centerY);
+
+      const indicatorColor = "#4A90E2";
+      const handleSizePx = 8;
+      const outlineWidthPx = 1.5;
+      const handleBorderPx = 1.5;
+
+      // Excalidraw-like active outline
+      context.beginPath();
+      context.setLineDash([3, 3]);
+      context.strokeStyle = indicatorColor;
+      context.fillStyle = "rgba(74, 144, 226, 0.05)";
+      context.lineWidth = outlineWidthPx / currentScale;
+      context.rect(x, y, w, h);
+      context.fill();
+      context.stroke();
+      context.closePath();
+
+      const drawHandle = (cx: number, cy: number) => {
+         const size = handleSizePx / currentScale;
+         context.beginPath();
+         context.setLineDash([0, 0]);
+         context.fillStyle = "#FFFFFF";
+         context.strokeStyle = indicatorColor;
+         context.lineWidth = handleBorderPx / currentScale;
+         context.roundRect(cx - size / 2, cy - size / 2, size, size, size * 0.5);
+         context.stroke();
+         context.fill();
+         context.closePath();
+      };
+
+      drawHandle(x, y);
+      drawHandle(x + w / 2, y);
+      drawHandle(x + w, y);
+      drawHandle(x, y + h / 2);
+      drawHandle(x + w, y + h / 2);
+      drawHandle(x, y + h);
+      drawHandle(x + w / 2, y + h);
+      drawHandle(x + w, y + h);
+
+      context.restore();
+   }
+
+   Resize(current: Point, old: BoxInterface, d: resizeDirection): Shape[] | void {
+      const newBounds = resizeWithRotation({
+         current,
+         old,
+         direction: d,
+         rotate: this.rotate,
+         minWidth: 20,
+         minHeight: 20,
       });
-      if (s instanceof Ellipse) {
-        inner.x1 = inner.x1 - s.rx;
-        inner.y1 = inner.y1 - s.ry;
-        inner.x2 = inner.x1 + s.width;
-        inner.y2 = inner.y1 + s.height;
-      }
-      newBox = newBox.compareAndReturnSmall(inner);
-    });
-    this.left = newBox.x1 - this.padding;
-    this.top = newBox.y1 - this.padding;
-    this.width = newBox.x2 - newBox.x1 + this.padding * 2;
-    this.height = newBox.y2 - newBox.y1 + this.padding * 2;
-  }
 
-  // toObject(): Identity<Shape> {
-  //   const obj = {} as { [K in keyof this]: this[K] | unknown };
-  //   for (const key of Object.keys(this) as Array<keyof this>) {
-  //     const strKey = String(key);
-  //     if (!strKey.startsWith("_") && !keysNotNeeded.includes(strKey)) {
-  //       if (strKey === "shapes") {
-  //         const shapes = this[strKey];
-  //         const s = shapes.map((s) => s.s.toObject());
-  //         obj[key] = s;
-  //       } else {
-  //         obj[key] = this[key];
-  //       }
-  //     }
-  //   }
-  //   return obj;
-  // }
+      this.left = newBounds.left;
+      this.top = newBounds.top;
+      this.width = newBounds.width;
+      this.height = newBounds.height;
+
+      const oldWidth = old.x2 - old.x1;
+      const oldHeight = old.y2 - old.y1;
+      const newWidth = this.width;
+      const newHeight = this.height;
+      if (this.setUp == 0) {
+         const outer = new Box({
+            x1: this.left,
+            x2: this.left + this.width,
+            y1: this.top,
+            y2: this.top + this.height,
+         });
+
+         const selected: Shape[] = [];
+         const selectedShapes: ActiveSelectionShape[] = [];
+
+         this._board.shapeStore.forEach((shape) => {
+            if (shape.ID() === this.ID() || shape.type === "selection") return false;
+
+            const inner = new Box({
+               x1: shape.left,
+               x2: shape.left + shape.width,
+               y1: shape.top,
+               y2: shape.top + shape.height,
+            });
+
+            if (!outer.isInOtherPartial(inner)) return false;
+
+            selected.push(shape);
+            selectedShapes.push({ s: shape, oldProps: inner });
+
+            return false;
+         });
+         this.shapes = selectedShapes;
+         return selected;
+      } else {
+         this.shapes.forEach((s) => {
+            if (!s.s || !s.oldProps) return;
+
+            const relativeLeft = s.oldProps.x1 - old.x1;
+            const relativeTop = s.oldProps.y1 - old.y1;
+
+            const scaleX = newWidth / oldWidth;
+            const scaleY = newHeight / oldHeight;
+
+            const newLeft = this.left + relativeLeft * scaleX;
+            const newTop = this.top + relativeTop * scaleY;
+
+            const newWidthS = (s.oldProps.x2 - s.oldProps.x1) * scaleX;
+            const newHeightS = (s.oldProps.y2 - s.oldProps.y1) * scaleY;
+
+            if (s.s.type === "ellipse") {
+               s.s.rx = newWidthS / 2;
+               s.s.ry = newHeightS / 2;
+            }
+
+            if (s.s instanceof Path || s.s instanceof Line) {
+               const lastPoints = s.s.lastPoints;
+               s.s.points.forEach((p, i) => {
+                  const original = lastPoints[i];
+                  const scaledX = (original.x / oldWidth) * newWidth;
+                  const scaledY = (original.y / oldHeight) * newHeight;
+                  p.x = scaledX;
+                  p.y = scaledY;
+               });
+            }
+            s.s.left = newLeft;
+            s.s.top = newTop;
+            s.s.width = newWidthS;
+            s.s.height = newHeightS;
+         });
+         return this.shapes.map((s) => s.s);
+      }
+   }
+
+   mouseup(s: ShapeEventData): void {
+      if (this.setUp == 0) {
+         this.shapes = [];
+         let updateBox = new Box({
+            x1: Infinity,
+            x2: -Infinity,
+            y1: Infinity,
+            y2: -Infinity,
+         });
+
+         const outer = new Box({
+            x1: this.left,
+            x2: this.left + this.width,
+            y1: this.top,
+            y2: this.top + this.height,
+         });
+
+         this._board.shapeStore.forEach((s) => {
+            const inner = new Box({
+               x1: s.left,
+               x2: s.left + s.width,
+               y1: s.top,
+               y2: s.top + s.height,
+            });
+
+            if (outer.isInOtherPartial(inner)) {
+               this.shapes.push({ s });
+               updateBox = updateBox.compareAndReturnSmall(inner);
+            }
+
+            return false;
+         });
+
+         if (this.shapes.length > 1) {
+            this.left = updateBox.x1;
+            this.top = updateBox.y1;
+            this.width = updateBox.x2 - updateBox.x1;
+            this.height = updateBox.y2 - updateBox.y1;
+         }
+      }
+
+      if (this.setUp <= 0) this.setUp++;
+      this.emit("mouseup", s);
+   }
+
+   mousedown(e: ShapeEventData): void {
+      this.emit("mousedown", e);
+   }
+
+   setCoords(): void {
+      if (this.shapes.length === 0) return;
+
+      let newBox = new Box({
+         x1: Infinity,
+         x2: -Infinity,
+         y1: Infinity,
+         y2: -Infinity,
+      });
+
+      this.shapes.forEach((s) => {
+         const inner = new Box({
+            x1: s.s.left,
+            x2: s.s.left + s.s.width,
+            y1: s.s.top,
+            y2: s.s.top + s.s.height,
+         });
+         if (s instanceof Ellipse) {
+            inner.x1 = inner.x1 - s.rx;
+            inner.y1 = inner.y1 - s.ry;
+            inner.x2 = inner.x1 + s.width;
+            inner.y2 = inner.y1 + s.height;
+         }
+         newBox = newBox.compareAndReturnSmall(inner);
+      });
+      this.left = newBox.x1 - this.padding;
+      this.top = newBox.y1 - this.padding;
+      this.width = newBox.x2 - newBox.x1 + this.padding * 2;
+      this.height = newBox.y2 - newBox.y1 + this.padding * 2;
+   }
+
+   // toObject(): Identity<Shape> {
+   //   const obj = {} as { [K in keyof this]: this[K] | unknown };
+   //   for (const key of Object.keys(this) as Array<keyof this>) {
+   //     const strKey = String(key);
+   //     if (!strKey.startsWith("_") && !keysNotNeeded.includes(strKey)) {
+   //       if (strKey === "shapes") {
+   //         const shapes = this[strKey];
+   //         const s = shapes.map((s) => s.s.toObject());
+   //         obj[key] = s;
+   //       } else {
+   //         obj[key] = this[key];
+   //       }
+   //     }
+   //   }
+   //   return obj;
+   // }
 }
 
 export default ActiveSelection;

@@ -58,7 +58,6 @@ const BoardProvider = ({
   onCursorMove,
   onDeleteShape,
   onThemeChange,
-  isOwner,
   initialShapes,
   canvasLock = false,
 }: {
@@ -84,7 +83,6 @@ const BoardProvider = ({
     background?: string;
     foreground?: string;
   }) => void;
-  isOwner?: boolean;
 }) => {
   const [boardTheme, setBoardThemeState] = React.useState<"dark" | "light">(
     theme === "dark" || theme === "system" ? "dark" : "light",
@@ -773,7 +771,6 @@ const BoardProvider = ({
           setForeground,
           setBackground,
           onThemeChange,
-          isOwner,
           setActiveShape: (s) => {
             setActiveShape(s);
           },

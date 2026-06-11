@@ -23,6 +23,10 @@ import {
   AlignVerticalJustifyCenter,
   Sun,
   Moon,
+  BringToFront,
+  SendToBack,
+  ChevronUp,
+  ChevronDown,
 } from "lucide-react";
 import { useBoard } from "../board-context";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -34,7 +38,6 @@ import { useMobile } from "@/hooks/use-mobile";
 import ActiveSelection from "../shapes/active_selection";
 import Group from "../shapes/group";
 import { Button } from "@/components/ui/button";
-import { Lock } from "lucide-react";
 import type { Board } from "../index";
 
 const EXCALIDRAW_COLORS = [
@@ -57,26 +60,48 @@ const THEME_DEFAULTS = {
 
 function remapShapeColorsForTheme(
   canvas: Board | null,
+  theme: "dark" | "light",
   prevForeground: string,
   nextForeground: string,
   prevBackground: string,
   nextBackground: string,
 ) {
   if (!canvas) return;
+  const isDarkTheme = theme === "dark";
+
   canvas.shapeStore.forEach((shape) => {
     if (shape.type === "selection") return false;
 
     const updates: Record<string, string> = {};
-    const stroke = shape.get("stroke");
-    const fill = shape.get("fill");
+    const stroke = shape.get("stroke")?.toLowerCase();
+    const fill = shape.get("fill")?.toLowerCase();
 
-    if (stroke === prevForeground) {
+    const darkColors = ["#1e1e1e", "#202020", "#000000", prevForeground.toLowerCase()];
+    const lightColors = ["#ffffff", "#cccccc", "#efefef", prevForeground.toLowerCase()];
+
+    const shouldSwapToForeground = (color: string) => {
+      if (!color || color === "transparent") return false;
+      if (color === prevForeground.toLowerCase()) return true;
+      if (isDarkTheme && darkColors.includes(color)) return true;
+      if (!isDarkTheme && lightColors.includes(color)) return true;
+      return false;
+    };
+
+    const shouldSwapToBackground = (color: string) => {
+      if (!color || color === "transparent") return false;
+      if (color === prevBackground.toLowerCase()) return true;
+      if (isDarkTheme && lightColors.includes(color)) return true;
+      if (!isDarkTheme && darkColors.includes(color)) return true;
+      return false;
+    };
+
+    if (shouldSwapToForeground(stroke)) {
       updates.stroke = nextForeground;
     }
 
-    if (shape.type === "line" && fill === prevForeground) {
+    if (shape.type === "line" && shouldSwapToForeground(fill)) {
       updates.fill = nextForeground;
-    } else if (fill === prevBackground) {
+    } else if (shouldSwapToBackground(fill)) {
       updates.fill = nextBackground;
     }
 
@@ -99,13 +124,9 @@ function ThemeToggle() {
     setForeground,
     setBackground,
     onThemeChange,
-    isOwner,
   } = useBoard();
 
-  const isOwnerBool = isOwner ?? true;
-
   const handleThemeChange = (newTheme: "dark" | "light") => {
-    if (!isOwnerBool) return;
     const prevForeground = foreground;
     const prevBackground = background;
     const nextColors = THEME_DEFAULTS[newTheme];
@@ -116,6 +137,7 @@ function ThemeToggle() {
 
     remapShapeColorsForTheme(
       canvas,
+      newTheme,
       prevForeground,
       nextColors.foreground,
       prevBackground,
@@ -132,7 +154,6 @@ function ThemeToggle() {
   };
 
   const handleColorChange = (type: "foreground" | "background", color: string) => {
-    if (!isOwnerBool) return;
     if (type === "foreground") {
       setForeground(color);
       onThemeChange?.({ foreground: color });
@@ -147,24 +168,17 @@ function ThemeToggle() {
       <PopoverTrigger asChild>
         <Button variant={null} size="xs" className="relative">
           {theme === "dark" ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
-          {!isOwnerBool && (
-            <Lock className="h-2.5 w-2.5 absolute -bottom-0.5 -right-0.5 text-muted-foreground" />
-          )}
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-64 p-3" side="top" align="end">
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <span className="text-sm font-medium flex items-center gap-1">
-              Theme
-              {!isOwnerBool && <Lock className="h-3 w-3 text-muted-foreground" />}
-            </span>
+            <span className="text-sm font-medium flex items-center gap-1">Theme</span>
             <div className="flex gap-1">
               <Button
                 variant={theme === "dark" ? "secondary" : "ghost"}
                 size="xs"
                 onClick={() => handleThemeChange("dark")}
-                disabled={!isOwnerBool}
                 className="h-7 px-2">
                 <Moon className="h-3.5 w-3.5 mr-1" />
                 Dark
@@ -173,7 +187,6 @@ function ThemeToggle() {
                 variant={theme === "light" ? "secondary" : "ghost"}
                 size="xs"
                 onClick={() => handleThemeChange("light")}
-                disabled={!isOwnerBool}
                 className="h-7 px-2">
                 <Sun className="h-3.5 w-3.5 mr-1" />
                 Light
@@ -188,13 +201,11 @@ function ThemeToggle() {
               label="Foreground"
               color={foreground}
               onChange={(color) => handleColorChange("foreground", color)}
-              disabled={!isOwnerBool}
             />
             <ColorPickerRow
               label="Background"
               color={background}
               onChange={(color) => handleColorChange("background", color)}
-              disabled={!isOwnerBool}
             />
           </div>
         </div>
@@ -268,6 +279,8 @@ function ShapeOptions() {
       <AlignOptions />
       <div className="w-[1px] bg-border mx-1 h-6 hidden md:block" />
       <VerticalAlignOptions />
+      <div className="w-[1px] bg-border mx-1 h-6 hidden md:block" />
+      <ZOrderButtons />
 
       {(activeShape?.type === "group" || activeShape instanceof ActiveSelection) && (
         <div className="flex items-center gap-1">
@@ -507,17 +520,17 @@ function StrokeOption() {
           </div>
           <div className="flex items-center gap-2">
             <span className="text-xs text-muted-foreground w-12">Custom</span>
-          <div className="relative h-6 w-6 rounded-md overflow-hidden border border-border/50 cursor-pointer hover:scale-110 transition-transform">
-            <input
-              type="color"
-              className="absolute inset-0 w-[150%] h-[150%] -top-1/4 -left-1/4 cursor-pointer p-0 border-0"
-              value={activeShape?.get("stroke") || "#000000"}
-              onChange={(e) => {
-                if (!activeShape) return;
-                applyStroke(e.target.value);
-              }}
-            />
-          </div>
+            <div className="relative h-6 w-6 rounded-md overflow-hidden border border-border/50 cursor-pointer hover:scale-110 transition-transform">
+              <input
+                type="color"
+                className="absolute inset-0 w-[150%] h-[150%] -top-1/4 -left-1/4 cursor-pointer p-0 border-0"
+                value={activeShape?.get("stroke") || "#000000"}
+                onChange={(e) => {
+                  if (!activeShape) return;
+                  applyStroke(e.target.value);
+                }}
+              />
+            </div>
           </div>
         </div>
       </PopoverContent>
@@ -588,20 +601,20 @@ function FillOption() {
           <div className="flex items-center gap-2">
             <span className="text-xs text-muted-foreground w-12">Custom</span>
             <div className="relative h-6 w-6 rounded-md overflow-hidden border border-border/50 cursor-pointer hover:scale-110 transition-transform">
-            <input
-              type="color"
-              className="absolute inset-0 w-[150%] h-[150%] -top-1/4 -left-1/4 cursor-pointer p-0 border-0"
-              value={
-                activeShape?.get("fill") === "transparent"
-                  ? "#ffffff"
-                  : activeShape?.get("fill") || "#ffffff"
-              }
-              onChange={(e) => {
-                if (!activeShape) return;
-                applyFill(e.target.value);
-              }}
-            />
-          </div>
+              <input
+                type="color"
+                className="absolute inset-0 w-[150%] h-[150%] -top-1/4 -left-1/4 cursor-pointer p-0 border-0"
+                value={
+                  activeShape?.get("fill") === "transparent"
+                    ? "#ffffff"
+                    : activeShape?.get("fill") || "#ffffff"
+                }
+                onChange={(e) => {
+                  if (!activeShape) return;
+                  applyFill(e.target.value);
+                }}
+              />
+            </div>
           </div>
         </div>
       </PopoverContent>
@@ -883,7 +896,6 @@ function RotationOption() {
 
 function VerticalAlignOptions() {
   const { activeShape, canvas } = useBoard();
-  // const [align, setAlign] = useState((activeShape?.get("verticalAlign") as "top" | "center" | "bottom") || "center");
 
   const handleAlign = (a: "top" | "center" | "bottom") => {
     if (!activeShape || !canvas) return;
@@ -894,7 +906,6 @@ function VerticalAlignOptions() {
     }
     activeShape.set("verticalAlign", a);
     canvas.render();
-    // setAlign(a);
   };
 
   const currentAlign =
@@ -922,6 +933,45 @@ function VerticalAlignOptions() {
         className={cn("rounded-sm")}
         onClick={() => handleAlign("bottom")}>
         <ArrowDownToLine className={cn("h-3.5 w-3.5")} />
+      </Button>
+    </div>
+  );
+}
+
+function ZOrderButtons() {
+  const { activeShape, canvas } = useBoard();
+
+  if (!activeShape || activeShape instanceof ActiveSelection) return null;
+
+  return (
+    <div className="flex bg-muted/50 rounded-md p-0.5 border border-border/50">
+      <Button
+        variant="ghost"
+        size="icon"
+        className="h-6 w-6"
+        onClick={() => canvas?.bringToFront(activeShape)}>
+        <BringToFront className="h-3.5 w-3.5" />
+      </Button>
+      <Button
+        variant="ghost"
+        size="icon"
+        className="h-6 w-6"
+        onClick={() => canvas?.bringForward(activeShape)}>
+        <ChevronUp className="h-3.5 w-3.5" />
+      </Button>
+      <Button
+        variant="ghost"
+        size="icon"
+        className="h-6 w-6"
+        onClick={() => canvas?.sendBackward(activeShape)}>
+        <ChevronDown className="h-3.5 w-3.5" />
+      </Button>
+      <Button
+        variant="ghost"
+        size="icon"
+        className="h-6 w-6"
+        onClick={() => canvas?.sendToBack(activeShape)}>
+        <SendToBack className="h-3.5 w-3.5" />
       </Button>
     </div>
   );

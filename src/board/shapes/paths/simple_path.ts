@@ -28,6 +28,64 @@ class SimplePath extends Path {
 
       const currentScale = context.getTransform().a;
 
+      if (
+         !this._cachedPath ||
+         this._cachedScale !== currentScale ||
+         this._cachedPointsLen !== this.points.length
+      ) {
+         this._cachedScale = currentScale;
+         this._cachedPointsLen = this.points.length;
+
+         // Transform points based on flip settings
+         const transformedPoints = this.points.map((point) => {
+            let x = point.x;
+            let y = point.y;
+
+            if (this.flipX) {
+               x = this.width - x;
+            }
+
+            if (this.flipY) {
+               y = this.height - y;
+            }
+
+            return [x, y, 0.5] as [number, number, number]; // [x, y, pressure]
+         });
+
+         // Get smooth stroke outline from perfect-freehand
+         const stroke = getStroke(transformedPoints, {
+            size: (resize ? 3 : this.strokeWidth) / currentScale,
+            thinning: 0.1,
+            smoothing: 2,
+            streamline: 0.5,
+            easing: (t) => t,
+            start: {
+               taper: 0,
+               cap: true,
+            },
+            end: {
+               taper: 0,
+               cap: true,
+            },
+         });
+
+         const p = new Path2D();
+         if (stroke.length > 0) {
+            p.moveTo(stroke[0][0], stroke[0][1]);
+
+            for (let i = 1; i < stroke.length - 1; i++) {
+               const pt = stroke[i];
+               const nextPt = stroke[i + 1];
+               const midX = (pt[0] + nextPt[0]) / 2;
+               const midY = (pt[1] + nextPt[1]) / 2;
+               p.quadraticCurveTo(pt[0], pt[1], midX, midY);
+            }
+
+            p.closePath();
+         }
+         this._cachedPath = p;
+      }
+
       context.save();
 
       // Rotation logic
@@ -39,55 +97,11 @@ class SimplePath extends Path {
 
       context.translate(this.left, this.top);
 
-      // Transform points based on flip settings
-      const transformedPoints = this.points.map((point) => {
-         let x = point.x;
-         let y = point.y;
-
-         if (this.flipX) {
-            x = this.width - x;
-         }
-
-         if (this.flipY) {
-            y = this.height - y;
-         }
-
-         return [x, y, 0.5] as [number, number, number]; // [x, y, pressure]
-      });
-
-      // Get smooth stroke outline from perfect-freehand
-      const stroke = getStroke(transformedPoints, {
-         size: (resize ? 3 : this.strokeWidth) / currentScale,
-         thinning: 0.5,
-         smoothing: 0.5,
-         streamline: 0.5,
-         easing: (t) => t,
-         start: {
-            taper: 0,
-            cap: true,
-         },
-         end: {
-            taper: 0,
-            cap: true,
-         },
-      });
-
-      // Draw the smooth stroke
-      context.beginPath();
-
-      if (stroke.length > 0) {
-         context.moveTo(stroke[0][0], stroke[0][1]);
-
-         for (let i = 1; i < stroke.length; i++) {
-            context.lineTo(stroke[i][0], stroke[i][1]);
-         }
-
-         context.closePath();
-      }
-
       // Fill the stroke path with the stroke color
       context.fillStyle = resize ? "#808080" : this.stroke;
-      context.fill();
+      if (this._cachedPath) {
+         context.fill(this._cachedPath);
+      }
 
       context.restore();
    }

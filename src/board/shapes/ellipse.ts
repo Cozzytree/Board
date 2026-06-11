@@ -76,12 +76,9 @@ class Ellipse extends Shape {
     const dx = current.x - prev.x;
     const dy = current.y - prev.y;
 
-    this.set({
-      left: (this.left += dx),
-      right: (this.top += dy),
-    });
-    // this.left += dx;
-    // this.top += dy;
+    this.left += dx;
+    this.top += dy;
+
 
     return super.dragging(prev, current);
   }
