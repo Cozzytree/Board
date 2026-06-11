@@ -122,7 +122,7 @@ class SelectionTool implements ToolInterface {
       if (this.isInput || document.getElementById(textAreaId)) {
          // Force cleanup
          const el = document.getElementById(textAreaId);
-         if (el?.parentNode) el.parentNode.removeChild(el);
+         try { el?.remove(); } catch(e) {}
          this.isInput = false;
 
          if (this.textEdit) {
@@ -734,7 +734,7 @@ class SelectionTool implements ToolInterface {
 
       // Remove any existing textarea
       const existingEl = document.getElementById(textAreaId);
-      if (existingEl?.parentNode) existingEl.parentNode.removeChild(existingEl);
+      try { existingEl?.remove(); } catch(e) {}
 
       // Create container div
       const div = document.createElement("div");
@@ -788,7 +788,7 @@ class SelectionTool implements ToolInterface {
                this.textEdit.set("text", value);
                this.textEdit = null;
             }
-            if (div.parentNode) div.parentNode.removeChild(div);
+            try { div.remove(); } catch(e) {}
             this.isInput = false;
             this._board.render();
          }
@@ -805,7 +805,7 @@ class SelectionTool implements ToolInterface {
          }
 
          this.isInput = false;
-         if (div.parentNode) div.parentNode.removeChild(div);
+         try { div.remove(); } catch(e) {}
          this._board.render();
       };
       textarea.addEventListener("blur", handleBlur);
@@ -864,7 +864,7 @@ class SelectionTool implements ToolInterface {
    cleanUp(): void {
       // Clean up textarea if active
       const el = document.getElementById(textAreaId);
-      if (el?.parentNode) el.parentNode.removeChild(el);
+      try { el?.remove(); } catch(e) {}
       this.isInput = false;
       this.textEdit = null;
       document.removeEventListener("keydown", this.handleKeyDown);
@@ -873,6 +873,10 @@ class SelectionTool implements ToolInterface {
    private onkeydown(e: KeyboardEvent) {
       // Text editing is now handled by textarea in tryStartTextEdit()
       // This method only handles other keyboard shortcuts
+
+      const tag = (e.target as HTMLElement)?.tagName;
+      const isTyping = tag === "INPUT" || tag === "TEXTAREA" || (e.target as HTMLElement)?.isContentEditable;
+      if (this.isInput || isTyping) return;
 
       if (this.resizableShape || this.draggedShape || this.hasSelectionStarted) return;
       if (e.key === "Delete") {
