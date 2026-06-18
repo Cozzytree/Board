@@ -12,7 +12,6 @@ import type {
 import {
    SelectionTool,
    Shape,
-   ShapeStore,
    ActiveSelection,
    ShapeTool,
    DrawTool,
@@ -24,6 +23,7 @@ import EraserTool from "./tool/eraser_tool";
 import ImageTool from "./tool/image_tool";
 import { parseSvgToShapeProps } from "./utils/svg_parser";
 import SvgShape from "./shapes/svg_shape";
+import ShapeStoreArr from "./shapes/shape_store_arr";
 type view_t = { x: number; y: number; scl: number };
 
 type BoardProps = {
@@ -112,7 +112,7 @@ class Board implements BoardInterface {
    }
    declare view: { x: number; y: number; scl: number; cartesian: boolean };
    declare activeShapes: Shape | null;
-   declare shapeStore: ShapeStore<Shape>;
+   declare shapeStore: ShapeStoreArr<Shape>;
    declare canvas2: HTMLCanvasElement;
    declare ctx2: CanvasRenderingContext2D;
 
@@ -153,7 +153,6 @@ class Board implements BoardInterface {
       onImageUpload,
       container,
       isLocked = false,
-      initialShapes,
    }: BoardProps) {
       this.customShapes = new Map();
       customShapes.forEach((s) => {
@@ -220,7 +219,7 @@ class Board implements BoardInterface {
       this.ctx2 = ctx2;
 
       this.modes = { m: "cursor", sm: "free" };
-      this.shapeStore = new ShapeStore();
+      this.shapeStore = new ShapeStoreArr();
       this.activeShapes = null;
 
       this.currentTool = new SelectionTool(this, "free");

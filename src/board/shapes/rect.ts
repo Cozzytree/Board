@@ -94,21 +94,20 @@ class Rect extends Shape {
       return super.dragging(prev, current);
    }
 
-   IsResizable(p: Point): resizeDirection | null {
+   IsResizable(p: Point, hitPadding: number = 0) {
       const { height, width, top, left, rotate } = this;
 
-      const halfW = this.width / 2;
-      const halfH = this.height / 2;
       const localBox = new Box({
-         x1: -halfW,
-         x2: halfW,
-         y1: -halfH,
-         y2: halfH,
+         x1: -width / 2,
+         x2: width / 2,
+         y1: -height / 2,
+         y2: height / 2,
       });
+
       const d = resizeRect(
          calcPointWithRotation({ height, width, left, point: p, rotate, top }),
          localBox,
-         this.padding,
+         this.padding + hitPadding,
       );
       // const d = resizeRect(
       //    calcPointWithRotation({ height, width, left, point: p, rotate, top }),

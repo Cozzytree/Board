@@ -69,7 +69,7 @@ abstract class Shape implements ShapeProps {
    cachedLocalPath: Path2D | null = null;
 
    abstract draw(options: DrawProps): void;
-   abstract IsResizable(p: Point): resizeDirection | null;
+   abstract IsResizable(p: Point, hitPadding?: number): resizeDirection | null;
    abstract IsDraggable(p: Point): boolean;
    abstract clone(): Shape;
    // abstract connectionEvent(e: connectionEventData): void;

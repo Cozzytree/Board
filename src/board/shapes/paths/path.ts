@@ -203,7 +203,7 @@ class Path extends Shape {
       context.restore(); // Restore outer rotation
    }
 
-   IsResizable(p: Point) {
+   IsResizable(p: Point, hitPadding: number = 0) {
       const { height, width, top, left, rotate } = this;
       const halfW = this.width / 2;
       const halfH = this.height / 2;
@@ -217,7 +217,7 @@ class Path extends Shape {
       const rs = resizeRect(
          calcPointWithRotation({ height, width, left, point: p, rotate, top }),
          localBox,
-         this.padding,
+         this.padding + hitPadding,
       );
       if (rs) {
          this.lastPoints = this.points.map((p) => ({ x: p.x, y: p.y }));

@@ -117,6 +117,10 @@ class SelectionTool implements ToolInterface {
 
    pointerDown({ e, p }: ToolEventData, callback?: (e: EventData) => void): void {
       if (this.isTouchGesture) return;
+
+      const isTouch = ('touches' in e) || (('pointerType' in e) && (e as any).pointerType === 'touch');
+      const touchPadding = isTouch ? 20 : 0;
+
       // this.snapLines = [];
       // Check if we are currently editing text or if the input exists
       if (this.isInput || document.getElementById(textAreaId)) {
@@ -203,7 +207,7 @@ class SelectionTool implements ToolInterface {
                return;
             }
 
-            const resize = currentActive.IsResizable(p);
+            const resize = currentActive.IsResizable(p, touchPadding);
             if (resize) {
                callback?.({ e: { x: p.x, y: p.y, target: [currentActive] } });
 
@@ -268,7 +272,7 @@ class SelectionTool implements ToolInterface {
 
          // if a shape is already active check if resizable
          if (currentActive) {
-            const d = currentActive.IsResizable(p);
+            const d = currentActive.IsResizable(p, touchPadding);
             if (d) {
                callback?.({ e: { x: p.x, y: p.y, target: [currentActive] } });
 
@@ -406,15 +410,19 @@ class SelectionTool implements ToolInterface {
       return false;
    }
 
-   pointermove({ p }: ToolEventData, mousemove: (e: EventData) => void): void {
+   pointermove({ p, e }: ToolEventData, mousemove: (e: EventData) => void): void {
       if (this.isTouchGesture) return;
       this.hoveredShape = null;
+
+      const isTouch = ('touches' in e) || (('pointerType' in e) && (e as any).pointerType === 'touch');
+      const touchPadding = isTouch ? 20 : 0;
 
       if (this.subMode === "grab" && this.isGrabbing) {
          this._board.view.x += this._board.evt.dx;
          this._board.view.y += this._board.evt.dy;
 
-         this._board.render();
+         this._board.onScroll?.(this._board.view);
+         this._board.renderImmediate();
          return;
       }
       this._board._lastMousePosition = p;
@@ -587,7 +595,7 @@ class SelectionTool implements ToolInterface {
          if (activeShape.isRotating && activeShape.isRotating(p)) {
             activeShape.mouseover({ e: { point: p } });
             foundHoveredShape = true;
-         } else if (activeShape.IsResizable(p)) {
+         } else if (activeShape.IsResizable(p, touchPadding)) {
             activeShape.mouseover({ e: { point: p } });
             foundHoveredShape = true;
          } else if (activeShape.IsDraggable(p)) {

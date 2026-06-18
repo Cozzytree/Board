@@ -264,16 +264,18 @@ class Text extends Shape {
     return super.dragging(prev, current);
   }
 
-  IsResizable(p: Point): resizeDirection | null {
+  IsResizable(p: Point, hitPadding: number = 0) {
+    const { height, width, top, left, rotate } = this;
+    const localBox = new Box({
+      x1: -width / 2,
+      x2: width / 2,
+      y1: -height / 2,
+      y2: height / 2,
+    });
     const d = resizeRect(
-      p,
-      new Box({
-        x1: this.left,
-        y1: this.top,
-        x2: this.left + this.width,
-        y2: this.top + this.height,
-      }),
-      this.padding,
+      calcPointWithRotation({ height, width, left, point: p, rotate, top }),
+      localBox,
+      this.padding + hitPadding,
     );
     if (d) {
       return d.rd;
