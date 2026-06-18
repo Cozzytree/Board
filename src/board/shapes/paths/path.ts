@@ -7,287 +7,321 @@ import { setCoords, calcPointWithRotation } from "@/board/utils/utilfunc";
 import { resizeWithRotationAndFlip } from "@/board/utils/resizeWithRotation";
 
 export type PathProps = {
-  points?: Point[];
-  pathType?: string;
+   points?: Point[];
+   pathType?: string;
 };
 
 class Path extends Shape {
-  declare points: Point[];
-  lastPoints: Point[];
-  declare pathType: string;
-  _cachedPath: Path2D | null = null;
-  _cachedScale: number = 0;
-  _cachedPointsLen: number = 0;
+   declare points: Point[];
+   lastPoints: Point[];
+   declare pathType: string;
+   _cachedPath: Path2D | null = null;
+   _cachedScale: number = 0;
+   _cachedPointsLen: number = 0;
 
-  constructor(props: ShapeProps & PathProps) {
-    super(props);
-    this.points = props.points || [];
-    this.lastPoints = this.points.map((p) => {
-      return { x: p.x, y: p.y };
-    });
-    this.type = "path";
-  }
+   constructor(props: ShapeProps & PathProps) {
+      super(props);
+      this.points = props.points || [];
+      this.lastPoints = this.points.map((p) => {
+         return { x: p.x, y: p.y };
+      });
+      this.type = "path";
+   }
 
-  invalidateCache() {
-    this._cachedPath = null;
-    this._cachedScale = 0;
-    this._cachedPointsLen = 0;
-  }
+   invalidateCache() {
+      this._cachedPath = null;
+      this._cachedScale = 0;
+      this._cachedPointsLen = 0;
+   }
 
-  set(key: string | Record<string, any>, value?: any) {
-    let shouldInvalidate = false;
-    const checkKey = (k: string) => {
-      if (['points', 'width', 'height', 'flipX', 'flipY', 'strokeWidth'].includes(k)) {
-        shouldInvalidate = true;
+   set(key: string | Record<string, any>, value?: any) {
+      let shouldInvalidate = false;
+      const checkKey = (k: string) => {
+         if (['points', 'width', 'height', 'flipX', 'flipY', 'strokeWidth'].includes(k)) {
+            shouldInvalidate = true;
+         }
+      };
+
+      if (typeof key === "object") {
+         Object.keys(key).forEach(checkKey);
+      } else {
+         checkKey(key);
       }
-    };
 
-    if (typeof key === "object") {
-      Object.keys(key).forEach(checkKey);
-    } else {
-      checkKey(key);
-    }
+      super.set(key, value);
 
-    super.set(key, value);
+      if (shouldInvalidate) {
+         this.invalidateCache();
+      }
+      return this;
+   }
 
-    if (shouldInvalidate) {
-      this.invalidateCache();
-    }
-    return this;
-  }
+   protected _set(key: string, value: any) {
+      if (['points', 'width', 'height', 'flipX', 'flipY', 'strokeWidth'].includes(key)) {
+         this.invalidateCache();
+      }
+      super._set(key, value);
+   }
 
-  setCoords(): void {
-    const { box, points } = setCoords(this.points, this.left, this.top);
-    this.set({
-      points,
-      left: box.x1,
-      top: box.y1,
-      width: box.x2 - box.x1,
-      height: box.y2 - box.y1,
-    });
-  }
+   setCoords(): void {
+      const { box, points } = setCoords(this.points, this.left, this.top);
+      this.set({
+         points,
+         left: box.x1,
+         top: box.y1,
+         width: box.x2 - box.x1,
+         height: box.y2 - box.y1,
+      });
+   }
 
-  clone(): Shape {
-    const props = super.cloneProps();
-    return new Path({ ...props, points: this.points });
-  }
+   clone(): Shape {
+      const props = super.cloneProps();
+      return new Path({ ...props, points: this.points });
+   }
 
-  mouseup(s: ShapeEventData): void {
-    this.lastPoints = [];
-    super.set("lastFlippedState", {
-      x: super.get("flipX"),
-      y: super.get("flipY"),
-    });
-    this.setCoords();
-    super.mouseup(s);
-  }
+   getLocalPath(): Path2D {
+      if (!this.cachedLocalPath) {
+         this.cachedLocalPath = new Path2D();
+         if (this.points.length > 0) {
+            let startX = this.points[0].x;
+            let startY = this.points[0].y;
+            if (this.flipX) startX = this.width - startX;
+            if (this.flipY) startY = this.height - startY;
+            this.cachedLocalPath.moveTo(startX, startY);
 
-  IsDraggable(p: Point): boolean {
-    return isDraggableWithRotation({
-      point: p,
-      left: this.left,
-      top: this.top,
-      width: this.width,
-      height: this.height,
-      rotate: this.rotate,
-    });
-  }
+            for (let i = 1; i < this.points.length; i++) {
+               let x = this.points[i].x;
+               let y = this.points[i].y;
+               if (this.flipX) x = this.width - x;
+               if (this.flipY) y = this.height - y;
+               this.cachedLocalPath.lineTo(x, y);
+            }
+         }
+      }
+      return this.cachedLocalPath;
+   }
 
-  draw({ ctx, addStyles = true, resize }: DrawProps): void {
-    if (this.points.length < 2) return;
-    const context = ctx || this.ctx;
+   mouseup(s: ShapeEventData): void {
+      this.lastPoints = [];
+      super.set("lastFlippedState", {
+         x: super.get("flipX"),
+         y: super.get("flipY"),
+      });
+      this.setCoords();
+      super.mouseup(s);
+   }
 
-    const currentScale = context.getTransform().a;
+   IsDraggable(p: Point): boolean {
+      return isDraggableWithRotation({
+         point: p,
+         left: this.left,
+         top: this.top,
+         width: this.width,
+         height: this.height,
+         rotate: this.rotate,
+      });
+   }
 
-    context.save();
+   draw({ ctx, addStyles = true, resize }: DrawProps): void {
+      if (this.points.length < 2) return;
+      const context = ctx || this.ctx;
 
-    // Rotation logic
-    const centerX = this.left + this.width * 0.5;
-    const centerY = this.top + this.height * 0.5;
-    context.translate(centerX, centerY);
-    context.rotate(this.rotate);
-    context.translate(-centerX, -centerY);
+      const currentScale = context.getTransform().a;
 
-    context.translate(this.left, this.top);
+      context.save();
 
-    if (resize) {
-      context.globalAlpha = this.selectionAlpha;
-      context.strokeStyle = this.selectionColor;
-      context.fillStyle = this.selectionFill;
-      context.lineWidth = this.selectionStrokeWidth / currentScale;
-      context.setLineDash([
-        this.selectionDash[0] / currentScale,
-        this.selectionDash[1] / currentScale,
-      ]);
-    } else {
-      context.setLineDash(this.dash);
-      context.lineWidth = this.strokeWidth / currentScale;
-      context.strokeStyle = this.stroke;
-      context.fillStyle = this.fill;
-    }
-    context.scale(this.scale, this.scale);
+      // Rotation logic
+      const centerX = this.left + this.width * 0.5;
+      const centerY = this.top + this.height * 0.5;
+      context.translate(centerX, centerY);
+      context.rotate(this.rotate);
+      context.translate(-centerX, -centerY);
 
-    context.beginPath();
+      context.save(); // Inner save for path transforms
+      context.translate(this.left, this.top);
 
-    let startX = this.points[0].x;
-    let startY = this.points[0].y;
+      if (resize) {
+         context.globalAlpha = this.selectionAlpha;
+         context.strokeStyle = this.selectionColor;
+         context.fillStyle = this.selectionFill;
+         context.lineWidth = this.selectionStrokeWidth / currentScale;
+         context.setLineDash([
+            this.selectionDash[0] / currentScale,
+            this.selectionDash[1] / currentScale,
+         ]);
+      } else {
+         context.setLineDash(this.dash);
+         context.lineWidth = this.strokeWidth / currentScale;
+         context.strokeStyle = this.stroke;
+         context.fillStyle = this.fill;
+      }
+      context.scale(this.scale, this.scale);
 
-    if (this.flipX) {
-      startX = this.width - startX;
-    }
+      context.beginPath();
 
-    if (this.flipY) {
-      startY = this.height - startY;
-    }
-
-    context.moveTo(startX, startY);
-
-    for (let i = 1; i < this.points.length; i++) {
-      let x = this.points[i].x;
-      let y = this.points[i].y;
+      let startX = this.points[0].x;
+      let startY = this.points[0].y;
 
       if (this.flipX) {
-        x = this.width - x;
+         startX = this.width - startX;
       }
 
       if (this.flipY) {
-        y = this.height - y;
+         startY = this.height - startY;
       }
-      context.lineTo(x, y);
-    }
-    if (addStyles) {
-      context.fill();
-    }
 
-    if (!resize) {
-      context.fill();
-    }
-    context.closePath();
-    context.stroke();
-    context.restore();
+      context.moveTo(startX, startY);
 
-    super.renderText({ context });
-  }
+      for (let i = 1; i < this.points.length; i++) {
+         let x = this.points[i].x;
+         let y = this.points[i].y;
 
-  IsResizable(p: Point) {
-    const { height, width, top, left, rotate } = this;
-    const halfW = this.width / 2;
-    const halfH = this.height / 2;
-    const localBox = new Box({
-      x1: -halfW,
-      x2: halfW,
-      y1: -halfH,
-      y2: halfH,
-    });
+         if (this.flipX) {
+            x = this.width - x;
+         }
 
-    const rs = resizeRect(
-      calcPointWithRotation({ height, width, left, point: p, rotate, top }),
-      localBox,
-      this.padding,
-    );
-    if (rs) {
-      this.lastPoints = this.points.map((p) => ({ x: p.x, y: p.y }));
-      return rs.rd;
-    }
-    return null;
-  }
+         if (this.flipY) {
+            y = this.height - y;
+         }
+         context.lineTo(x, y);
+      }
+      if (addStyles) {
+         context.fill();
+      }
 
-  Resize(current: Point, old: BoxInterface, d: resizeDirection) {
-    const newBounds = resizeWithRotationAndFlip({
-      current,
-      old,
-      direction: d,
-      rotate: this.rotate,
-      minWidth: 20,
-      minHeight: 20
-    });
+      if (!resize) {
+         context.fill();
+      }
+      context.closePath();
+      context.stroke();
+      context.restore(); // Restore inner path transforms
 
-    const newWidth = newBounds.width;
-    const newHeight = this.adjustHeight(newBounds.height);
+      if (this.text.length) {
+         super.renderText({ context });
+      }
+      
+      context.restore(); // Restore outer rotation
+   }
 
-    const centerX = old.x1 + (old.x2 - old.x1) / 2;
-    const centerY = old.y1 + (old.y2 - old.y1) / 2;
-    const dx = current.x - centerX;
-    const dy = current.y - centerY;
-    const cos = Math.cos(-this.rotate);
-    const sin = Math.sin(-this.rotate);
-    const localX = dx * cos - dy * sin;
-    const localY = dx * sin + dy * cos;
+   IsResizable(p: Point) {
+      const { height, width, top, left, rotate } = this;
+      const halfW = this.width / 2;
+      const halfH = this.height / 2;
+      const localBox = new Box({
+         x1: -halfW,
+         x2: halfW,
+         y1: -halfH,
+         y2: halfH,
+      });
 
-    // Local bounds of old shape
-    const halfW = (old.x2 - old.x1) / 2;
-    const halfH = (old.y2 - old.y1) / 2;
+      const rs = resizeRect(
+         calcPointWithRotation({ height, width, left, point: p, rotate, top }),
+         localBox,
+         this.padding,
+      );
+      if (rs) {
+         this.lastPoints = this.points.map((p) => ({ x: p.x, y: p.y }));
+         return rs.rd;
+      }
+      return null;
+   }
 
-    let flipX = this.lastFlippedState.x;
-    let flipY = this.lastFlippedState.y;
+   Resize(current: Point, old: BoxInterface, d: resizeDirection) {
+      const newBounds = resizeWithRotationAndFlip({
+         current,
+         old,
+         direction: d,
+         rotate: this.rotate,
+         minWidth: 20,
+         minHeight: 20
+      });
 
-    switch (d) {
-      case "l":
-      case "bl":
-      case "tl":
-        // Moving left handle. Fixed is right edge (halfW).
-        // If localX > halfW, we flipped.
-        flipX = this.lastFlippedState.x ? localX < halfW : localX > halfW;
-        break;
-      case "r":
-      case "br":
-      case "tr":
-        // Moving right handle. Fixed is left edge (-halfW).
-        // If localX < -halfW, we flipped.
-        flipX = this.lastFlippedState.x ? localX > -halfW : localX < -halfW;
-        break;
-    }
+      const newWidth = newBounds.width;
+      const newHeight = this.adjustHeight(newBounds.height);
 
-    switch (d) {
-      case "t":
-      case "tr":
-      case "tl":
-        // Moving top. Fixed is bottom (halfH).
-        flipY = this.lastFlippedState.y ? localY < halfH : localY > halfH;
-        break;
-      case "b":
-      case "br":
-      case "bl":
-        // Moving bottom. Fixed is top (-halfH).
-        flipY = this.lastFlippedState.y ? localY > -halfH : localY < -halfH;
-        break;
-    }
+      const centerX = old.x1 + (old.x2 - old.x1) / 2;
+      const centerY = old.y1 + (old.y2 - old.y1) / 2;
+      const dx = current.x - centerX;
+      const dy = current.y - centerY;
+      const cos = Math.cos(-this.rotate);
+      const sin = Math.sin(-this.rotate);
+      const localX = dx * cos - dy * sin;
+      const localY = dx * sin + dy * cos;
 
-    const oldWidth = old.x2 - old.x1;
-    const oldHeight = old.y2 - old.y1;
+      // Local bounds of old shape
+      const halfW = (old.x2 - old.x1) / 2;
+      const halfH = (old.y2 - old.y1) / 2;
 
-    this.points.forEach((p, i) => {
-      const original = this.lastPoints[i];
-      // % within the box / newVal
-      const scaledX = (original.x / oldWidth) * newWidth;
-      const scaledY = (original.y / oldHeight) * newHeight;
-      p.x = scaledX;
-      p.y = scaledY;
-    });
+      let flipX = this.lastFlippedState.x;
+      let flipY = this.lastFlippedState.y;
 
-    super.set({
-      left: newBounds.left,
-      top: newBounds.top,
-      width: newWidth,
-      height: newHeight,
-      flipX,
-      flipY,
-    });
+      switch (d) {
+         case "l":
+         case "bl":
+         case "tl":
+            // Moving left handle. Fixed is right edge (halfW).
+            // If localX > halfW, we flipped.
+            flipX = this.lastFlippedState.x ? localX < halfW : localX > halfW;
+            break;
+         case "r":
+         case "br":
+         case "tr":
+            // Moving right handle. Fixed is left edge (-halfW).
+            // If localX < -halfW, we flipped.
+            flipX = this.lastFlippedState.x ? localX > -halfW : localX < -halfW;
+            break;
+      }
 
-    this.invalidateCache();
+      switch (d) {
+         case "t":
+         case "tr":
+         case "tl":
+            // Moving top. Fixed is bottom (halfH).
+            flipY = this.lastFlippedState.y ? localY < halfH : localY > halfH;
+            break;
+         case "b":
+         case "br":
+         case "bl":
+            // Moving bottom. Fixed is top (-halfH).
+            flipY = this.lastFlippedState.y ? localY > -halfH : localY < -halfH;
+            break;
+      }
 
-    return super.Resize(current, old, d);
-  }
+      const oldWidth = old.x2 - old.x1;
+      const oldHeight = old.y2 - old.y1;
 
-  dragging(prev: Point, current: Point) {
-    const dx = current.x - prev.x;
-    const dy = current.y - prev.y;
+      this.points.forEach((p, i) => {
+         const original = this.lastPoints[i];
+         // % within the box / newVal
+         const scaledX = (original.x / oldWidth) * newWidth;
+         const scaledY = (original.y / oldHeight) * newHeight;
+         p.x = scaledX;
+         p.y = scaledY;
+      });
 
-    this.left += dx;
-    this.top += dy;
+      super.setSilent({
+         left: newBounds.left,
+         top: newBounds.top,
+         width: newWidth,
+         height: newHeight,
+         flipX,
+         flipY,
+      });
 
-    return super.dragging(prev, current);
-  }
+      this.invalidateCache();
+
+      return super.Resize(current, old, d);
+   }
+
+   dragging(prev: Point, current: Point) {
+      const dx = current.x - prev.x;
+      const dy = current.y - prev.y;
+
+      this.left += dx;
+      this.top += dy;
+
+      return super.dragging(prev, current);
+   }
 }
 
 export default Path;

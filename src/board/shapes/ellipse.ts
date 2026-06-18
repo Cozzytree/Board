@@ -28,6 +28,14 @@ class Ellipse extends Shape {
     return new Ellipse({ ...props, rx: this.rx, ry: this.ry });
   }
 
+  getLocalPath(): Path2D {
+    if (!this.cachedLocalPath) {
+       this.cachedLocalPath = new Path2D();
+       this.cachedLocalPath.ellipse(this.rx, this.ry, this.rx, this.ry, 0, 0, Math.PI * 2);
+    }
+    return this.cachedLocalPath;
+  }
+
   IsDraggable(p: Pointer): boolean {
     // Use the rotation-aware draggable check utility
 
@@ -137,6 +145,12 @@ class Ellipse extends Shape {
 
     const currentScale = context.getTransform().a;
 
+    const centerX = this.left + this.rx;
+    const centerY = this.top + this.ry;
+    context.translate(centerX, centerY);
+    context.rotate(this.rotate);
+    context.translate(-centerX, -centerY);
+
     if (resize) {
       context.globalAlpha = this.selectionAlpha;
       context.strokeStyle = this.selectionColor;
@@ -160,7 +174,6 @@ class Ellipse extends Shape {
 
     context.stroke();
     context.closePath();
-    context.restore();
 
     if (this.text.length) {
       super.renderText({
@@ -168,6 +181,8 @@ class Ellipse extends Shape {
         text: breakText({ ctx: context, text: this.text, width: this.width }).join("\n"),
       });
     }
+
+    context.restore();
   }
 
   Resize(current: Point, old: BoxInterface, d: resizeDirection): void {
@@ -183,12 +198,12 @@ class Ellipse extends Shape {
     switch (d) {
       case "t":
         if (current.y > old.y2) {
-          super.set({
+          super.setSilent({
             top: old.y2,
             height: this.adjustHeight(current.y - old.y2),
           });
         } else {
-          super.set({
+          super.setSilent({
             top: current.y,
             height: this.adjustHeight(old.y2 - current.y),
           });
@@ -196,12 +211,12 @@ class Ellipse extends Shape {
         break;
       case "b":
         if (current.y > old.y1) {
-          super.set({
+          super.setSilent({
             top: old.y1,
             height: this.adjustHeight(current.y - old.y1),
           });
         } else {
-          super.set({
+          super.setSilent({
             top: current.y,
             height: this.adjustHeight(old.y2 - current.y),
           });
@@ -209,12 +224,12 @@ class Ellipse extends Shape {
         break;
       case "l":
         if (current.x > old.x2) {
-          super.set({
+          super.setSilent({
             left: old.x2,
             width: current.x - old.x2,
           });
         } else {
-          super.set({
+          super.setSilent({
             left: current.x,
             width: old.x2 - current.x,
           });
@@ -222,12 +237,12 @@ class Ellipse extends Shape {
         break;
       case "r":
         if (current.x > old.x1) {
-          super.set({
+          super.setSilent({
             left: old.x1,
             width: current.x - old.x1,
           });
         } else {
-          super.set({
+          super.setSilent({
             left: current.x,
             width: old.x1 - current.x,
           });
@@ -301,8 +316,10 @@ class Ellipse extends Shape {
         }
     }
 
-    this.rx = this.width / 2;
-    this.ry = this.height / 2;
+    super.setSilent({
+      rx: this.width / 2,
+      ry: this.height / 2,
+    })
   }
 
   _set(key: string, value: any) {

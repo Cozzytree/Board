@@ -4,7 +4,7 @@ import { Path } from "../index";
 import { SnapeLineColor } from "../constants";
 import type Board from "../board";
 import type Shape from "../shapes/shape";
-import type { Point } from "../types";
+import type { Point, resizeDirection, BoxInterface } from "../types";
 
 const SNAP_TOLERANCE = 5;
 const GUIDE_EXTENSION = 10; // pixels to extend lines beyond shape edges
@@ -224,4 +224,153 @@ export function snapRotation(
       return snapped;
    }
    return angle;
+}
+
+export function snapResize({
+   board,
+   shape,
+   direction,
+   newBounds,
+}: {
+   board: Board;
+   shape: Shape;
+   direction: resizeDirection;
+   newBounds: { left: number; top: number; width: number; height: number };
+   oldProps?: BoxInterface;
+}): {
+   lines: Shape[];
+   snappedBounds: { left: number; top: number; width: number; height: number };
+} {
+   const hCandidates: SnapCandidate[] = [];
+   const vCandidates: SnapCandidate[] = [];
+
+   const sLeft = newBounds.left;
+   const sTop = newBounds.top;
+   const sRight = sLeft + newBounds.width;
+   const sBottom = sTop + newBounds.height;
+
+   const sourceH: { value: number; prop: string }[] = [];
+   const sourceV: { value: number; prop: string }[] = [];
+
+   if (direction.includes("t")) sourceH.push({ value: sTop, prop: "top" });
+   if (direction.includes("b")) sourceH.push({ value: sBottom, prop: "bottom" });
+   
+   if (direction.includes("l")) sourceV.push({ value: sLeft, prop: "left" });
+   if (direction.includes("r")) sourceV.push({ value: sRight, prop: "right" });
+
+   const viewX = -board.view.x / board.view.scl;
+   const viewY = -board.view.y / board.view.scl;
+   const viewW = board.canvas.width / board.view.scl;
+   const viewH = board.canvas.height / board.view.scl;
+
+   board.shapeStore.forEach((target) => {
+      if (shape.ID() === target.ID()) return false;
+      if (target.connections.forEach((c) => c.s.ID() === shape.ID())) return false;
+
+      if (
+         target.left + target.width < viewX - 100 ||
+         target.left > viewX + viewW + 100 ||
+         target.top + target.height < viewY - 100 ||
+         target.top > viewY + viewH + 100
+      ) {
+         return false;
+      }
+
+      const tLeft = target.left;
+      const tTop = target.top;
+      const tRight = tLeft + target.width;
+      const tBottom = tTop + target.height;
+      const tCenterX = tLeft + target.width / 2;
+      const tCenterY = tTop + target.height / 2;
+
+      const targetH = [
+         { value: tTop, edge: "start" },
+         { value: tCenterY, edge: "center" },
+         { value: tBottom, edge: "end" },
+      ];
+      const targetV = [
+         { value: tLeft, edge: "start" },
+         { value: tCenterX, edge: "center" },
+         { value: tRight, edge: "end" },
+      ];
+
+      for (const src of sourceH) {
+         for (const tgt of targetH) {
+            const dist = Math.abs(src.value - tgt.value);
+            if (dist < SNAP_TOLERANCE) {
+               hCandidates.push({
+                  snappedPos: tgt.value,
+                  distance: dist,
+                  guideCoord: tgt.value,
+                  targetShape: target,
+                  sourceEdge: src.prop,
+                  targetEdge: tgt.edge,
+               });
+            }
+         }
+      }
+
+      for (const src of sourceV) {
+         for (const tgt of targetV) {
+            const dist = Math.abs(src.value - tgt.value);
+            if (dist < SNAP_TOLERANCE) {
+               vCandidates.push({
+                  snappedPos: tgt.value,
+                  distance: dist,
+                  guideCoord: tgt.value,
+                  targetShape: target,
+                  sourceEdge: src.prop,
+                  targetEdge: tgt.edge,
+               });
+            }
+         }
+      }
+
+      return false;
+   });
+
+   const snappedBounds = { ...newBounds };
+   const lines: Shape[] = [];
+
+   if (hCandidates.length > 0) {
+      hCandidates.sort((a, b) => a.distance - b.distance);
+      const best = hCandidates[0];
+      
+      if (best.sourceEdge === "top") {
+         const delta = best.snappedPos - sTop;
+         snappedBounds.top += delta;
+         snappedBounds.height -= delta;
+      } else if (best.sourceEdge === "bottom") {
+         const delta = best.snappedPos - sBottom;
+         snappedBounds.height += delta;
+      }
+
+      const guideY = best.guideCoord;
+      const t = best.targetShape;
+      const lineX1 = Math.min(sLeft, t.left) - GUIDE_EXTENSION;
+      const lineX2 = Math.max(sRight, t.left + t.width) + GUIDE_EXTENSION;
+      lines.push(createGuideLine(board, { x: lineX1, y: guideY }, { x: lineX2, y: guideY }));
+   }
+
+   if (vCandidates.length > 0) {
+      vCandidates.sort((a, b) => a.distance - b.distance);
+      const best = vCandidates[0];
+      
+      if (best.sourceEdge === "left") {
+         const delta = best.snappedPos - sLeft;
+         snappedBounds.left += delta;
+         snappedBounds.width -= delta;
+      } else if (best.sourceEdge === "right") {
+         const delta = best.snappedPos - sRight;
+         snappedBounds.width += delta;
+      }
+
+      const guideX = best.guideCoord;
+      const t = best.targetShape;
+      const lineY1 = Math.min(sTop, t.top) - GUIDE_EXTENSION;
+      const lineY2 = Math.max(sBottom, t.top + t.height) + GUIDE_EXTENSION;
+      lines.push(createGuideLine(board, { x: guideX, y: lineY1 }, { x: guideX, y: lineY2 }));
+   }
+
+   return { lines, snappedBounds };
 }

@@ -2,7 +2,7 @@ import type { ActiveSelectionShape } from "./shape_types";
 import { Box, Ellipse, Line, Path, Shape } from "../index";
 import type { BoxInterface, Point, resizeDirection, ShapeEventData, ShapeProps } from "../types";
 import { resizeRect, isDraggableWithRotation } from "../utils/resize";
-import { resizeWithRotation } from "../utils/resizeWithRotation";
+import { resizeWithRotation, resizeWithRotationAndFlip } from "../utils/resizeWithRotation";
 import { calcPointWithRotation, rotatePoint } from "../utils/utilfunc";
 import Group from "./group";
 
@@ -263,7 +263,7 @@ class ActiveSelection extends Shape {
    }
 
    Resize(current: Point, old: BoxInterface, d: resizeDirection): Shape[] | void {
-      const newBounds = resizeWithRotation({
+      const newBounds = resizeWithRotationAndFlip({
          current,
          old,
          direction: d,
@@ -271,6 +271,44 @@ class ActiveSelection extends Shape {
          minWidth: 20,
          minHeight: 20,
       });
+
+      const centerX = old.x1 + (old.x2 - old.x1) / 2;
+      const centerY = old.y1 + (old.y2 - old.y1) / 2;
+      const dx = current.x - centerX;
+      const dy = current.y - centerY;
+      const cos = Math.cos(-this.rotate);
+      const sin = Math.sin(-this.rotate);
+      const localX = dx * cos - dy * sin;
+      const localY = dx * sin + dy * cos;
+      const halfW = (old.x2 - old.x1) / 2;
+      const halfH = (old.y2 - old.y1) / 2;
+
+      let groupFlipX = false;
+      let groupFlipY = false;
+      switch (d) {
+         case "l":
+         case "bl":
+         case "tl":
+            groupFlipX = localX > halfW;
+            break;
+         case "r":
+         case "br":
+         case "tr":
+            groupFlipX = localX < -halfW;
+            break;
+      }
+      switch (d) {
+         case "t":
+         case "tr":
+         case "tl":
+            groupFlipY = localY > halfH;
+            break;
+         case "b":
+         case "br":
+         case "bl":
+            groupFlipY = localY < -halfH;
+            break;
+      }
 
       this.left = newBounds.left;
       this.top = newBounds.top;
@@ -281,6 +319,7 @@ class ActiveSelection extends Shape {
       const oldHeight = old.y2 - old.y1;
       const newWidth = this.width;
       const newHeight = this.height;
+
       if (this.setUp == 0) {
          const outer = new Box({
             x1: this.left,
@@ -305,7 +344,12 @@ class ActiveSelection extends Shape {
             if (!outer.isInOtherPartial(inner)) return false;
 
             selected.push(shape);
-            selectedShapes.push({ s: shape, oldProps: inner });
+            selectedShapes.push({ 
+               s: shape, 
+               oldProps: inner,
+               originalFlipX: shape.flipX,
+               originalFlipY: shape.flipY,
+            });
 
             return false;
          });
@@ -321,11 +365,18 @@ class ActiveSelection extends Shape {
             const scaleX = newWidth / oldWidth;
             const scaleY = newHeight / oldHeight;
 
-            const newLeft = this.left + relativeLeft * scaleX;
-            const newTop = this.top + relativeTop * scaleY;
+            let newLeft = this.left + relativeLeft * scaleX;
+            let newTop = this.top + relativeTop * scaleY;
 
             const newWidthS = (s.oldProps.x2 - s.oldProps.x1) * scaleX;
             const newHeightS = (s.oldProps.y2 - s.oldProps.y1) * scaleY;
+
+            if (groupFlipX) {
+               newLeft = this.left + newWidth - (relativeLeft * scaleX) - newWidthS;
+            }
+            if (groupFlipY) {
+               newTop = this.top + newHeight - (relativeTop * scaleY) - newHeightS;
+            }
 
             if (s.s.type === "ellipse") {
                s.s.rx = newWidthS / 2;
@@ -342,10 +393,15 @@ class ActiveSelection extends Shape {
                   p.y = scaledY;
                });
             }
-            s.s.left = newLeft;
-            s.s.top = newTop;
-            s.s.width = newWidthS;
-            s.s.height = newHeightS;
+            
+            s.s.setSilent({
+               left: newLeft,
+               top: newTop,
+               width: newWidthS,
+               height: newHeightS,
+               flipX: groupFlipX ? !s.originalFlipX : s.originalFlipX,
+               flipY: groupFlipY ? !s.originalFlipY : s.originalFlipY,
+            });
          });
          return this.shapes.map((s) => s.s);
       }
@@ -398,6 +454,28 @@ class ActiveSelection extends Shape {
 
    mousedown(e: ShapeEventData): void {
       this.emit("mousedown", e);
+   }
+
+   mouseover(s: ShapeEventData): void {
+      if (this._board.activeShapes?.ID() === this.ID()) {
+         if (this.isRotating && this.isRotating(s.e.point)) {
+            this._board.setCursor("grab");
+            this.emit("mouseover", s);
+            return;
+         }
+
+         const d = this.IsResizable(s.e.point);
+         if (d) {
+            const cursor = this.getRotatedCursor(d, this.rotate);
+            this._board.setCursor(cursor);
+         } else {
+            this._board.setCursor("default");
+         }
+      } else {
+         this._board.setCursor("default");
+      }
+
+      this.emit("mouseover", s);
    }
 
    setCoords(): void {

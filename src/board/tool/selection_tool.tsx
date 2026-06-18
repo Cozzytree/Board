@@ -15,7 +15,7 @@ import type {
    ToolInterface,
 } from "../types";
 import { generateShapeByShapeType } from "../utils/utilfunc";
-import { snapRotation, snapShape } from "../utils/snap";
+import { snapRotation, snapShape, snapResize } from "../utils/snap";
 
 const textAreaId = "text-update";
 
@@ -147,21 +147,22 @@ class SelectionTool implements ToolInterface {
       if (this.subMode === "free") {
          // altkey for duplicate
          if (e.altKey) {
-            const activeShape = this._board.getActiveShapes();
-            if (activeShape && activeShape.IsDraggable(p)) {
-               const clone = activeShape.clone();
-
-               if (clone instanceof ActiveSelection) {
-                  clone.shapes.forEach((s) => {
-                     if (s.s) {
-                        this._board.add(s.s);
-                     }
-                  });
-               }
-               this._board.add(clone);
-               this.draggedShape = clone;
-               // Initialize unsnapped position
-               this.unsnappedPos = new Pointer({ x: clone.left, y: clone.top });
+             const activeShape = this._board.getActiveShapes();
+             if (activeShape && activeShape.IsDraggable(p)) {
+                if (activeShape instanceof ActiveSelection) {
+                   const clonedChildren = activeShape.shapes.map((s) => s.s.clone());
+                   this._board.add(...clonedChildren);
+                   const newSelection = this._board.getActiveShapes();
+                   if (newSelection) {
+                      this.draggedShape = newSelection;
+                      this.unsnappedPos = new Pointer({ x: newSelection.left, y: newSelection.top });
+                   }
+                } else {
+                   const clone = activeShape.clone();
+                   this._board.add(clone);
+                   this.draggedShape = clone;
+                   this.unsnappedPos = new Pointer({ x: clone.left, y: clone.top });
+                }
             } else {
                let shapeFound: Shape | null = null;
                this._board.shapeStore.forEach((s) => {
@@ -183,19 +184,22 @@ class SelectionTool implements ToolInterface {
          const currentActive = this._board.getActiveShapes();
          // const lastInserted = this._board.shapeStore.getLastInsertedShape();
          if (currentActive?.type === "selection" && currentActive instanceof ActiveSelection) {
-            if (currentActive.IsDraggable(p)) {
-               callback?.({ e: { target: [currentActive], x: p.x, y: p.y } });
+            if (currentActive.isRotating && currentActive.isRotating(p)) {
+               callback?.({ e: { x: p.x, y: p.y, target: [currentActive] } });
 
-               this.draggedShape = currentActive;
-               this.activeShape = currentActive;
-               // Initialize unsnapped position
-               this.unsnappedPos = new Pointer({ x: currentActive.left, y: currentActive.top });
-
-               this._board.setActiveShape(currentActive);
-               // insert into undo temp state
+               this.isRotating = true;
+               this.rotatingShape = currentActive;
                currentActive.shapes.forEach((as) => {
                   this.mouseDowmShapeState.push(as.s.toObject());
                });
+
+               this.rotationCenter = {
+                  x: currentActive.left + currentActive.width / 2,
+                  y: currentActive.top + currentActive.height / 2,
+               };
+
+               this.initialRotationAngle = Math.atan2(p.y - this.rotationCenter.y, p.x - this.rotationCenter.x);
+               this.initialShapeRotation = currentActive.rotate;
                return;
             }
 
@@ -230,10 +234,28 @@ class SelectionTool implements ToolInterface {
                         x2: s.s.left + s.s.width,
                         y2: s.s.top + s.s.height,
                      });
+                     s.originalFlipX = s.s.flipX;
+                     s.originalFlipY = s.s.flipY;
                   });
                }
                // fire mouse down for the shape
                currentActive.mousedown({ e: { point: p } });
+               return;
+            }
+
+            if (currentActive.IsDraggable(p)) {
+               callback?.({ e: { target: [currentActive], x: p.x, y: p.y } });
+
+               this.draggedShape = currentActive;
+               this.activeShape = currentActive;
+               // Initialize unsnapped position
+               this.unsnappedPos = new Pointer({ x: currentActive.left, y: currentActive.top });
+
+               this._board.setActiveShape(currentActive);
+               // insert into undo temp state
+               currentActive.shapes.forEach((as) => {
+                  this.mouseDowmShapeState.push(as.s.toObject());
+               });
                return;
             }
 
@@ -273,6 +295,8 @@ class SelectionTool implements ToolInterface {
                         x2: child.s.left + child.s.width,
                         y2: child.s.top + child.s.height,
                      });
+                     child.originalFlipX = child.s.flipX;
+                     child.originalFlipY = child.s.flipY;
                   });
                }
                return;
@@ -484,23 +508,36 @@ class SelectionTool implements ToolInterface {
          let snapLines: Shape[] = [];
 
          if (this._board.snap && this.resizableShape.s.type !== "selection") {
-            const {
-               lines,
-               x: snappedX,
-               y: snappedY,
-            } = snapShape({
+            const oldShapeWidth = this.resizableShape.s.width || 1;
+            const oldShapeHeight = this.resizableShape.s.height || 1;
+
+            const { lines, snappedBounds } = snapResize({
                board: this._board,
-               current: p,
                shape: this.resizableShape.s,
-               x: this.resizableShape.s.left,
-               y: this.resizableShape.s.top,
+               direction: this.resizableShape.d,
+               newBounds: {
+                  left: this.resizableShape.s.left,
+                  top: this.resizableShape.s.top,
+                  width: this.resizableShape.s.width,
+                  height: this.resizableShape.s.height,
+               },
+               oldProps: this.resizableShape.oldProps,
             });
             snapLines = lines;
 
-            // Apply snap (mimicking previous behavior where snapShape mutated the shape)
-            // Note: For true resize snapping, we'd need more complex logic to snap only the moving edge.
-            // For now, we restore equality with previous implementation.
-            this.resizableShape.s.set({ left: snappedX, top: snappedY });
+            const s = this.resizableShape.s;
+            if (s.type === "ellipse") {
+               s.rx = snappedBounds.width / 2;
+               s.ry = snappedBounds.height / 2;
+            } else if (s instanceof Path || s instanceof Line) {
+               const scaleX = snappedBounds.width / oldShapeWidth;
+               const scaleY = snappedBounds.height / oldShapeHeight;
+               s.points.forEach((pt) => {
+                  pt.x *= scaleX;
+                  pt.y *= scaleY;
+               });
+            }
+            s.setSilent(snappedBounds);
          }
 
          this.draw(this.resizableShape.s, ...(shapes || []), ...snapLines);
@@ -676,6 +713,7 @@ class SelectionTool implements ToolInterface {
       if (this.draggedShape) {
          eventCb({ e: { x: p.x, y: p.y, target: [this.draggedShape] } });
          this.draggedShape.mouseup({ e: { point: p } });
+         this.draggedShape.commitUpdate();
 
          const dropped = this.draggedShape;
          const dropCenter: Point = {
@@ -704,6 +742,7 @@ class SelectionTool implements ToolInterface {
       } else if (this.resizableShape) {
          eventCb({ e: { x: p.x, y: p.y, target: [this.resizableShape.s] } });
          this.resizableShape.s.mouseup({ e: { point: p } });
+         this.resizableShape.s.commitUpdate();
          this.resizableShape = null;
       } else eventCb({ e: { x: p.x, y: p.y, target: null } });
 
@@ -747,6 +786,7 @@ class SelectionTool implements ToolInterface {
 
       // Create textarea
       const textarea = document.createElement("textarea");
+      textarea.setAttribute("data-board-text-edit", "true");
       textarea.value = this.textEdit.text || "";
       textarea.style.width = this.textEdit.width * this._board.view.scl + "px";
       textarea.style.height = this.textEdit.height * this._board.view.scl + "px";
@@ -892,26 +932,20 @@ class SelectionTool implements ToolInterface {
                e.preventDefault();
                const activeShape = this._board.getActiveShapes();
                if (!activeShape) return;
-               const clone = activeShape.clone();
-               clone.set({
-                  left: clone.left + 10,
-                  top: clone.top + 10,
-               });
-               const newShapes: Shape[] = [];
-               if (clone instanceof ActiveSelection) {
-                  clone.shapes.forEach((s) => {
-                     if (!s.s) return;
-                     s.s.set({ left: s.s.left + 10, top: s.s.top + 10 });
-                     newShapes.push(s.s);
+               
+               if (activeShape instanceof ActiveSelection) {
+                  const clonedChildren = activeShape.shapes.map((s) => {
+                     const clonedChild = s.s.clone();
+                     clonedChild.set({ left: clonedChild.left + 10, top: clonedChild.top + 10 });
+                     return clonedChild;
                   });
-                  this._board.add(...newShapes);
-                  this._board.add(clone);
+                  this._board.add(...clonedChildren);
                } else {
-                  newShapes.push(clone);
-                  this._board.add(...newShapes);
+                  const clone = activeShape.clone();
+                  clone.set({ left: clone.left + 10, top: clone.top + 10 });
+                  this._board.add(clone);
                }
                this._board.render();
-
                break;
             }
             case "a":
@@ -1081,11 +1115,7 @@ class SelectionTool implements ToolInterface {
                s.push(sa.s);
             });
 
-            cloned.left = this._board._lastMousePosition.x - cloned.width * 0.5;
-            cloned.top = this._board._lastMousePosition.y - cloned.height * 0.5;
-
             this._board.add(...s);
-            this._board.add(cloned);
          } else {
             cloned.left = this._board._lastMousePosition.x - cloned.width * 0.5;
             cloned.top = this._board._lastMousePosition.y - cloned.height * 0.5;
@@ -1152,12 +1182,14 @@ class SelectionTool implements ToolInterface {
       // ctx.scale(this._board.scale, this._board.scale);
       ctx.scale(this._board.view.scl, this._board.view.scl);
 
+      const currentScale = this._board.view.scl;
       this._board.canvas2.style.zIndex = "100";
       shapes.forEach((s) => {
+         const isResizing = this.draggedShape || this.resizableShape;
          s.draw({
             addStyles: false,
-            ctx: this._board.ctx2,
-            resize: this.draggedShape || this.resizableShape ? true : false,
+            ctx: ctx,
+            resize: isResizing !== null,
          });
       });
       ctx.restore();

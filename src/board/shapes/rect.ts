@@ -28,6 +28,15 @@ class Rect extends Shape {
       return new Rect({ ...props, rx: this.rx, ry: this.ry });
    }
 
+   getLocalPath(): Path2D {
+      if (!this.cachedLocalPath) {
+         this.cachedLocalPath = new Path2D();
+         const r = Math.min(this.rx || 0, this.ry || 0, this.width / 2, this.height / 2);
+         this.cachedLocalPath.roundRect(0, 0, this.width, this.height, r);
+      }
+      return this.cachedLocalPath;
+   }
+
    mousedown(s: ShapeEventData): void {
       super.mousedown(s);
    }
@@ -159,8 +168,6 @@ class Rect extends Shape {
       }
 
       context.closePath();
-      context.restore();
-
       if (this.text.length) {
          const t = breakText({
             ctx: context,
@@ -172,6 +179,8 @@ class Rect extends Shape {
             text: t,
          });
       }
+
+      context.restore();
    }
 
    Resize(current: Point, old: BoxInterface, d: resizeDirection) {
@@ -188,7 +197,7 @@ class Rect extends Shape {
       // Adjust height for text if needed
       const adjustedHeight = this.adjustHeight(newBounds.height);
 
-      super.set({
+      super.setSilent({
          left: newBounds.left,
          top: newBounds.top,
          width: newBounds.width,

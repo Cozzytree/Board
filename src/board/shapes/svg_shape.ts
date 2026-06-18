@@ -217,7 +217,7 @@ class SvgShape extends Shape {
         break;
     }
 
-    super.set({
+    super.setSilent({
       left: newBounds.left,
       top: newBounds.top,
       width: newWidth,

@@ -33,6 +33,8 @@ export type ActiveSelectionShape = {
   oldProps?: BoxInterface;
   s: Shape;
   offset?: Point;
+  originalFlipX?: boolean;
+  originalFlipY?: boolean;
 };
 
 export type LineType = "curve" | "straight" | "anchor";

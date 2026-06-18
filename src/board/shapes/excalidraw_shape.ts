@@ -242,7 +242,7 @@ class ExcalidrawShape extends Shape {
       case "b": case "br": case "bl": flipY = this.lastFlippedState.y ? localY > -halfH : localY < -halfH; break;
     }
 
-    super.set({
+    super.setSilent({
       left: newBounds.left,
       top: newBounds.top,
       width: newWidth,

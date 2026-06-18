@@ -113,12 +113,12 @@ class Text extends Shape {
     switch (d) {
       case "t":
         if (current.y > old.y2) {
-          super.set({
+          super.setSilent({
             top: old.y2,
           });
           newHeight = current.y - old.y2;
         } else {
-          super.set({
+          super.setSilent({
             top: current.y,
           });
           newHeight = old.y1 - current.y;
@@ -126,12 +126,12 @@ class Text extends Shape {
         break;
       case "b":
         if (current.y > old.y1) {
-          super.set({
+          super.setSilent({
             top: old.y1,
           });
           newHeight = current.y - old.y1;
         } else {
-          super.set({
+          super.setSilent({
             top: current.y,
           });
           newHeight = old.y2 - current.y;
@@ -139,12 +139,12 @@ class Text extends Shape {
         break;
       case "l":
         if (current.x > old.x2) {
-          super.set({
+          super.setSilent({
             left: old.x2,
           });
           newWidth = current.x - old.x2;
         } else {
-          super.set({
+          super.setSilent({
             left: current.x,
           });
           newWidth = old.x2 - current.x;
@@ -152,13 +152,13 @@ class Text extends Shape {
         break;
       case "r":
         if (current.x > old.x1) {
-          super.set({
+          super.setSilent({
             left: old.x1,
             width: current.x - old.x1,
           });
           newWidth = current.x - old.x1;
         } else {
-          super.set({
+          super.setSilent({
             left: current.x,
             width: old.x1 - current.x,
           });
@@ -234,7 +234,7 @@ class Text extends Shape {
         }
     }
 
-    this.set({ width: newWidth, height: this.adjustHeight(newHeight) });
+    this.setSilent({ width: newWidth, height: this.adjustHeight(newHeight) });
     return super.Resize(current, old, d);
   }
 

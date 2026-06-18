@@ -66,6 +66,7 @@ abstract class Shape implements ShapeProps {
    zOrder: number;
 
    private eventListeners = new Map<ShapeEvent, Set<ShapeEventCallback>>();
+   cachedLocalPath: Path2D | null = null;
 
    abstract draw(options: DrawProps): void;
    abstract IsResizable(p: Point): resizeDirection | null;
@@ -298,19 +299,10 @@ abstract class Shape implements ShapeProps {
             return;
          }
 
-         const r = resizeRect(
-            s.e.point,
-            new Box({
-               x1: this.left,
-               y1: this.top,
-               x2: this.left + this.width,
-               y2: this.top + this.height,
-            }),
-            this.padding,
-         );
+         const r = this.IsResizable(s.e.point);
          if (r) {
             // Calculate rotation-aware cursor
-            const cursor = this.getRotatedCursor(r.rd, this.rotate);
+            const cursor = this.getRotatedCursor(r, this.rotate);
             this._board.setCursor(cursor);
          } else {
             this._board.setCursor("default");
@@ -505,11 +497,43 @@ abstract class Shape implements ShapeProps {
       return this;
    }
 
+   /**
+    * Like set(), but does NOT fire "shape:updated".
+    * Use during hot-path operations (drag/resize) to avoid per-frame serialization.
+    */
+   setSilent(key: string | Record<string, any>, value?: any) {
+      if (typeof key === "object") {
+         this._setObject(key);
+      } else {
+         this._set(key, value);
+      }
+      return this;
+   }
+
+   /**
+    * Manually fire "shape:updated" to persist changes.
+    * Call once after a batch of setSilent() calls (e.g., on pointerup).
+    */
+   commitUpdate() {
+      this._board.fire("shape:updated", { e: { target: [this] } });
+   }
+
    protected _set(key: string, value: any) {
       if (typeof value === "function") {
          value = value();
       }
+      if (key !== "left" && key !== "top") {
+         this.cachedLocalPath = null;
+      }
       this[key as keyof this] = value;
+   }
+
+   getLocalPath(): Path2D {
+      if (!this.cachedLocalPath) {
+         this.cachedLocalPath = new Path2D();
+         this.cachedLocalPath.rect(0, 0, this.width, this.height);
+      }
+      return this.cachedLocalPath;
    }
 
    protected _setObject(obj: Record<string, any>) {

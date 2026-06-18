@@ -56,8 +56,8 @@ class SimplePath extends Path {
          const stroke = getStroke(transformedPoints, {
             size: (resize ? 3 : this.strokeWidth) / currentScale,
             thinning: 0.1,
-            smoothing: 2,
-            streamline: 0.5,
+            smoothing: 3,
+            streamline: 0.1,
             easing: (t) => t,
             start: {
                taper: 0,

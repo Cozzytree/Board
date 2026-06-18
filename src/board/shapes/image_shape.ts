@@ -177,7 +177,7 @@ class ImageShape extends Shape {
 
     const adjustedHeight = this.adjustHeight(newBounds.height);
 
-    super.set({
+    super.setSilent({
       left: newBounds.left,
       top: newBounds.top,
       width: newBounds.width,

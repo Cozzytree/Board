@@ -1,57 +1,33 @@
 import { useEffect, useRef, useCallback } from "react";
 import * as Y from "yjs";
-import { WebsocketProvider } from "y-websocket";
+import type { HocuspocusProvider } from "@hocuspocus/provider";
 import type { Board } from "./index";
 import { Shape } from "./index";
 import { generateShapeByShapeType } from "./utils/utilfunc";
 
-const WS_URL = "ws://localhost:3000";
-
 /**
- * Custom hook that binds a Board instance to a Yjs shared document via WebSocket.
+ * Custom hook that binds a Board instance to a Yjs shared document via HocuspocusProvider.
  *
  * Shapes are stored in a Y.Map<string> keyed by shape ID, with JSON-serialized values.
  * - Local changes  → pushed into Y.Map via `syncLocalShapes()`
  * - Remote changes → diffed against board.shapeStore, shapes added/updated/removed
+ *
+ * The Y.Doc and HocuspocusProvider are created externally (by RealTimeProvider)
+ * and passed in here. This hook only handles the shape ↔ Y.Map binding.
  */
-export function useYjsSync(roomId: string | undefined, board: Board | null) {
-  const providerRef = useRef<WebsocketProvider | null>(null);
-  const docRef = useRef<Y.Doc | null>(null);
+export function useYjsSync(
+  doc: Y.Doc | null,
+  provider: HocuspocusProvider | null,
+  board: Board | null,
+) {
   const suppressRemoteRef = useRef(false);
   const boardRef = useRef<Board | null>(null);
 
-  // ── Step 1: Initialize WebSocket connection immediately when roomId is available ──
+  // ── Set up board-dependent logic when all three deps are available ──
   useEffect(() => {
-    if (!roomId) return;
-
-    const doc = new Y.Doc();
-    const provider = new WebsocketProvider(WS_URL, roomId, doc, {
-      connect: true,
-    });
-
-    docRef.current = doc;
-    providerRef.current = provider;
-
-    return () => {
-      provider.destroy();
-      doc.destroy();
-      docRef.current = null;
-      providerRef.current = null;
-    };
-  }, [roomId]);
-
-  // ── Step 2: Set up board-dependent logic when board becomes available ──
-  useEffect(() => {
-    if (!board) return;
+    if (!board || !doc || !provider) return;
 
     boardRef.current = board;
-    const doc = docRef.current;
-    const provider = providerRef.current;
-
-    if (!doc || !provider) {
-      console.error("[yjs] Doc or provider not initialized");
-      return;
-    }
 
     const yShapes = doc.getMap<string>("shapes");
 
@@ -170,14 +146,15 @@ export function useYjsSync(roomId: string | undefined, board: Board | null) {
     yShapes.observe(observer);
 
     // ── Initial load from remote state ──
-    const onSync = (isSynced: boolean) => {
-      console.log("[yjs] synced with server, isSynced:", isSynced);
-      if (isSynced) {
+    // HocuspocusProvider emits "synced" with { state: boolean }
+    const onSynced = ({ state }: { state: boolean }) => {
+      console.log("[yjs] synced with server, state:", state);
+      if (state) {
         loadMissingShapes();
       }
     };
 
-    provider.on("sync", onSync);
+    provider.on("synced", onSynced);
 
     // ── Check if already synced (connection happened before observer attached) ──
     if (provider.synced) {
@@ -187,15 +164,14 @@ export function useYjsSync(roomId: string | undefined, board: Board | null) {
 
     return () => {
       yShapes.unobserve(observer);
-      provider.off("sync", onSync);
+      provider.off("synced", onSynced);
     };
-  }, [board]);
+  }, [board, doc, provider]);
 
   // ── Push local state to Y.Map ──
   const syncLocalShapes = useCallback(
     (boardInstance: Board) => {
-      const doc = docRef.current;
-      if (!doc || !roomId || suppressRemoteRef.current) return;
+      if (!doc || suppressRemoteRef.current) return;
 
       // Update the board ref when sync is called
       boardRef.current = boardInstance;
@@ -203,11 +179,8 @@ export function useYjsSync(roomId: string | undefined, board: Board | null) {
       const yShapes = doc.getMap<string>("shapes");
 
       doc.transact(() => {
-        // Collect current local shape IDs
-        const localIds = new Set<string>();
         boardInstance.shapeStore.forEach((s) => {
           if (s.type === "selection") return false;
-          localIds.add(s.ID());
 
           try {
             // Serialize shape
@@ -224,14 +197,12 @@ export function useYjsSync(roomId: string | undefined, board: Board | null) {
           }
           return false;
         });
-
-
       });
     },
-    [roomId],
+    [doc],
   );
 
-  return { syncLocalShapes, provider: providerRef, doc: docRef };
+  return { syncLocalShapes };
 }
 
 /** Serialize a Shape to a plain object suitable for JSON */
