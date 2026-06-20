@@ -8,6 +8,7 @@ import { useBoard } from "@/board/board-context";
 import { createFileRoute } from "@tanstack/react-router";
 import React from "react";
 import { useTheme } from "@/components/theme-provider";
+import { StatsForNerds } from "@/board/components/stat";
 
 export const Route = createFileRoute("/local")({
     component: LocalBoardPage,
@@ -50,7 +51,7 @@ function BoardUI() {
             <div className="absolute z-[999] top-4 right-16">
                 <BoardCenterButton />
             </div>
-            <div className="absolute z-[999] bottom-4 left-4 hidden md:flex">
+            <div className="absolute z-[999] bottom-2 left-2 hidden md:flex">
                 <BoardZoomControls />
             </div>
             {!isMinimal && activeShape && (
@@ -58,6 +59,7 @@ function BoardUI() {
                     <BoardShapeOptions />
                 </div>
             )}
+            <StatsForNerds className="fixed z-[999] top-20 right-5" />
         </>
     );
 }

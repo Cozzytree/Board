@@ -4,6 +4,7 @@ import { BoardShapeOptions } from "@/board/components/shapeoptions";
 import { BoardZoomControls } from "@/board/components/zoom_controls";
 import { BoardCenterButton } from "@/board/components/center_button";
 import { BoardLibrarySidebar } from "@/board/components/library_sidebar";
+import { StatsForNerds } from "@/board/components/stat";
 import { useBoard } from "@/board/board-context";
 import { useYjsSync } from "@/board/useYjsSync";
 import { createFileRoute, Link } from "@tanstack/react-router";

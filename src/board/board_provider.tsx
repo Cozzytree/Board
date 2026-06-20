@@ -39,12 +39,16 @@ const isEditingText = (e: KeyboardEvent) => {
     const target = e.target as HTMLElement;
     if (target?.hasAttribute("data-board-text-edit")) return true;
     if (document.activeElement?.hasAttribute("data-board-text-edit")) return true;
-    
+
     const tag = target?.tagName;
     return tag === "INPUT" || tag === "TEXTAREA" || target?.isContentEditable;
 };
 
 export type Theme = "dark" | "light" | "system";
+
+const STORAGE_KEY = "board_shapes";
+const VIEW_STORAGE_KEY = "board_view";
+const STAT_STORAGE_KEY = "stat_key";
 
 const DEFAULT_CUSTOM_SHAPES: CustomShapeDef[] = [
     {
@@ -121,6 +125,10 @@ const BoardProvider = ({
         setBoardThemeState(newTheme);
     }, []);
 
+    const [isStat, setStat] = React.useState(() => {
+        const val = localStorage.getItem(STAT_STORAGE_KEY);
+        return Boolean(val) || false;
+    });
     const [offset, setOffset] = React.useState<[number, number]>([0, 0]);
     const [zoom, setZoom] = React.useState(100);
     const [activeShape, setActiveShape] = React.useState<Shape | null>(null);
@@ -259,9 +267,6 @@ const BoardProvider = ({
     const canvasRef = React.useRef<HTMLCanvasElement>(null);
     const borderRef = React.useRef<Board>(null);
 
-    const STORAGE_KEY = "board_shapes";
-    const VIEW_STORAGE_KEY = "board_view";
-
     /** Serialize all shapes in the store to localStorage */
     const saveShapesToStorage = React.useCallback((board: Board) => {
         const shapes: Record<string, any>[] = [];
@@ -287,6 +292,12 @@ const BoardProvider = ({
             console.error("Failed to save shapes to localStorage", err);
         }
     }, []);
+
+    const saveStatStateToLocalStorage = (v: boolean) => {
+        try {
+            localStorage.setItem(STAT_STORAGE_KEY, String(v));
+        } catch { }
+    }
 
     const saveViewToStorage = React.useCallback((board: Board) => {
         try {
@@ -775,6 +786,11 @@ const BoardProvider = ({
         <ContextMenu>
             <BoardContext.Provider
                 value={{
+                    stat: isStat,
+                    setStat: (v) => {
+                        setStat(v);
+                        saveStatStateToLocalStorage(v);
+                    },
                     foreground,
                     background,
                     theme: boardTheme,
@@ -846,6 +862,12 @@ const BoardProvider = ({
                         void exportBoardAsLibrary();
                     }}>
                     make board library
+                </ContextMenuItem>
+                <ContextMenuItem onClick={() => {
+                    setStat(!isStat);
+                    saveStatStateToLocalStorage(!isStat);
+                }}>
+                    Stats {isStat ? "off" : "on"}
                 </ContextMenuItem>
             </ContextMenuContent>
         </ContextMenu>
