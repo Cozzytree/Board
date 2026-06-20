@@ -143,17 +143,21 @@ const RoomBoardUI = React.memo(function RoomBoardUI({
                 </button>
             </div>
 
-            <div className="pointer-events-auto z-50 fixed left-1/2 -translate-x-1/2 bottom-4 flex justify-center">
+            <div className="pointer-events-auto z-50 fixed left-1/2 -translate-x-1/2 bottom-4 flex justify-center max-w-[95vw] overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
                 {!isMinimal && <BoardToolbar />}
             </div>
             {!isMinimal && <BoardLibrarySidebar />}
-            <BoardCenterButton />
-            <BoardZoomControls />
+            
+            <div className="absolute z-[999] top-4 right-16">
+                <BoardCenterButton />
+            </div>
+            <div className="absolute z-[999] bottom-4 left-4 hidden md:flex">
+                <BoardZoomControls />
+            </div>
 
             {!isMinimal && activeShape && (
-                <div className="absolute left-1/2 -translate-x-1/2 z-[999]">
-                    {" "}
-                    <BoardShapeOptions />{" "}
+                <div className="absolute z-[999] top-4 left-1/2 -translate-x-1/2 max-w-[90vw] md:max-w-none overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+                    <BoardShapeOptions />
                 </div>
             )}
         </>

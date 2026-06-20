@@ -3,7 +3,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetDescri
 import { Button } from "@/components/ui/button";
 import { Library, Upload } from "lucide-react";
 import { type SavedLibraryItem, getAllLibraryItems, saveLibraryItems } from "../utils/library_db";
- import { useBoard } from "../board-context";
+import { useBoard } from "../board-context";
 import ExcalidrawShape from "../shapes/excalidraw_shape";
 import { LibraryMarketplace } from "./library_marketplace";
 import type { LibraryItem } from "../types";
@@ -67,7 +67,7 @@ function ExcalidrawPreview({ elements }: { elements: LibraryItem[] }) {
 
 export function LibrarySidebar() {
     const [items, setItems] = useState<SavedLibraryItem[]>([]);
-    const { canvas } = useBoard();
+    const { setMode, canvas } = useBoard();
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const loadItems = useCallback(async () => {
@@ -117,22 +117,21 @@ export function LibrarySidebar() {
         reader.readAsText(file);
     };
 
-    const insertElementsLibraryItem = useCallback((item: LibraryItem[]) => {
-        const activeCanvas = canvas;
-        if (!activeCanvas || !Array.isArray(item) || item.length === 0) {
-            console.log("canvas=", activeCanvas, item);
+    const insertElementsLibraryItem = (item: SavedLibraryItem) => {
+        if (!canvas || !Array.isArray(item.elements) || item.elements.length === 0) {
+            console.log("item stopped", item);
             return;
         };
         const targetPoint = {
-            x: -activeCanvas.view.x + (activeCanvas.canvas.width / 2) / activeCanvas.view.scl,
-            y: -activeCanvas.view.y + (activeCanvas.canvas.height / 2) / activeCanvas.view.scl
+            x: -canvas.view.x + (canvas.canvas.width / 2) / canvas.view.scl,
+            y: -canvas.view.y + (canvas.canvas.height / 2) / canvas.view.scl
         };
 
         // Wrap raw Excalidraw elements in the ExcalidrawShape adapter
         const shape = new ExcalidrawShape({
             left: 0,
             top: 0,
-            elements: item,
+            elements: item.elements,
             ctx: canvas.ctx,
             _board: canvas,
         });
@@ -143,11 +142,11 @@ export function LibrarySidebar() {
             top: targetPoint.y - shape.height / 2,
         });
 
-        activeCanvas.add(shape);
-        activeCanvas.fire("shape:created", { e: { target: [shape], x: targetPoint.x, y: targetPoint.y } });
-        activeCanvas.render();
+        canvas.add(shape);
+        canvas.fire("shape:created", { e: { target: [shape], x: targetPoint.x, y: targetPoint.y } });
+        canvas.render();
         console.log("shape inserted", shape);
-    }, [canvas]);
+    };
 
     return (
         <Sheet>
@@ -168,23 +167,21 @@ export function LibrarySidebar() {
                     <LibraryMarketplace onInstalled={loadItems} />
                     <input type="file" ref={fileInputRef} className="hidden" accept=".json,.excalidrawlib" onChange={handleFileUpload} />
 
-                    <div className="flex flex-col gap-2 px-2 w-full justify-center">
-                        {items?.map((item, idx) => {
+                    <div className="w-full flex flex-col items-center divide-y">
+                        {items?.map((item) => {
                             return (
-                                <div key={item.id}>
-                                    <span className="text-lg font-bold line-clamp-1 mt-1 truncate w-full">
-                                        {item.name || "Library Item"}
-                                    </span>
-                                    <div className="grid grid-cols-3 gap-1">
+                                <div key={item.id} className="w-full pt-3 pb-5 flex flex-col gap-1 items-center justify-center">
+                                    {item?.name}
+                                    <div className="grid grid-cols-2 px-2 w-full gap-1 justify-center">
                                         {item.elements.map((el, i) =>
                                             <div
-                                                key={item.id || idx}
-                                                className="h-32 border rounded cursor-pointer hover:bg-accent flex flex-col items-center justify-center p-2 text-muted-foreground group"
+                                                key={i}
+                                                className="h-30 border rounded cursor-pointer hover:bg-accent flex flex-col items-center justify-center p-2 text-muted-foreground group"
                                                 onClick={() => {
-                                                    insertElementsLibraryItem(el);
+                                                    insertElementsLibraryItem(item);
                                                 }}
                                             >
-                                                <ExcalidrawPreview elements={el} key={i} />
+                                                <ExcalidrawPreview elements={el} />
                                             </div>
                                         )}
                                     </div>

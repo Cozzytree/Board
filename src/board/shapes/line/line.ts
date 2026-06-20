@@ -71,13 +71,23 @@ abstract class Line extends Shape {
       context.rotate(this.rotate);
       context.translate(-centerX, -centerY);
 
+      // Compute actual uniform scale
+      const transform = context.getTransform();
+      const currentScale = Math.sqrt(transform.a ** 2 + transform.b ** 2);
+
       // Draw corner dots
       const drawDot = (cx: number, cy: number) => {
+         const size = 6 / currentScale;
+         const strokeWidth = 3 / currentScale;
          context.beginPath();
          context.fillStyle = "black";
          context.strokeStyle = "white";
-         context.lineWidth = 3;
-         context.rect(cx - 3, cy - 3, 6, 6);
+         context.lineWidth = strokeWidth;
+         if (typeof context.roundRect === "function") {
+             context.roundRect(cx - size / 2, cy - size / 2, size, size, size * 0.5);
+         } else {
+             context.rect(cx - size / 2, cy - size / 2, size, size);
+         }
          context.stroke();
          context.fill();
          context.closePath();
@@ -93,7 +103,7 @@ abstract class Line extends Shape {
                   const to = isStart ? this.points[0] : this.points[this.points.length - 1];
                   context.beginPath();
                   context.strokeStyle = HoveredColor;
-                  context.lineWidth = this.selectionStrokeWidth;
+                  context.lineWidth = this.selectionStrokeWidth / currentScale;
                   context.moveTo(this.left + this.points[1].x, this.top + this.points[1].y);
                   context.lineTo(this.left + to.x, this.top + to.y);
                   context.stroke();

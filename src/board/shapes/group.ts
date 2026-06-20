@@ -63,62 +63,61 @@ class Group extends Shape {
     this.width = newBounds.width;
     this.height = newBounds.height;
 
-    const oldWidth = old.x2 - old.x1;
-    const oldHeight = old.y2 - old.y1;
-    const newWidth = this.width;
-    const newHeight = this.height;
+    // Do not resize child shapes. Only the group frame changes.
+    return [];
+  }
 
-    this.shapes.forEach((s) => {
-      if (!s.s) return;
-      if (!s.oldProps) {
-        s.oldProps = {
-          x1: s.s.left,
-          y1: s.s.top,
-          x2: s.s.left + s.s.width,
-          y2: s.s.top + s.s.height,
-        };
+  mouseup(s: ShapeEventData): void {
+    super.mouseup(s);
+
+    // Group bounds
+    const gLeft = this.left;
+    const gTop = this.top;
+    const gRight = this.left + this.width;
+    const gBottom = this.top + this.height;
+
+    const newShapes: { s: Shape; oldProps: BoxInterface }[] = [];
+
+    // Scan EVERY shape on the board
+    this._board?.shapeStore.forEach((shape) => {
+      // Ignore this group itself, and ignore selections
+      if (shape.ID() === this.ID() || shape.type === "selection") {
+        return false;
       }
 
-      const relativeLeft = s.oldProps.x1 - old.x1;
-      const relativeTop = s.oldProps.y1 - old.y1;
+      // Ignore shapes that belong to another group
+      if (shape.groupId && shape.groupId !== this.ID()) {
+        return false;
+      }
 
-      const scaleX = newWidth / oldWidth;
-      const scaleY = newHeight / oldHeight;
+      const sLeft = shape.left;
+      const sTop = shape.top;
+      const sRight = shape.left + shape.width;
+      const sBottom = shape.top + shape.height;
 
-      const newLeft = this.left + relativeLeft * scaleX;
-      const newTop = this.top + relativeTop * scaleY;
+      // Check if the shape is fully inside the group box
+      const isInside = sLeft >= gLeft && sTop >= gTop && sRight <= gRight && sBottom <= gBottom;
 
-      const newWidthS = (s.oldProps.x2 - s.oldProps.x1) * scaleX;
-      const newHeightS = (s.oldProps.y2 - s.oldProps.y1) * scaleY;
-
-      if (s.s.type === "ellipse") {
-        s.s.set({
-          rx: newWidthS / 2,
-          ry: newHeightS / 2,
+      if (isInside) {
+        shape.groupId = this.ID();
+        newShapes.push({
+          s: shape,
+          oldProps: {
+            x1: shape.left,
+            y1: shape.top,
+            x2: shape.left + shape.width,
+            y2: shape.top + shape.height,
+          },
         });
+      } else if (shape.groupId === this.ID()) {
+        // Shape was in this group but popped out
+        shape.groupId = undefined;
       }
 
-      if (s.s instanceof Path || s.s instanceof Line) {
-        const lastPoints =
-          s.s.lastPoints && s.s.lastPoints.length === s.s.points.length
-            ? s.s.lastPoints
-            : s.s.points.map((p) => ({ x: p.x, y: p.y }));
-        s.s.points.forEach((p, i) => {
-          const original = lastPoints[i];
-          const scaledX = (original.x / oldWidth) * newWidth;
-          const scaledY = (original.y / oldHeight) * newHeight;
-          p.x = scaledX;
-          p.y = scaledY;
-        });
-      }
-      s.s.set({
-        left: newLeft,
-        top: newTop,
-        width: newWidthS,
-        height: newHeightS,
-      });
+      return false; // continue loop
     });
-    return this.shapes.map((s) => s.s);
+
+    this.shapes = newShapes;
   }
 
   clone(): Shape {

@@ -1,7 +1,7 @@
 import { Box, Pointer, Shape } from "../index";
 import type { BoxInterface, Point, resizeDirection, ShapeEventData, ShapeProps } from "../types";
-import { isDraggableWithRotation, resizeRect } from "../utils/resize";
-import { breakText } from "../utils/utilfunc";
+import { resizeRect } from "../utils/resize";
+import { breakText, calcPointWithRotation } from "../utils/utilfunc";
 import type { DrawProps } from "./shape";
 
 type EllipseProps = {

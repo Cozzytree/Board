@@ -590,7 +590,7 @@ class SelectionTool implements ToolInterface {
 
       // First check if we're hovering over the active shape (for rotation/resize cursors)
       const activeShape = this._board.getActiveShapes();
-      if (activeShape && !this.isGrabbing) {
+      if (activeShape && !this.isGrabbing && !isTouch) {
          // For active shapes, check rotation zone, resize zone, or draggable area
          if (activeShape.isRotating && activeShape.isRotating(p)) {
             activeShape.mouseover({ e: { point: p } });
