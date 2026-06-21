@@ -139,6 +139,7 @@ class Path extends Shape {
 
       context.save(); // Inner save for path transforms
       context.translate(this.left, this.top);
+      context.globalAlpha = this.opacity;
 
       if (resize) {
          context.globalAlpha = this.selectionAlpha;
@@ -317,8 +318,7 @@ class Path extends Shape {
       const dx = current.x - prev.x;
       const dy = current.y - prev.y;
 
-      this.left += dx;
-      this.top += dy;
+      this.dragTarget(dx, dy);
 
       return super.dragging(prev, current);
    }

@@ -88,8 +88,7 @@ class Rect extends Shape {
 
       // this.left = this._startPos.x + localDx;
       // this.top = this._startPos.y + localDy;
-      this.left += dx;
-      this.top += dy;
+      this.dragTarget(dx, dy);
 
       return super.dragging(prev, current);
    }
@@ -141,6 +140,7 @@ class Rect extends Shape {
       context.rotate(this.rotate);
       context.translate(-centerX, -centerY);
       context.beginPath();
+      context.globalAlpha = this.opacity;
 
       if (resize) {
          context.globalAlpha = this.selectionAlpha;
@@ -196,7 +196,7 @@ class Rect extends Shape {
       // Adjust height for text if needed
       const adjustedHeight = this.adjustHeight(newBounds.height);
 
-      super.setSilent({
+      this.setTarget({
          left: newBounds.left,
          top: newBounds.top,
          width: newBounds.width,

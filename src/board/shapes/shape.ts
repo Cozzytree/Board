@@ -15,7 +15,6 @@ import type {
 } from "../types";
 import { Box, type Board } from "../index";
 import { IsIn } from "../utils/utilfunc";
-import { resizeRect } from "../utils/resize";
 import Connections from "../connections";
 import { HoveredColor, LINE_CONNECTION_PADDING } from "../constants";
 
@@ -41,6 +40,7 @@ abstract class Shape implements ShapeProps {
    declare selectionFill: string;
    declare selectionStrokeWidth: number;
 
+   opacity: number;
    locked?: boolean;
    italic: boolean;
    fontWeight: number;
@@ -68,6 +68,12 @@ abstract class Shape implements ShapeProps {
    private eventListeners = new Map<ShapeEvent, Set<ShapeEventCallback>>();
    cachedLocalPath: Path2D | null = null;
 
+   targetLeft: number | null = null;
+   targetTop: number | null = null;
+   targetWidth: number | null = null;
+   targetHeight: number | null = null;
+   isAnimating: boolean = false;
+
    abstract draw(options: DrawProps): void;
    abstract IsResizable(p: Point, hitPadding?: number): resizeDirection | null;
    abstract IsDraggable(p: Point): boolean;
@@ -75,13 +81,14 @@ abstract class Shape implements ShapeProps {
    // abstract connectionEvent(e: connectionEventData): void;
 
    constructor({
+      opacity,
       fill,
       height,
       left,
       rotate,
       stroke,
-      top,
       width,
+      top,
       ctx,
       _board,
       strokeWidth,
@@ -135,6 +142,7 @@ abstract class Shape implements ShapeProps {
       this.lastFlippedState = { x: false, y: false };
       this.groupId = undefined;
       this.zOrder = zOrder ?? 0;
+      this.opacity = opacity ?? 1;
    }
 
    SetIndex(v: number) {
@@ -439,6 +447,11 @@ abstract class Shape implements ShapeProps {
       "indicator",
       "lastFlippedState",
       "_board",
+      "targetLeft",
+      "targetTop",
+      "targetWidth",
+      "targetHeight",
+      "isAnimating"
    ]);
 
    toObject(): Identity<Shape> {
@@ -516,6 +529,65 @@ abstract class Shape implements ShapeProps {
     */
    commitUpdate() {
       this._board.fire("shape:updated", { e: { target: [this] } });
+   }
+
+   setTarget(props: Partial<ShapeProps>) {
+      if (props.left !== undefined) this.targetLeft = props.left;
+      if (props.top !== undefined) this.targetTop = props.top;
+      if (props.width !== undefined) this.targetWidth = props.width;
+      if (props.height !== undefined) this.targetHeight = props.height;
+      this.startAnimationLoop();
+   }
+
+   dragTarget(dx: number, dy: number) {
+      if (this.targetLeft === null) this.targetLeft = this.left;
+      if (this.targetTop === null) this.targetTop = this.top;
+      this.targetLeft += dx;
+      this.targetTop += dy;
+      this.startAnimationLoop();
+   }
+
+   private startAnimationLoop() {
+      if (this.isAnimating) return;
+      this.isAnimating = true;
+      requestAnimationFrame(this.animateShape.bind(this));
+   }
+
+   private animateShape() {
+      const ease = 0.95;
+      let active = false;
+
+      if (this.targetWidth !== null) {
+         this.width += (this.targetWidth - this.width) * ease;
+         if (Math.abs(this.targetWidth - this.width) > 0.5) active = true;
+         else { this.width = this.targetWidth; this.targetWidth = null; }
+      }
+
+      if (this.targetHeight !== null) {
+         this.height += (this.targetHeight - this.height) * ease;
+         if (Math.abs(this.targetHeight - this.height) > 0.5) active = true;
+         else { this.height = this.targetHeight; this.targetHeight = null; }
+      }
+
+      if (this.targetLeft !== null) {
+         this.left += (this.targetLeft - this.left) * ease;
+         if (Math.abs(this.targetLeft - this.left) > 0.5) active = true;
+         else { this.left = this.targetLeft; this.targetLeft = null; }
+      }
+
+      if (this.targetTop !== null) {
+         this.top += (this.targetTop - this.top) * ease;
+         if (Math.abs(this.targetTop - this.top) > 0.5) active = true;
+         else { this.top = this.targetTop; this.targetTop = null; }
+      }
+
+      this._board?.render();
+
+      if (active) {
+         requestAnimationFrame(this.animateShape.bind(this));
+      } else {
+         this.isAnimating = false;
+      }
    }
 
    protected _set(key: string, value: any) {

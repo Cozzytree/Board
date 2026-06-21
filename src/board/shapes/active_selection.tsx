@@ -131,8 +131,9 @@ class ActiveSelection extends Shape {
          }
       });
 
-      this.left += dx;
-      this.top += dy;
+      // this.left += dx;
+      // this.top += dy;
+      this.dragTarget(dx, dy)
 
       const drg = super.dragging(prev, current);
       if (!drg) {
