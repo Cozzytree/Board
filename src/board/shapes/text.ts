@@ -5,285 +5,292 @@ import Shape, { type DrawProps } from "./shape";
 import { resizeRect } from "@/board/utils/resize";
 
 class Text extends Shape {
-    constructor(props: ShapeProps) {
-        super(props);
-        this.type = "text";
+  constructor(props: ShapeProps) {
+    super(props);
+    this.type = "text";
+  }
+
+  clone(): Shape {
+    const props = super.cloneProps();
+    return new Text(props);
+  }
+
+  draw({ ctx, resize = false }: DrawProps): void {
+    const context = ctx || this.ctx;
+
+    const currentScale = context.getTransform().a;
+    if (resize) {
+      context.globalAlpha = 0.5;
+
+      context.beginPath();
+      context.lineWidth = this.selectionStrokeWidth;
+      context.strokeStyle = this.selectionColor;
+      context.rect(this.left, this.top, this.width, this.height);
+      context.setLineDash([
+        this.selectionStrokeWidth / currentScale,
+        this.selectionStrokeWidth / currentScale,
+      ]);
+      context.stroke();
+      context.closePath();
     }
 
-    clone(): Shape {
-        const props = super.cloneProps();
-        return new Text(props);
-    }
+    context.save();
 
-    draw({ ctx, resize = false }: DrawProps): void {
-        const context = ctx || this.ctx;
+    const centerX = this.left + this.width * 0.5;
+    const centerY = this.top + this.height * 0.5;
+    context.translate(centerX, centerY);
+    context.rotate(this.rotate);
+    context.translate(-centerX, -centerY);
+    context.beginPath();
+    context.globalAlpha = this.opacity;
 
-        const currentScale = context.getTransform().a;
-        if (resize) {
-            context.globalAlpha = 0.5;
+    const maxWidth = this.width;
+    // const lineHeight = this.fontSize * 1.2;
+    const paragraphs = this.text.split("\n");
 
-            context.beginPath();
-            context.lineWidth = this.selectionStrokeWidth;
-            context.strokeStyle = this.selectionColor;
-            context.rect(this.left, this.top, this.width, this.height);
-            context.setLineDash([
-                this.selectionStrokeWidth / currentScale,
-                this.selectionStrokeWidth / currentScale,
-            ]);
-            context.stroke();
-            context.closePath();
+    const lines: string[] = [];
+
+    const breakLongWord = (word: string): string[] => {
+      const broken: string[] = [];
+      let current = "";
+
+      for (const char of word) {
+        const test = current + char;
+        if (context.measureText(test).width > maxWidth) {
+          if (current) broken.push(current);
+          current = char;
+        } else {
+          current += char;
         }
+      }
 
-        context.save();
+      if (current) broken.push(current);
+      return broken;
+    };
 
-        const centerX = this.left + this.width * 0.5;
-        const centerY = this.top + this.height * 0.5;
-        context.translate(centerX, centerY);
-        context.rotate(this.rotate);
-        context.translate(-centerX, -centerY);
-        context.beginPath();
+    for (const paragraph of paragraphs) {
+      if (paragraph.trim() === "") {
+        lines.push(""); // Preserve empty lines
+        continue;
+      }
 
-        const maxWidth = this.width;
-        // const lineHeight = this.fontSize * 1.2;
-        const paragraphs = this.text.split("\n");
+      const words = paragraph.split(" ");
+      let line = "";
 
-        const lines: string[] = [];
+      for (const word of words) {
+        const testLine = line ? line + " " + word : word;
+        const testWidth = context.measureText(testLine).width;
 
-        const breakLongWord = (word: string): string[] => {
-            const broken: string[] = [];
-            let current = "";
+        if (testWidth <= maxWidth) {
+          line = testLine;
+        } else {
+          if (line) {
+            lines.push(line);
+          }
 
-            for (const char of word) {
-                const test = current + char;
-                if (context.measureText(test).width > maxWidth) {
-                    if (current) broken.push(current);
-                    current = char;
-                } else {
-                    current += char;
-                }
+          // Now handle word — break if it's too long
+          if (context.measureText(word).width > maxWidth) {
+            const brokenWords = breakLongWord(word);
+            for (let i = 0; i < brokenWords.length - 1; i++) {
+              lines.push(brokenWords[i]);
             }
+            line = brokenWords[brokenWords.length - 1]; // Start next line with remainder
+          } else {
+            line = word;
+          }
+        }
+      }
 
-            if (current) broken.push(current);
-            return broken;
-        };
+      if (line) lines.push(line);
+    }
 
-        for (const paragraph of paragraphs) {
-            if (paragraph.trim() === "") {
-                lines.push(""); // Preserve empty lines
-                continue;
-            }
+    super.renderText({ context, text: lines.join("\n") });
+    context.closePath();
+    context.restore();
+  }
 
-            const words = paragraph.split(" ");
-            let line = "";
-
-            for (const word of words) {
-                const testLine = line ? line + " " + word : word;
-                const testWidth = context.measureText(testLine).width;
-
-                if (testWidth <= maxWidth) {
-                    line = testLine;
-                } else {
-                    if (line) {
-                        lines.push(line);
-                    }
-
-                    // Now handle word — break if it's too long
-                    if (context.measureText(word).width > maxWidth) {
-                        const brokenWords = breakLongWord(word);
-                        for (let i = 0; i < brokenWords.length - 1; i++) {
-                            lines.push(brokenWords[i]);
-                        }
-                        line = brokenWords[brokenWords.length - 1]; // Start next line with remainder
-                    } else {
-                        line = word;
-                    }
-                }
-            }
-
-            if (line) lines.push(line);
+  Resize(current: Point, old: BoxInterface, d: resizeDirection): Shape[] | void {
+    let newHeight = 0,
+      newWidth = 0;
+    switch (d) {
+      case "t":
+        if (current.y > old.y2) {
+          super.setSilent({
+            top: old.y2,
+          });
+          newHeight = current.y - old.y2;
+        } else {
+          super.setSilent({
+            top: current.y,
+          });
+          newHeight = old.y1 - current.y;
+        }
+        break;
+      case "b":
+        if (current.y > old.y1) {
+          super.setSilent({
+            top: old.y1,
+          });
+          newHeight = current.y - old.y1;
+        } else {
+          super.setSilent({
+            top: current.y,
+          });
+          newHeight = old.y2 - current.y;
+        }
+        break;
+      case "l":
+        if (current.x > old.x2) {
+          super.setSilent({
+            left: old.x2,
+          });
+          newWidth = current.x - old.x2;
+        } else {
+          super.setSilent({
+            left: current.x,
+          });
+          newWidth = old.x2 - current.x;
+        }
+        break;
+      case "r":
+        if (current.x > old.x1) {
+          super.setSilent({
+            left: old.x1,
+            width: current.x - old.x1,
+          });
+          newWidth = current.x - old.x1;
+        } else {
+          super.setSilent({
+            left: current.x,
+            width: old.x1 - current.x,
+          });
+          newWidth = old.x1 - current.x;
+        }
+        break;
+      case "tl":
+        if (current.x > old.x2) {
+          this.left = old.x2;
+          newWidth = current.x - old.x2;
+        } else {
+          this.left = current.x;
+          newWidth = old.x2 - current.x;
         }
 
-        super.renderText({ context, text: lines.join("\n") });
-        context.closePath();
-        context.restore();
-    }
-
-    Resize(current: Point, old: BoxInterface, d: resizeDirection): Shape[] | void {
-        let newHeight = 0,
-            newWidth = 0;
-        switch (d) {
-            case "t":
-                if (current.y > old.y2) {
-                    super.setSilent({
-                        top: old.y2,
-                    });
-                    newHeight = current.y - old.y2;
-                } else {
-                    super.setSilent({
-                        top: current.y,
-                    });
-                    newHeight = old.y1 - current.y;
-                }
-                break;
-            case "b":
-                if (current.y > old.y1) {
-                    super.setSilent({
-                        top: old.y1,
-                    });
-                    newHeight = current.y - old.y1;
-                } else {
-                    super.setSilent({
-                        top: current.y,
-                    });
-                    newHeight = old.y2 - current.y;
-                }
-                break;
-            case "l":
-                if (current.x > old.x2) {
-                    super.setSilent({
-                        left: old.x2,
-                    });
-                    newWidth = current.x - old.x2;
-                } else {
-                    super.setSilent({
-                        left: current.x,
-                    });
-                    newWidth = old.x2 - current.x;
-                }
-                break;
-            case "r":
-                if (current.x > old.x1) {
-                    super.setSilent({
-                        left: old.x1,
-                        width: current.x - old.x1,
-                    });
-                    newWidth = current.x - old.x1;
-                } else {
-                    super.setSilent({
-                        left: current.x,
-                        width: old.x1 - current.x,
-                    });
-                    newWidth = old.x1 - current.x;
-                }
-                break;
-            case "tl":
-                if (current.x > old.x2) {
-                    this.left = old.x2;
-                    newWidth = current.x - old.x2;
-                } else {
-                    this.left = current.x;
-                    newWidth = old.x2 - current.x;
-                }
-
-                if (current.y > old.y2) {
-                    this.top = old.y2;
-                    newHeight = current.y - old.y2;
-                } else {
-                    this.top = current.y;
-                    newHeight = old.y2 - current.y;
-                }
-                break;
-            case "tr":
-                if (current.x < old.x1) {
-                    this.left = current.x;
-                    newWidth = old.x1 - current.x;
-                } else {
-                    this.left = old.x1;
-                    newWidth = current.x - old.x1;
-                }
-
-                if (current.y > old.y2) {
-                    this.top = old.y2;
-                    newHeight = current.y - old.y2;
-                } else {
-                    this.top = current.y;
-                    newHeight = old.y2 - current.y;
-                }
-                break;
-            case "br":
-                if (current.x - old.x1 <= this.fontSize || current.y - old.y1 <= this.fontSize) return;
-                if (current.x < old.x1) {
-                    this.left = current.x;
-                    newWidth = old.x1 - current.x;
-                } else {
-                    this.left = old.x1;
-                    newWidth = current.x - old.x1;
-                }
-
-                if (current.y > old.y1) {
-                    this.top = old.y1;
-                    newHeight = current.y - old.y1;
-                } else {
-                    this.top = current.y;
-                    newHeight = old.y1 - current.y;
-                }
-                break;
-            case "bl":
-                if (current.x > old.x2) {
-                    this.left = old.x2;
-                    newWidth = current.x - old.x2;
-                } else {
-                    this.left = current.x;
-                    newWidth = old.x2 - current.x;
-                }
-                if (current.y > old.y1) {
-                    this.top = old.y1;
-                    newHeight = current.y - old.y1;
-                } else {
-                    this.top = current.y;
-                    newHeight = old.y1 - current.y;
-                }
+        if (current.y > old.y2) {
+          this.top = old.y2;
+          newHeight = current.y - old.y2;
+        } else {
+          this.top = current.y;
+          newHeight = old.y2 - current.y;
+        }
+        break;
+      case "tr":
+        if (current.x < old.x1) {
+          this.left = current.x;
+          newWidth = old.x1 - current.x;
+        } else {
+          this.left = old.x1;
+          newWidth = current.x - old.x1;
         }
 
-        this.setSilent({ width: newWidth, height: this.adjustHeight(newHeight) });
-        return super.Resize(current, old, d);
-    }
-
-    IsDraggable(p: Point): boolean {
-        const condition =
-            p.x > this.left &&
-            p.x < this.left + this.width &&
-            p.y > this.top &&
-            p.y < this.top + this.height;
-        if (condition) {
-            return true;
+        if (current.y > old.y2) {
+          this.top = old.y2;
+          newHeight = current.y - old.y2;
+        } else {
+          this.top = current.y;
+          newHeight = old.y2 - current.y;
         }
-        return false;
-    }
-
-    dragging(prev: Point, current: Point) {
-        const dx = current.x - prev.x;
-        const dy = current.y - prev.y;
-
-        this.set({
-            left: (this.left += dx),
-            top: (this.top += dy),
-        });
-        // this.left += dx;
-        // this.top += dy;
-
-        return super.dragging(prev, current);
-    }
-
-    IsResizable(p: Point, hitPadding: number = 0) {
-        const { height, width, top, left, rotate } = this;
-        const localBox = new Box({
-            x1: -width / 2,
-            x2: width / 2,
-            y1: -height / 2,
-            y2: height / 2,
-        });
-        const d = resizeRect(
-            calcPointWithRotation({ height, width, left, point: p, rotate, top }),
-            localBox,
-            this.padding + hitPadding,
-        );
-        if (d) {
-            return d.rd;
+        break;
+      case "br":
+        if (current.x - old.x1 <= this.fontSize || current.y - old.y1 <= this.fontSize) return;
+        if (current.x < old.x1) {
+          this.left = current.x;
+          newWidth = old.x1 - current.x;
+        } else {
+          this.left = old.x1;
+          newWidth = current.x - old.x1;
         }
 
-        return null;
+        if (current.y > old.y1) {
+          this.top = old.y1;
+          newHeight = current.y - old.y1;
+        } else {
+          this.top = current.y;
+          newHeight = old.y1 - current.y;
+        }
+        break;
+      case "bl":
+        if (current.x > old.x2) {
+          this.left = old.x2;
+          newWidth = current.x - old.x2;
+        } else {
+          this.left = current.x;
+          newWidth = old.x2 - current.x;
+        }
+        if (current.y > old.y1) {
+          this.top = old.y1;
+          newHeight = current.y - old.y1;
+        } else {
+          this.top = current.y;
+          newHeight = old.y1 - current.y;
+        }
     }
+
+    this.setTarget({
+      width: newWidth,
+      height: this.adjustHeight(newHeight)
+    })
+    // this.setSilent({ width: newWidth, height: this.adjustHeight(newHeight) });
+    return super.Resize(current, old, d);
+  }
+
+  IsDraggable(p: Point): boolean {
+    const condition =
+      p.x > this.left &&
+      p.x < this.left + this.width &&
+      p.y > this.top &&
+      p.y < this.top + this.height;
+    if (condition) {
+      return true;
+    }
+    return false;
+  }
+
+  dragging(prev: Point, current: Point) {
+    const dx = current.x - prev.x;
+    const dy = current.y - prev.y;
+
+    this.dragTarget(
+      dx,
+      dy,
+    )
+    // this.set({
+    // });
+    // this.left += dx;
+    // this.top += dy;
+
+    return super.dragging(prev, current);
+  }
+
+  IsResizable(p: Point, hitPadding: number = 0) {
+    const { height, width, top, left, rotate } = this;
+    const localBox = new Box({
+      x1: -width / 2,
+      x2: width / 2,
+      y1: -height / 2,
+      y2: height / 2,
+    });
+    const d = resizeRect(
+      calcPointWithRotation({ height, width, left, point: p, rotate, top }),
+      localBox,
+      this.padding + hitPadding,
+    );
+    if (d) {
+      return d.rd;
+    }
+
+    return null;
+  }
 }
 
 export default Text;

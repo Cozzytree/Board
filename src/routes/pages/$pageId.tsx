@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
-import React from "react";
+// import { useQuery } from "@tanstack/react-query";
+import React, { Suspense } from "react";
 import { Loader2 } from "lucide-react";
 import { BoardProvider } from "@/board/board_provider";
 import { BoardToolbar } from "@/board/components/toolbar";
@@ -14,11 +14,13 @@ import { getShapesByPage } from "@/lib/shape-api";
 import { getPage } from "@/lib/page-api";
 import { ShapeSyncManager } from "@/lib/shape-sync-manager";
 import type { Board } from "@/board/index";
+import { LibrarySidebar } from "@/board/components/library_sidebar";
+import { StatsForNerds } from "@/board/components/stat";
 
 export const Route = createFileRoute("/pages/$pageId")({
   component: PageCanvas,
   loader: async ({ context, params }) => {
-    const [page] = await Promise.all([
+    const [page, shapes] = await Promise.all([
       context.queryClient.ensureQueryData({
         queryKey: ["page", params.pageId],
         queryFn: () => getPage(params.pageId),
@@ -28,22 +30,22 @@ export const Route = createFileRoute("/pages/$pageId")({
         queryFn: () => getShapesByPage(params.pageId),
       }),
     ]);
-    return { page };
+    return { page, shapes };
   },
 });
 
 function PageCanvas() {
   const { pageId } = Route.useParams();
-  const { page } = Route.useLoaderData();
+  const { page, shapes } = Route.useLoaderData();
   const { theme } = useTheme();
   const containerRef = React.useRef<HTMLDivElement>(null);
   const [isLoading, setIsLoading] = React.useState(true);
 
-  const shapesQuery = useQuery({
-    queryKey: ["shapes", "page", pageId],
-    queryFn: () => getShapesByPage(pageId),
-    enabled: !!pageId,
-  });
+  // const shapesQuery = useQuery({
+  //   queryKey: ["shapes", "page", pageId],
+  //   queryFn: () => getShapesByPage(pageId),
+  //   enabled: !!pageId,
+  // });
 
   const boardRef = React.useRef<Board | null>(null);
   const syncManagerRef = React.useRef<ShapeSyncManager | null>(null);
@@ -99,7 +101,7 @@ function PageCanvas() {
     return () => clearTimeout(timer);
   }, [pageId]);
 
-  if (isLoading || shapesQuery.isLoading) {
+  if (isLoading) {
     return (
       <div className="w-full h-full flex items-center justify-center bg-background">
         <Loader2 size={32} className="text-[#7c3aed] animate-spin" />
@@ -109,19 +111,22 @@ function PageCanvas() {
 
   return (
     <div ref={containerRef} className="w-full h-full relative">
-      <BoardProvider
-        canvasLock={page.isLocked}
-        initialShapes={shapesQuery?.data?.map((s) => s.props)}
-        container={containerRef}
-        theme={theme || "light"}
-        width={containerRef.current?.clientWidth}
-        height={containerRef.current?.clientHeight}
-        onBoardReady={handleBoardReady}
-        skipLocalStorage
+      <Suspense fallback={<div>Loading component...</div>}>
+        <BoardProvider
+          key={pageId}
+          canvasLock={page.isLocked}
+          initialShapes={shapes?.map((s) => s.props)}
+          container={containerRef}
+          theme={theme || "light"}
+          width={containerRef.current?.clientWidth}
+          height={containerRef.current?.clientHeight}
+          onBoardReady={handleBoardReady}
+          skipLocalStorage
         // onImageUpload={() => {}}
-      >
-        <BoardUI />
-      </BoardProvider>
+        >
+          <BoardUI />
+        </BoardProvider>
+      </Suspense>
     </div>
   );
 }
@@ -141,6 +146,14 @@ function BoardUI() {
       <div className="absolute left-2 bottom-2 z-[999]">
         <BoardZoomControls />
       </div>
+      <div className="absolute right-2 top-5 z-[999]">
+        <LibrarySidebar />
+      </div>
+      <div className="absolute right-2 top-20 z-[999]">
+        <StatsForNerds />
+      </div>
+
+
       {!isMinimal && activeShape && (
         <div className="absolute w-fit left-1/2 -translate-x-1/2 z-[999] top-3">
           <BoardShapeOptions />

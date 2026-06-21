@@ -174,12 +174,12 @@ class ImageShape extends Shape {
 
     const adjustedHeight = this.adjustHeight(newBounds.height);
 
-    super.setSilent({
+    this.setTarget({
       left: newBounds.left,
       top: newBounds.top,
       width: newBounds.width,
       height: adjustedHeight,
-    });
+    })
 
     return super.Resize(current, old, d);
   }
@@ -188,8 +188,7 @@ class ImageShape extends Shape {
     const dx = current.x - prev.x;
     const dy = current.y - prev.y;
 
-    this.left += dx;
-    this.top += dy;
+    this.dragTarget(dx, dy);
 
     return super.dragging(prev, current);
   }

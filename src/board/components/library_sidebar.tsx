@@ -152,7 +152,7 @@ export function LibrarySidebar() {
    return (
       <Sheet>
          <SheetTrigger asChild>
-            <Button variant="outline" size="icon" className="fixed top-4 right-4 z-50 bg-background/80 backdrop-blur">
+            <Button variant="outline" size="icon" className="bg-background/80 backdrop-blur">
                <Library className="h-4 w-4" />
             </Button>
          </SheetTrigger>

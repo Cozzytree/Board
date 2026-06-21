@@ -164,7 +164,7 @@ class Ellipse extends Shape {
          ]);
       } else {
          context.setLineDash(this.dash);
-         context.lineWidth = this.strokeWidth / currentScale;
+         context.lineWidth = this.strokeWidth;
          context.strokeStyle = this.stroke;
          context.fillStyle = this.fill;
       }

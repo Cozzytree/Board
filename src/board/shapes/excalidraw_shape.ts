@@ -193,7 +193,7 @@ class ExcalidrawShape extends Shape {
          ]);
       } else {
          context.setLineDash(this.dash);
-         context.lineWidth = this.strokeWidth / currentScale;
+         context.lineWidth = this.strokeWidth;
          context.strokeStyle = this.stroke;
          context.fillStyle = this.fill;
       }
@@ -228,9 +228,9 @@ class ExcalidrawShape extends Shape {
             let fill = el.backgroundColor;
             if (!fill || fill === "transparent") fill = "transparent";
             context.fillStyle = fill;
-            context.lineWidth = (this.strokeWidth || 1) / currentScale;
-            if (el.strokeStyle === "dashed") context.setLineDash([8 / currentScale, 8 / currentScale]);
-            else if (el.strokeStyle === "dotted") context.setLineDash([2 / currentScale, 6 / currentScale]);
+            context.lineWidth = (this.strokeWidth || 1);
+            if (el.strokeStyle === "dashed") context.setLineDash([8, 8]);
+            else if (el.strokeStyle === "dotted") context.setLineDash([2, 6]);
          } else {
             context.fillStyle = "transparent";
          }

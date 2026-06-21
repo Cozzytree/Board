@@ -184,17 +184,16 @@ class Board implements BoardInterface {
       if (!c2) {
          c2 = document.createElement("canvas");
          c2.id = "board-overlay-canvas";
-         c2.width = width;
-         c2.height = height;
          c2.style.position = "absolute";
          c2.style.left = "0px";
          c2.style.top = "0px";
          c2.style.pointerEvents = "none"; // Let pointer events pass through
-         if (container !== undefined) {
-            container.append(c2);
-         } else {
-            document.body.appendChild(c2);
-         }
+      }
+      
+      if (container !== undefined) {
+         container.append(c2);
+      } else {
+         document.body.appendChild(c2);
       }
 
       this.canvas2 = c2;

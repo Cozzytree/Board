@@ -300,11 +300,13 @@ class Path extends Shape {
          p.y = scaledY;
       });
 
-      super.setSilent({
+     this.setTarget({
          left: newBounds.left,
          top: newBounds.top,
          width: newWidth,
          height: newHeight,
+     })
+      super.setSilent({
          flipX,
          flipY,
       });

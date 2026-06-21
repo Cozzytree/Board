@@ -260,6 +260,7 @@ class LineAnchor2 extends Line {
     context.rotate(this.rotate);
     context.translate(-centerX, -centerY);
     context.translate(this.left, this.top);
+    context.globalAlpha = this.opacity;
 
     if (resize) {
       context.globalAlpha = 0.5;

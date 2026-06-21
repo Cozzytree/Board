@@ -70,7 +70,6 @@ export function useYjsSync(
       if (!currentBoard) return;
 
       suppressRemoteRef.current = true;
-
       console.log("change event keys:", [...events.changes.keys.entries()]);
       
       try {
@@ -95,6 +94,10 @@ export function useYjsSync(
                   "_board",
                   "eventListeners",
                   "shapes",
+                  "_cachedPath",
+                  "_cachedScale",
+                  "_cachedPointsLen",
+                  "cachedLocalPath"
                 ]);
 
                 for (const prop of Object.keys(obj)) {

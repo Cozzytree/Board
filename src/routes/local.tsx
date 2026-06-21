@@ -30,7 +30,7 @@ function LocalBoardPage() {
 
     return (
         <div className="w-full h-full">
-            <BoardProvider theme={theme || "light"} width={width} height={height}>
+            <BoardProvider theme={theme} width={width} height={height}>
                 <BoardUI />
             </BoardProvider>
         </div>
