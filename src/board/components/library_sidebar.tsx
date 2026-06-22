@@ -7,6 +7,7 @@ import { useBoard } from "../board-context";
 import ExcalidrawShape from "../shapes/excalidraw_shape";
 import { LibraryMarketplace } from "./library_marketplace";
 import type { LibraryItem } from "../types";
+import { cn } from "@/lib/utils";
 
 export { LibrarySidebar as BoardLibrarySidebar };
 
@@ -65,7 +66,7 @@ function ExcalidrawPreview({ elements }: { elements: LibraryItem[] }) {
    );
 }
 
-export function LibrarySidebar() {
+export function LibrarySidebar({ className }:{ className?: string }) {
    const [items, setItems] = useState<SavedLibraryItem[]>([]);
    const { canvas } = useBoard();
    const fileInputRef = useRef<HTMLInputElement>(null);
@@ -156,7 +157,7 @@ export function LibrarySidebar() {
                <Library className="h-4 w-4" />
             </Button>
          </SheetTrigger>
-         <SheetContent className="w-[300px] sm:w-[400px] overflow-y-auto">
+         <SheetContent className={cn("w-[300px] sm:w-[400px] overflow-y-auto", className)}>
             <SheetHeader>
                <SheetTitle>Asset Library</SheetTitle>
                <SheetDescription>Import and use custom shapes</SheetDescription>

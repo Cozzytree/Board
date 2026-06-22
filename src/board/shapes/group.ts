@@ -3,8 +3,6 @@ import Box from "../utils/box";
 import { isDraggableWithRotation, resizeRect } from "../utils/resize";
 import { resizeWithRotation } from "../utils/resizeWithRotation";
 import { calcPointWithRotation } from "../utils/utilfunc";
-import Line from "./line/line";
-import Path from "./paths/path";
 import Shape, { type DrawProps } from "./shape";
 
 export type GroupDropEvent = {
@@ -23,9 +21,13 @@ class Group extends Shape {
    declare shapes: { s: Shape; oldProps: BoxInterface | undefined }[];
    title: string;
    onDropInto?: (event: GroupDropEvent) => void;
+   private _shapeCache: HTMLCanvasElement | null;
+   private _cacheHash: string = "";
 
    constructor(props: ShapeProps & Props) {
       super(props);
+      this._shapeCache = null;
+      this.cachedLocalPath = null;
       this.title = props.title || "frame";
       this.shapes = props.shapes.map((s) => ({ s: s.s, oldProps: s.oldProps }));
       this.onDropInto = props.onDropInto;
@@ -247,20 +249,68 @@ class Group extends Shape {
       return obj;
    }
 
+   private getCacheHash(): string {
+      let hash = "";
+      for (let i = 0; i < this.shapes.length; i++) {
+         const s = this.shapes[i].s;
+         hash += `${s.type}:${s.left - this.left},${s.top - this.top},${s.width},${s.height},${s.rotate},${s.scale},${s.stroke},${s.strokeWidth},${s.fill},${s.opacity},${s.text},${s.fontSize},${s.dash?.join("-")}|`;
+         if (s.type === 'path' || s.type === 'line' || s.type === 'freedraw') {
+            if ((s as any).points) {
+               hash += (s as any).points.length + "pts|";
+            }
+         }
+      }
+      return hash;
+   }
+
    draw({ ctx, resize = false, addStyles = true }: DrawProps): void {
+      const currentHash = this.getCacheHash();
+      const cachePadding = 40; // generous padding for strokes
+      
+      if (this._shapeCache === null || this._cacheHash !== currentHash) {
+         this._shapeCache = document.createElement("canvas");
+         
+         const pixelRatio = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1;
+         const cacheScale = pixelRatio * 2; // Cache at 2x resolution to stay sharp
+         
+         const cWidth = this.width + cachePadding * 2;
+         const cHeight = this.height + cachePadding * 2;
+         
+         this._shapeCache.width = cWidth * cacheScale;
+         this._shapeCache.height = cHeight * cacheScale;
+         
+         const cacheCtx = this._shapeCache.getContext("2d");
+         if (cacheCtx) {
+            cacheCtx.scale(cacheScale, cacheScale);
+            // Translate such that (this.left, this.top) is at (cachePadding, cachePadding)
+            cacheCtx.translate(cachePadding - this.left, cachePadding - this.top);
+            
+            this.shapes.forEach((s) => {
+               s?.s.draw({ ctx: cacheCtx, resize: false, addStyles });
+            });
+         }
+         this._cacheHash = currentHash;
+      }
+
       const context = ctx || this.ctx;
       const currentScale = context.getTransform().a;
       const centerX = this.left + this.width / 2;
       const centerY = this.top + this.height / 2;
 
-      // Draw children (with reduced opacity during resize/drag preview)
+      // Draw cached children
       if (resize) {
          context.save();
          context.globalAlpha = this.selectionAlpha;
       }
-      this.shapes.forEach((s) => {
-         s?.s.draw({ ctx: context, resize, addStyles });
-      });
+      
+      context.drawImage(
+         this._shapeCache,
+         this.left - cachePadding,
+         this.top - cachePadding,
+         this.width + cachePadding * 2,
+         this.height + cachePadding * 2
+      );
+      
       if (resize) {
          context.restore();
       }
@@ -280,18 +330,17 @@ class Group extends Shape {
          //   this.selectionDash[1] / currentScale,
          // ]);
       } else {
-         context.strokeStyle = "#7c3aed";
+         context.strokeStyle = this.stroke;
          context.lineWidth = 1.5 / currentScale;
          // context.setLineDash([6 / currentScale, 3 / currentScale]);
          context.globalAlpha = 0.5;
       }
 
-      context.roundRect(
+      context.rect(
          this.left - this.padding,
          this.top - this.padding,
          this.width + (this.padding << 1),
          this.height + (this.padding << 1),
-         10,
       );
       context.stroke();
       context.restore();

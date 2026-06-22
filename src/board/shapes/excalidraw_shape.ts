@@ -283,6 +283,69 @@ class ExcalidrawShape extends Shape {
       return null;
    }
 
+   activeRect(ctx?: CanvasRenderingContext2D) {
+      const context = ctx || this.ctx;
+      const pad = this.padding;
+      const x = this.left - pad;
+      const y = this.top - pad;
+      const w = this.width + pad * 2;
+      const h = this.height + pad * 2;
+
+      // Compute actual uniform scale
+      const transform = context.getTransform();
+      const currentScale = Math.sqrt(transform.a ** 2 + transform.b ** 2);
+
+      context.save();
+
+      // Apply rotation around center
+      const centerX = this.left + this.width * 0.5;
+      const centerY = this.top + this.height * 0.5;
+      context.translate(centerX, centerY);
+      context.rotate(this.rotate);
+      context.translate(-centerX, -centerY);
+
+      const indicatorColor = "#4A90E2";
+      const handleSizePx = 10;
+      const outlineWidthPx = 1.5;
+      const handleBorderPx = 1.5;
+
+      // Excalidraw-like active outline
+      context.beginPath();
+      context.setLineDash([8, 8]);
+      context.strokeStyle = indicatorColor;
+      context.fillStyle = "rgba(74, 144, 226, 0.05)";
+      context.lineWidth = outlineWidthPx / currentScale;
+      context.rect(x, y, w, h);
+      context.fill();
+      context.stroke();
+      context.closePath();
+
+
+      context.setLineDash([0, 0]);
+      const drawHandle = (cx: number, cy: number) => {
+         const size = handleSizePx / currentScale;
+         context.beginPath();
+         context.strokeStyle = indicatorColor;
+         context.fillStyle = this.fill;
+         context.lineWidth = handleBorderPx / currentScale;
+         context.roundRect(cx - size / 2, cy - size / 2, size, size, size * 0.4);
+         context.fill();
+         context.stroke();
+         context.closePath();
+      };
+
+      drawHandle(x, y);
+      drawHandle(x + w / 2, y);
+      drawHandle(x + w, y);
+      drawHandle(x, y + h / 2);
+      drawHandle(x + w, y + h / 2);
+      drawHandle(x, y + h);
+      drawHandle(x + w / 2, y + h);
+      drawHandle(x + w, y + h);
+
+      context.restore();
+   }
+
    Resize(current: Point, old: BoxInterface, d: resizeDirection) {
       const newBounds = resizeWithRotationAndFlip({
          current,

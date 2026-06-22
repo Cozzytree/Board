@@ -25,6 +25,13 @@ const FONT_SIZES = [
   { label: "S", size: 15 },
 ];
 
+const FONT_FAMILIES = [
+   { label: "Default", value: "system-ui" },
+   { label: "Comic", value: '"Comic Sans MS", "Comic Sans", cursive' },
+   { label: "Mono", value: 'monospace' },
+   { label: "Cursive", value: 'cursive' },
+];
+
 const strokeSize = [2, 3, 5];
 
 const Width = 4;
@@ -48,4 +55,5 @@ export {
   HoveredColor,
   COLORS,
   FONT_SIZES,
+  FONT_FAMILIES,
 };

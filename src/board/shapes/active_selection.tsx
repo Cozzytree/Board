@@ -336,20 +336,25 @@ class ActiveSelection extends Shape {
 
          const getRotatedBounds = (s: Shape) => {
             if (!s.rotate) {
-               return new Box({ x1: s.left, x2: s.left + s.width, y1: s.top, y2: s.top + s.height });
+               return new Box({
+                  x1: Math.min(s.left, s.left + s.width),
+                  x2: Math.max(s.left, s.left + s.width),
+                  y1: Math.min(s.top, s.top + s.height),
+                  y2: Math.max(s.top, s.top + s.height)
+               });
             }
             const cx = s.left + s.width / 2;
             const cy = s.top + s.height / 2;
-            const w2 = s.width / 2;
-            const h2 = s.height / 2;
+            const w2 = Math.abs(s.width) / 2;
+            const h2 = Math.abs(s.height) / 2;
             const cos = Math.cos(s.rotate);
             const sin = Math.sin(s.rotate);
-            
+
             const corners = [
                { x: -w2, y: -h2 }, { x: w2, y: -h2 },
                { x: -w2, y: h2 }, { x: w2, y: h2 }
             ];
-            
+
             let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
             for (let c of corners) {
                const rx = cx + c.x * cos - c.y * sin;
@@ -367,7 +372,7 @@ class ActiveSelection extends Shape {
 
             const inner = getRotatedBounds(shape);
 
-            if (!outer.isInOtherPartial(inner)) return false;
+            if (!outer.intersects(inner)) return false;
 
             selected.push(shape);
             selectedShapes.push({
@@ -460,20 +465,25 @@ class ActiveSelection extends Shape {
 
          const getRotatedBounds = (shape: Shape) => {
             if (!shape.rotate) {
-               return new Box({ x1: shape.left, x2: shape.left + shape.width, y1: shape.top, y2: shape.top + shape.height });
+               return new Box({
+                  x1: Math.min(shape.left, shape.left + shape.width),
+                  x2: Math.max(shape.left, shape.left + shape.width),
+                  y1: Math.min(shape.top, shape.top + shape.height),
+                  y2: Math.max(shape.top, shape.top + shape.height)
+               });
             }
             const cx = shape.left + shape.width / 2;
             const cy = shape.top + shape.height / 2;
-            const w2 = shape.width / 2;
-            const h2 = shape.height / 2;
+            const w2 = Math.abs(shape.width) / 2;
+            const h2 = Math.abs(shape.height) / 2;
             const cos = Math.cos(shape.rotate);
             const sin = Math.sin(shape.rotate);
-            
+
             const corners = [
                { x: -w2, y: -h2 }, { x: w2, y: -h2 },
                { x: -w2, y: h2 }, { x: w2, y: h2 }
             ];
-            
+
             let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
             for (let c of corners) {
                const rx = cx + c.x * cos - c.y * sin;
@@ -489,7 +499,7 @@ class ActiveSelection extends Shape {
          this._board.shapeStore.forEach((s) => {
             const inner = getRotatedBounds(s);
 
-            if (outer.isInOtherPartial(inner)) {
+            if (outer.intersects(inner)) {
                this.shapes.push({ s });
                updateBox = updateBox.compareAndReturnSmall(inner);
             }

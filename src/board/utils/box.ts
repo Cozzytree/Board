@@ -29,15 +29,15 @@ class Box implements BoxInterface {
       return x >= this.x1 && x <= this.x2 && y >= this.y1 && y <= this.y2;
    }
 
-   isInOtherPartial(other: Box): boolean {
-      const corners = [
-         { x: other.x1, y: other.y1 }, // top-left
-         { x: other.x2, y: other.y1 }, // top-right
-         { x: other.x1, y: other.y2 }, // bottom-left
-         { x: other.x2, y: other.y2 }, // bottom-right
-      ];
-
-      return corners.some(({ x, y }) => this.containsPoint(x, y));
+   intersects(other: Box): boolean {
+      // Standard AABB (Axis-Aligned Bounding Box) intersection
+      // Checks if the two boxes overlap in both X and Y axes
+      return (
+         this.x1 <= other.x2 &&
+         this.x2 >= other.x1 &&
+         this.y1 <= other.y2 &&
+         this.y2 >= other.y1
+      );
    }
 
    compareAndReturnBig(box2: Box): Box {

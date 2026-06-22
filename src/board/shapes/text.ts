@@ -44,67 +44,7 @@ class Text extends Shape {
     context.beginPath();
     context.globalAlpha = this.opacity;
 
-    const maxWidth = this.width;
-    // const lineHeight = this.fontSize * 1.2;
-    const paragraphs = this.text.split("\n");
-
-    const lines: string[] = [];
-
-    const breakLongWord = (word: string): string[] => {
-      const broken: string[] = [];
-      let current = "";
-
-      for (const char of word) {
-        const test = current + char;
-        if (context.measureText(test).width > maxWidth) {
-          if (current) broken.push(current);
-          current = char;
-        } else {
-          current += char;
-        }
-      }
-
-      if (current) broken.push(current);
-      return broken;
-    };
-
-    for (const paragraph of paragraphs) {
-      if (paragraph.trim() === "") {
-        lines.push(""); // Preserve empty lines
-        continue;
-      }
-
-      const words = paragraph.split(" ");
-      let line = "";
-
-      for (const word of words) {
-        const testLine = line ? line + " " + word : word;
-        const testWidth = context.measureText(testLine).width;
-
-        if (testWidth <= maxWidth) {
-          line = testLine;
-        } else {
-          if (line) {
-            lines.push(line);
-          }
-
-          // Now handle word — break if it's too long
-          if (context.measureText(word).width > maxWidth) {
-            const brokenWords = breakLongWord(word);
-            for (let i = 0; i < brokenWords.length - 1; i++) {
-              lines.push(brokenWords[i]);
-            }
-            line = brokenWords[brokenWords.length - 1]; // Start next line with remainder
-          } else {
-            line = word;
-          }
-        }
-      }
-
-      if (line) lines.push(line);
-    }
-
-    super.renderText({ context, text: lines.join("\n") });
+    super.renderText({ context, text: this.text });
     context.closePath();
     context.restore();
   }

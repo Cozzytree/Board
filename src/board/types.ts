@@ -65,6 +65,7 @@ export interface EventData {
 export type ShapeEventCallback = (shape: Shape, data?: ShapeEventData) => void;
 
 export type ShapeProps = {
+   ease?: number;
    opacity?: number;
    locked?: boolean;
    italic?: boolean;
@@ -74,6 +75,7 @@ export type ShapeProps = {
    selectionColor?: string;
    selectionStrokeWidth?: number;
    fontSize?: number;
+   fontFamily?: string;
    verticalAlign?: "top" | "center" | "bottom";
    textAlign?: textAlign;
    left?: number;

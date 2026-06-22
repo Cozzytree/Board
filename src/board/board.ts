@@ -27,6 +27,7 @@ import ShapeStoreArr from "./shapes/shape_store_arr";
 type view_t = { x: number; y: number; scl: number };
 
 type BoardProps = {
+   scrollEase?: number;
    initialShapes: any[];
    container?: HTMLElement;
    background: string;
@@ -115,6 +116,7 @@ class Board implements BoardInterface {
    declare shapeStore: ShapeStoreArr<Shape>;
    declare canvas2: HTMLCanvasElement;
    declare ctx2: CanvasRenderingContext2D;
+   declare scrollEase: number;
 
    private events: Map<ShapeEvent, Set<EventCallback>>;
    private pendingEventScheduled: boolean = false;
@@ -139,6 +141,7 @@ class Board implements BoardInterface {
    onImageUpload?: (file: File) => Promise<string>;
 
    constructor({
+      scrollEase,
       canvas,
       width,
       scl = 1,
@@ -156,6 +159,7 @@ class Board implements BoardInterface {
       container,
       isLocked = false,
    }: BoardProps) {
+      this.scrollEase = scrollEase ?? 0.5;
       this.customShapes = new Map();
       customShapes.forEach((s) => {
          this.customShapes.set(s.name, s.shape);
@@ -179,36 +183,18 @@ class Board implements BoardInterface {
       this.canvas.style.background = this._background;
 
       this.onActiveShapeCallback = onActiveShape;
-      // Ensure only one secondary canvas
+      // Get the secondary canvas rendered by React
       let c2 = document.getElementById("board-overlay-canvas") as HTMLCanvasElement | null;
       if (!c2) {
-         c2 = document.createElement("canvas");
-         c2.id = "board-overlay-canvas";
-         c2.style.position = "absolute";
-         c2.style.left = "0px";
-         c2.style.top = "0px";
-         c2.style.pointerEvents = "none"; // Let pointer events pass through
+         throw new Error("board-overlay-canvas not found in DOM");
       }
       
-      if (container !== undefined) {
-         container.append(c2);
-      } else {
-         document.body.appendChild(c2);
-      }
-
       this.canvas2 = c2;
       this.canvas2.width = width;
       this.canvas2.height = height;
 
-      // Ensure proper z-index layering
-      this.canvas.style.position = "absolute";
-      this.canvas.style.left = "0px";
-      this.canvas.style.top = "0px";
-      this.canvas.style.zIndex = "10"; // Main canvas is on top
-      // this.canvas.style.backgroundColor = "transparent"; // Transparent background
+      // Ensure main canvas has transparent or specific background
       this.canvas.style.backgroundColor = this._background;
-
-      c2.style.zIndex = "5"; // Overlay canvas underneath
 
       // Get proper contexts
       const ctx = this.canvas.getContext("2d");
@@ -831,7 +817,6 @@ class Board implements BoardInterface {
          this.targetView.y = e.deltaY > 0 ? this.targetView.y - 80 : this.targetView.y + 80;
       } else {
          e.preventDefault();
-
          // Calculate zoom factor
          const dscl = e.deltaY > 0 ? 8 / 10 : 10 / 8;
 
@@ -853,7 +838,7 @@ class Board implements BoardInterface {
 
    private animateView() {
       // 0.15 is the "spring" stiffness. Lower = smoother/slower, Higher = snappier
-      const ease = 0.5;
+      const ease = this.scrollEase;
 
       // Move actual view 15% closer to target view
       this.view.x += (this.targetView.x - this.view.x) * ease;

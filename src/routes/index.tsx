@@ -1,14 +1,25 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import React from "react";
+import React, { useRef } from "react";
 import { Paintbrush, Users, ArrowRight, Zap, Globe, Shield, LogIn, UserPlus, LogOut, ChevronDown, FileText } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { useSession, signOut } from "@/lib/auth-client";
+import { BoardProvider } from "@/board/board_provider";
+import type { ShapeProps } from "@/board/types";
+import { useTheme } from "@/components/theme-provider";
+
+const DEMO_SHAPES: ShapeProps[] = [
+   { type: "rect", left: 80, top: 40, width: 220, height: 100, stroke: "#b4befe", fill: "#1e1e2e", strokeWidth: 3 },
+   { type: "text", left: 100, top: 75, width: 180, height: 40, text: "Collaborate", fontSize: 24, stroke: "#cdd6f4", textAlign: "center" as const },
+   { type: "ellipse", left: 350, top: 30, rx: 100, ry: 100, stroke: "#f38ba8", fill: "#1e1e2e", strokeWidth: 3 },
+];
 
 export const Route = createFileRoute("/")({
    component: Index,
 });
 
 function Index() {
+   const containerRef = useRef<HTMLDivElement>(null);
+   const { theme } = useTheme();
    const navigate = useNavigate();
    const { data: session, isPending } = useSession();
    const [showUserMenu, setShowUserMenu] = React.useState(false);
@@ -49,7 +60,7 @@ function Index() {
    );
 
    return (
-      <div className="min-h-screen bg-[#0a0a0f] text-[#cdd6f4] flex flex-col items-center justify-center relative overflow-hidden">
+      <div className="min-h-screen py-10 bg-[#0a0a0f] text-[#cdd6f4] flex flex-col items-center justify-center relative overflow-hidden">
          {/* Background gradient orbs */}
          <div className="absolute top-[-20%] left-[-10%] w-[600px] h-[600px] bg-[#7c3aed]/10 rounded-full blur-[120px] pointer-events-none" />
          <div className="absolute bottom-[-20%] right-[-10%] w-[500px] h-[500px] bg-[#06b6d4]/8 rounded-full blur-[120px] pointer-events-none" />
@@ -79,6 +90,18 @@ function Index() {
                   A collaborative whiteboard for sketching, diagramming, and
                   brainstorming — in real time.
                </p>
+            </div>
+
+            {/* Canvas Demo */}
+            <div ref={containerRef} className="relative w-full h-[600px] rounded-2xl border border-[#313244] bg-[#181825] overflow-hidden shadow-2xl relative opacity-80 mix-blend-screen cursor-crosshair">
+               <BoardProvider
+                  container={containerRef}
+                  width={1200}
+                  height={600}
+                  theme={theme}
+                  skipLocalStorage={true} 
+                  initialShapes={DEMO_SHAPES as any} 
+               />
             </div>
 
             {/* Action cards */}

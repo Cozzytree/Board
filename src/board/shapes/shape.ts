@@ -2,16 +2,16 @@ import { v4 as uuidv4 } from "uuid";
 
 import type { connectionEventData, ConnectionInterface, Side } from "./shape_types";
 import type {
-  ShapeEvent,
-  BoxInterface,
-  Point,
-  resizeDirection,
-  ShapeEventCallback,
-  ShapeProps,
-  shapeType,
-  ShapeEventData,
-  Identity,
-  textAlign,
+   ShapeEvent,
+   BoxInterface,
+   Point,
+   resizeDirection,
+   ShapeEventCallback,
+   ShapeProps,
+   shapeType,
+   ShapeEventData,
+   Identity,
+   textAlign,
 } from "../types";
 import { Box, type Board } from "../index";
 import { IsIn } from "../utils/utilfunc";
@@ -19,749 +19,807 @@ import Connections from "../connections";
 import { HoveredColor, LINE_CONNECTION_PADDING } from "../constants";
 
 export type DrawProps = {
-  ctx?: CanvasRenderingContext2D;
-  addStyles?: boolean;
-  resize?: boolean;
+   ctx?: CanvasRenderingContext2D;
+   addStyles?: boolean;
+   resize?: boolean;
 };
 
 const keysNotNeeded = ["ctx", "eventListeners"];
 
 abstract class Shape implements ShapeProps {
-  padding = 4;
-  protected rotationPadding = 5; // Distance outside resize zone for rotation
+   padding = 4;
+   protected rotationPadding = 5; // Distance outside resize zone for rotation
 
-  protected lastFlippedState: { x: boolean; y: boolean };
-  declare type: shapeType;
-  declare id: string;
-  declare _board: Board;
-  declare selectionAlpha: number;
-  declare selectionDash: [number, number];
-  declare selectionColor: string;
-  declare selectionFill: string;
-  declare selectionStrokeWidth: number;
+   protected lastFlippedState: { x: boolean; y: boolean };
+   declare type: shapeType;
+   declare id: string;
+   declare _board: Board;
+   declare selectionAlpha: number;
+   declare selectionDash: [number, number];
+   declare selectionColor: string;
+   declare selectionFill: string;
+   declare selectionStrokeWidth: number;
 
-  opacity: number;
-  locked?: boolean;
-  italic: boolean;
-  fontWeight: number;
-  verticalAlign: "top" | "center" | "bottom";
-  textAlign: textAlign;
-  flipX: boolean;
-  flipY: boolean;
-  strokeWidth: number;
-  fill: string;
-  height: number;
-  width: number;
-  left: number;
-  rotate: number;
-  stroke: string;
-  top: number;
-  ctx: CanvasRenderingContext2D;
-  scale: number;
-  dash: [number, number];
-  text: string;
-  fontSize: number;
-  connections: ConnectionInterface;
-  groupId: string | undefined;
-  zOrder: number;
+   ease: number;
+   opacity: number;
+   locked?: boolean;
+   italic: boolean;
+   fontWeight: number;
+   verticalAlign: "top" | "center" | "bottom";
+   textAlign: textAlign;
+   flipX: boolean;
+   flipY: boolean;
+   strokeWidth: number;
+   fill: string;
+   height: number;
+   width: number;
+   left: number;
+   rotate: number;
+   stroke: string;
+   top: number;
+   ctx: CanvasRenderingContext2D;
+   scale: number;
+   dash: [number, number];
+   text: string;
+   fontSize: number;
+   fontFamily: string;
+   connections: ConnectionInterface;
+   groupId: string | undefined;
+   zOrder: number;
 
-  private eventListeners = new Map<ShapeEvent, Set<ShapeEventCallback>>();
-  cachedLocalPath: Path2D | null = null;
+   private eventListeners = new Map<ShapeEvent, Set<ShapeEventCallback>>();
+   cachedLocalPath: Path2D | null = null;
 
-  targetLeft: number | null = null;
-  targetTop: number | null = null;
-  targetWidth: number | null = null;
-  targetHeight: number | null = null;
-  isAnimating: boolean = false;
+   targetLeft: number | null = null;
+   targetTop: number | null = null;
+   targetWidth: number | null = null;
+   targetHeight: number | null = null;
+   isAnimating: boolean = false;
 
-  abstract draw(options: DrawProps): void;
-  abstract IsResizable(p: Point, hitPadding?: number): resizeDirection | null;
-  abstract IsDraggable(p: Point): boolean;
-  abstract clone(): Shape;
-  // abstract connectionEvent(e: connectionEventData): void;
+   abstract draw(options: DrawProps): void;
+   abstract IsResizable(p: Point, hitPadding?: number): resizeDirection | null;
+   abstract IsDraggable(p: Point): boolean;
+   abstract clone(): Shape;
+   // abstract connectionEvent(e: connectionEventData): void;
 
-  constructor({
-    opacity,
-    fill,
-    height,
-    left,
-    rotate,
-    stroke,
-    width,
-    top,
-    ctx,
-    _board,
-    strokeWidth,
-    scale,
-    flipX,
-    flipY,
-    dash,
-    text,
-    fontSize,
-    verticalAlign,
-    textAlign,
-    connections,
-    selectionColor,
-    selectionDash,
-    selectionAlpha,
-    selectionFill,
-    selectionStrokeWidth,
-    italic,
-    id,
-    locked,
-    zOrder,
-  }: ShapeProps) {
-    this.locked = locked || false;
-    this.fill = fill || "#00000000";
-    this.height = height || 100;
-    this.width = width || 100;
-    this.left = left || 0;
-    this.rotate = rotate || 0;
-    this.stroke = stroke || "#FFFFFF";
-    this.top = top || 0;
-    this.ctx = ctx;
-    this._board = _board;
-    this.scale = scale || 1;
-    this.strokeWidth = strokeWidth || 2;
-    this.flipX = flipX || false;
-    this.flipY = flipY || false;
-    this.dash = dash || [0, 0];
-    this.text = text || "";
-    this.fontSize = fontSize || 20;
-    this.verticalAlign = verticalAlign || "center";
-    this.fontWeight = 500;
-    this.textAlign = textAlign || "left";
-    this.connections = connections instanceof Connections ? connections : new Connections();
-    this.id = id || uuidv4();
-    this.selectionColor = selectionColor || HoveredColor;
-    this.selectionStrokeWidth = selectionStrokeWidth || 2;
-    this.selectionAlpha = selectionAlpha || 0.4;
-    this.selectionDash = selectionDash || [0, 0];
-    this.selectionFill = selectionFill || "#20202050";
-    this.italic = italic || false;
-    this.lastFlippedState = { x: false, y: false };
-    this.groupId = undefined;
-    this.zOrder = zOrder ?? 0;
-    this.opacity = opacity ?? 1;
-  }
+   constructor({
+      opacity,
+      fill,
+      height,
+      left,
+      rotate,
+      stroke,
+      width,
+      top,
+      ctx,
+      _board,
+      strokeWidth,
+      scale,
+      flipX,
+      flipY,
+      dash,
+      text,
+      fontSize,
+      fontFamily,
+      verticalAlign,
+      textAlign,
+      connections,
+      selectionColor,
+      selectionDash,
+      selectionAlpha,
+      selectionFill,
+      selectionStrokeWidth,
+      italic,
+      id,
+      locked,
+      zOrder,
+      ease
+   }: ShapeProps) {
+      this.ease = ease ?? 0.8;
+      this.locked = locked || false;
+      this.fill = fill || "#00000000";
+      this.height = height || 100;
+      this.width = width || 100;
+      this.left = left || 0;
+      this.rotate = rotate || 0;
+      this.stroke = stroke || "#FFFFFF";
+      this.top = top || 0;
+      this.ctx = ctx;
+      this._board = _board;
+      this.scale = scale || 1;
+      this.strokeWidth = strokeWidth || 2;
+      this.flipX = flipX || false;
+      this.flipY = flipY || false;
+      this.dash = dash || [0, 0];
+      this.text = text || "";
+      this.fontSize = fontSize || 20;
+      this.fontFamily = fontFamily || "system-ui";
+      this.verticalAlign = verticalAlign || "center";
+      this.fontWeight = 500;
+      this.textAlign = textAlign || "left";
+      this.connections = connections instanceof Connections ? connections : new Connections();
+      this.id = id || uuidv4();
+      this.selectionColor = selectionColor || HoveredColor;
+      this.selectionStrokeWidth = selectionStrokeWidth || 2;
+      this.selectionAlpha = selectionAlpha || 0.4;
+      this.selectionDash = selectionDash || [0, 0];
+      this.selectionFill = selectionFill || "#20202050";
+      this.italic = italic || false;
+      this.lastFlippedState = { x: false, y: false };
+      this.groupId = undefined;
+      this.zOrder = zOrder ?? 0;
+      this.opacity = opacity ?? 1;
+   }
 
-  SetIndex(v: number) {
-    this.zOrder = v;
-  }
+   SetIndex(v: number) {
+      this.zOrder = v;
+   }
 
-  Index() {
-    return this.zOrder;
-  }
+   Index() {
+      return this.zOrder;
+   }
 
-  protected cloneProps(): ShapeProps {
-    return {
-      fill: this.fill,
-      _board: this._board,
-      ctx: this.ctx,
-      flipX: this.flipX,
-      flipY: this.flipY,
-      left: this.left,
-      top: this.top,
-      height: this.height,
-      width: this.width,
-      rotate: this.rotate,
-      scale: this.scale,
-      stroke: this.stroke,
-      strokeWidth: this.strokeWidth,
-      id: uuidv4(),
-      type: this.type,
-      text: this.text,
-      dash: this.dash,
-      fontSize: this.fontSize,
-      textAlign: this.textAlign,
-      verticalAlign: this.verticalAlign,
-      locked: this.locked,
-      zOrder: this.zOrder,
-    };
-  }
+   protected cloneProps(): ShapeProps {
+      return {
+         fill: this.fill,
+         _board: this._board,
+         ctx: this.ctx,
+         flipX: this.flipX,
+         flipY: this.flipY,
+         left: this.left,
+         top: this.top,
+         height: this.height,
+         width: this.width,
+         rotate: this.rotate,
+         scale: this.scale,
+         stroke: this.stroke,
+         strokeWidth: this.strokeWidth,
+         id: uuidv4(),
+         type: this.type,
+         text: this.text,
+         dash: this.dash,
+         fontSize: this.fontSize,
+         textAlign: this.textAlign,
+         verticalAlign: this.verticalAlign,
+         locked: this.locked,
+         zOrder: this.zOrder,
+      };
+   }
 
-  connectionEvent(_: connectionEventData) { }
+   connectionEvent(_: connectionEventData) { }
 
-  remove() {
-    this._board.removeShape(this);
-  }
+   remove() {
+      this._board.removeShape(this);
+   }
 
-  dragging(_: Point, current: Point): Shape[] | void {
-    if (this.connections) {
-      const s: Shape[] = [];
-      this.connections.forEach((c) => {
-        s.push(c.s);
-        c.s.connectionEvent({ s: this, c, p: current });
-      });
-      return s;
-    }
-  }
+   dragging(_: Point, current: Point): Shape[] | void {
+      if (this.connections) {
+         const s: Shape[] = [];
+         this.connections.forEach((c) => {
+            s.push(c.s);
+            c.s.connectionEvent({ s: this, c, p: current });
+         });
+         return s;
+      }
+   }
 
-  Resize(current: Point, _old: BoxInterface, _: resizeDirection): Shape[] | void {
-    if (this.connections) {
-      const s: Shape[] = [];
-      this.connections.forEach((c) => {
-        s.push(c.s);
-        c.s.connectionEvent({ s: this, c, p: current });
-        return false;
-      });
+   Resize(current: Point, _old: BoxInterface, _: resizeDirection): Shape[] | void {
+      if (this.connections) {
+         const s: Shape[] = [];
+         this.connections.forEach((c) => {
+            s.push(c.s);
+            c.s.connectionEvent({ s: this, c, p: current });
+            return false;
+         });
 
-      return s;
-    }
-  }
+         return s;
+      }
+   }
 
-  activeRect(ctx?: CanvasRenderingContext2D) {
-    const context = ctx || this.ctx;
-    const pad = this.padding;
-    const x = this.left - pad;
-    const y = this.top - pad;
-    const w = this.width + pad * 2;
-    const h = this.height + pad * 2;
+   activeRect(ctx?: CanvasRenderingContext2D) {
+      const context = ctx || this.ctx;
+      const pad = this.padding;
+      const x = this.left - pad;
+      const y = this.top - pad;
+      const w = this.width + pad * 2;
+      const h = this.height + pad * 2;
 
-    // Compute actual uniform scale
-    const transform = context.getTransform();
-    const currentScale = Math.sqrt(transform.a ** 2 + transform.b ** 2);
+      // Compute actual uniform scale
+      const transform = context.getTransform();
+      const currentScale = Math.sqrt(transform.a ** 2 + transform.b ** 2);
 
-    context.save();
+      context.save();
 
-    // Apply rotation around center
-    const centerX = this.left + this.width * 0.5;
-    const centerY = this.top + this.height * 0.5;
-    context.translate(centerX, centerY);
-    context.rotate(this.rotate);
-    context.translate(-centerX, -centerY);
+      // Apply rotation around center
+      const centerX = this.left + this.width * 0.5;
+      const centerY = this.top + this.height * 0.5;
+      context.translate(centerX, centerY);
+      context.rotate(this.rotate);
+      context.translate(-centerX, -centerY);
 
-    const indicatorColor = "#4A90E2";
-    const handleSizePx = 8;
-    const outlineWidthPx = 1.5;
-    const handleBorderPx = 1.5;
+      const indicatorColor = "#4A90E2";
+      const handleSizePx = 8;
+      const outlineWidthPx = 1.5;
+      const handleBorderPx = 1.5;
 
-    // Excalidraw-like active outline
-    context.beginPath();
-    context.setLineDash([]);
-    context.strokeStyle = indicatorColor;
-    context.fillStyle = "rgba(74, 144, 226, 0.05)";
-    context.lineWidth = outlineWidthPx / currentScale;
-    context.rect(x, y, w, h);
-    context.fill();
-    context.stroke();
-    context.closePath();
-
-    const drawHandle = (cx: number, cy: number) => {
-      const size = handleSizePx / currentScale;
+      // Excalidraw-like active outline
       context.beginPath();
+      context.setLineDash([]);
       context.strokeStyle = indicatorColor;
-      context.lineWidth = handleBorderPx / currentScale;
-      context.roundRect(cx - size / 2, cy - size / 2, size, size, size * 0.5);
+      context.fillStyle = "rgba(74, 144, 226, 0.05)";
+      context.lineWidth = outlineWidthPx / currentScale;
+      context.rect(x, y, w, h);
+      context.fill();
       context.stroke();
       context.closePath();
-    };
 
-    drawHandle(x, y);
-    drawHandle(x + w / 2, y);
-    drawHandle(x + w, y);
-    drawHandle(x, y + h / 2);
-    drawHandle(x + w, y + h / 2);
-    drawHandle(x, y + h);
-    drawHandle(x + w / 2, y + h);
-    drawHandle(x + w, y + h);
+      const drawHandle = (cx: number, cy: number) => {
+         const size = handleSizePx / currentScale;
+         context.beginPath();
+         context.strokeStyle = indicatorColor;
+         context.lineWidth = handleBorderPx / currentScale;
+         context.roundRect(cx - size / 2, cy - size / 2, size, size, size * 0.5);
+         context.stroke();
+         context.closePath();
+      };
 
-    context.restore();
-  }
+      drawHandle(x, y);
+      drawHandle(x + w / 2, y);
+      drawHandle(x + w, y);
+      drawHandle(x, y + h / 2);
+      drawHandle(x + w, y + h / 2);
+      drawHandle(x, y + h);
+      drawHandle(x + w / 2, y + h);
+      drawHandle(x + w, y + h);
 
-  // Subscribe
-  on(event: ShapeEvent, callback: ShapeEventCallback): void {
-    if (!this.eventListeners.has(event)) {
-      this.eventListeners.set(event, new Set());
-    }
-    this.eventListeners.get(event)!.add(callback);
-  }
+      context.restore();
+   }
 
-  // Unsubscribe
-  off(event: ShapeEvent, callback: ShapeEventCallback): void {
-    this.eventListeners.get(event)?.delete(callback);
-  }
-
-  protected emit(event: ShapeEvent, data?: ShapeEventData): void {
-    this.eventListeners.get(event)?.forEach((callback) => {
-      callback(this, data);
-    });
-  }
-
-  mouseup(s: ShapeEventData): void {
-    this.connections.forEach((c) => {
-      c.s.setCoords();
-    });
-    this.set({
-      locked: false,
-    });
-    this.emit("mouseup", s);
-  }
-
-  mouseover(s: ShapeEventData): void {
-    if (this._board.activeShapes?.ID() == this.ID()) {
-      // Check for rotation zone first
-      if (this.isRotating(s.e.point)) {
-        this._board.setCursor("grab");
-        this.emit("mouseover", s);
-        return;
+   // Subscribe
+   on(event: ShapeEvent, callback: ShapeEventCallback): void {
+      if (!this.eventListeners.has(event)) {
+         this.eventListeners.set(event, new Set());
       }
+      this.eventListeners.get(event)!.add(callback);
+   }
 
-      const r = this.IsResizable(s.e.point);
-      if (r) {
-        // Calculate rotation-aware cursor
-        const cursor = this.getRotatedCursor(r, this.rotate);
-        this._board.setCursor(cursor);
+   // Unsubscribe
+   off(event: ShapeEvent, callback: ShapeEventCallback): void {
+      this.eventListeners.get(event)?.delete(callback);
+   }
+
+   protected emit(event: ShapeEvent, data?: ShapeEventData): void {
+      this.eventListeners.get(event)?.forEach((callback) => {
+         callback(this, data);
+      });
+   }
+
+   mouseup(s: ShapeEventData): void {
+      this.connections.forEach((c) => {
+         c.s.setCoords();
+      });
+      this.set({
+         locked: false,
+      });
+      this.emit("mouseup", s);
+   }
+
+   mouseover(s: ShapeEventData): void {
+      if (this._board.activeShapes?.ID() == this.ID()) {
+         // Check for rotation zone first
+         if (this.isRotating(s.e.point)) {
+            this._board.setCursor("grab");
+            this.emit("mouseover", s);
+            return;
+         }
+
+         const r = this.IsResizable(s.e.point);
+         if (r) {
+            // Calculate rotation-aware cursor
+            const cursor = this.getRotatedCursor(r, this.rotate);
+            this._board.setCursor(cursor);
+         } else {
+            this._board.setCursor("default");
+         }
       } else {
-        this._board.setCursor("default");
+         this._board.setCursor("default");
       }
-    } else {
-      this._board.setCursor("default");
-    }
 
-    this.emit("mouseover", s);
-  }
+      this.emit("mouseover", s);
+   }
 
-  /**
-   * Get the appropriate cursor style for a resize direction considering rotation.
-   * The cursor rotates with the shape so it visually matches the resize direction.
-   */
-  private getRotatedCursor(direction: resizeDirection, rotation: number): string {
-    // Convert rotation from radians to degrees and normalize to 0-360
-    const degrees = ((rotation * 180) / Math.PI) % 360;
-    const normalizedDegrees = degrees < 0 ? degrees + 360 : degrees;
+   /**
+    * Get the appropriate cursor style for a resize direction considering rotation.
+    * The cursor rotates with the shape so it visually matches the resize direction.
+    */
+   private getRotatedCursor(direction: resizeDirection, rotation: number): string {
+      // Convert rotation from radians to degrees and normalize to 0-360
+      const degrees = ((rotation * 180) / Math.PI) % 360;
+      const normalizedDegrees = degrees < 0 ? degrees + 360 : degrees;
 
-    // Map each direction to its base angle (in degrees)
-    const directionAngles: Record<resizeDirection, number> = {
-      r: 0, // right: 0°
-      br: 45, // bottom-right: 45°
-      b: 90, // bottom: 90°
-      bl: 135, // bottom-left: 135°
-      l: 180, // left: 180°
-      tl: 225, // top-left: 225°
-      t: 270, // top: 270°
-      tr: 315, // top-right: 315°
-    };
+      // Map each direction to its base angle (in degrees)
+      const directionAngles: Record<resizeDirection, number> = {
+         r: 0, // right: 0°
+         br: 45, // bottom-right: 45°
+         b: 90, // bottom: 90°
+         bl: 135, // bottom-left: 135°
+         l: 180, // left: 180°
+         tl: 225, // top-left: 225°
+         t: 270, // top: 270°
+         tr: 315, // top-right: 315°
+      };
 
-    // Calculate the effective angle (direction angle + rotation)
-    const effectiveAngle = (directionAngles[direction] + normalizedDegrees) % 360;
+      // Calculate the effective angle (direction angle + rotation)
+      const effectiveAngle = (directionAngles[direction] + normalizedDegrees) % 360;
 
-    // Map angle ranges to cursor types
-    // Each cursor covers a 45° range centered on its primary direction
-    if (effectiveAngle >= 337.5 || effectiveAngle < 22.5) {
-      return "ew-resize"; // horizontal (→)
-    } else if (effectiveAngle >= 22.5 && effectiveAngle < 67.5) {
-      return "nwse-resize"; // diagonal (\)
-    } else if (effectiveAngle >= 67.5 && effectiveAngle < 112.5) {
-      return "ns-resize"; // vertical (↕)
-    } else if (effectiveAngle >= 112.5 && effectiveAngle < 157.5) {
-      return "nesw-resize"; // diagonal (/)
-    } else if (effectiveAngle >= 157.5 && effectiveAngle < 202.5) {
-      return "ew-resize"; // horizontal (←)
-    } else if (effectiveAngle >= 202.5 && effectiveAngle < 247.5) {
-      return "nwse-resize"; // diagonal (\)
-    } else if (effectiveAngle >= 247.5 && effectiveAngle < 292.5) {
-      return "ns-resize"; // vertical (↕)
-    } else {
-      return "nesw-resize"; // diagonal (/)
-    }
-  }
-
-  mousedown(s: ShapeEventData): void {
-    this.emit("mousedown", s);
-  }
-
-  clean() {
-    this.eventListeners.clear();
-  }
-
-  adjustHeight(requestedHeight: number) {
-    if (this.text.length === 0) {
-      return requestedHeight;
-    }
-
-    const lines = this.text.split("\n");
-    const lineHeight = this.fontSize * 1.2;
-    const minTextHeight = lines.length * lineHeight;
-
-    return Math.max(requestedHeight, minTextHeight);
-  }
-
-  isWithin(p: Point): boolean {
-    return IsIn({
-      inner: new Box({ x1: p.x, y1: p.y, x2: p.x + 1, y2: p.y + 1 }),
-      outer: new Box({
-        x1: this.left - this.padding,
-        y1: this.top - this.padding,
-        x2: this.left + this.width + this.padding * 2,
-        y2: this.top + this.height + this.padding * 2,
-      }),
-    });
-  }
-
-  /**
-   * Check if a point is in the rotation zone (outside resize zone but within rotation padding).
-   * The rotation zone is a ring around the shape that allows rotating without interfering
-   * with drag or resize operations.
-   */
-  isRotating(p: Point): boolean {
-    // if (this.type === "line") return false;
-    const outerPadding = this.padding + this.rotationPadding;
-
-    // Check if point is within outer rotation zone
-    const inOuterZone = IsIn({
-      inner: new Box({ x1: p.x, y1: p.y, x2: p.x + 1, y2: p.y + 1 }),
-      outer: new Box({
-        x1: this.left - outerPadding,
-        y1: this.top - outerPadding,
-        x2: this.left + this.width + outerPadding * 2,
-        y2: this.top + this.height + outerPadding * 2,
-      }),
-    });
-
-    // Check if point is NOT in resize zone (inner zone)
-    const inResizeZone = this.IsResizable(p) !== null;
-
-    // Check if point is NOT draggable (inside shape)
-    const isDraggable = this.IsDraggable(p);
-
-    // Rotation zone: outside shape, outside resize zone, but within outer padding
-    return inOuterZone && !inResizeZone && !isDraggable;
-  }
-
-  ID(): string {
-    return this.id;
-  }
-
-  getBounds() {
-    return {
-      x: this.left,
-      y: this.top,
-      width: this.width,
-      height: this.height,
-    };
-  }
-
-  private static readonly _transientKeys = new Set([
-    "lastPoints",
-    "indicator",
-    "lastFlippedState",
-    "_board",
-    "targetLeft",
-    "targetTop",
-    "targetWidth",
-    "targetHeight",
-    "isAnimating"
-  ]);
-
-  toObject(): Identity<Shape> {
-    const obj = {} as { [K in keyof this]: this[K] };
-    for (const key of Object.keys(this) as Array<keyof this>) {
-      const keyStr = String(key);
-      if (
-        keyStr.startsWith("_") ||
-        keysNotNeeded.includes(keyStr) ||
-        Shape._transientKeys.has(keyStr)
-      ) {
-        continue;
-      }
-      if (keyStr === "connections") {
-        // Serialize connections with shape IDs instead of live references
-        const serialized: {
-          shapeId: string;
-          connected: "s" | "e";
-          anchor?: string;
-          coords?: { x: number; y: number };
-        }[] = [];
-        this.connections.forEach((c) => {
-          serialized.push({
-            shapeId: c.s.ID(),
-            connected: c.connected,
-            anchor: c.anchor,
-            coords: c.coords,
-          });
-          return false;
-        });
-        (obj as any).connections = serialized;
-      } else if (keyStr === "points") {
-        // Deep-clone points as plain {x, y} objects
-        const pts = (this as any).points;
-        if (Array.isArray(pts)) {
-          (obj as any).points = pts.map((p: { x: number; y: number }) => ({ x: p.x, y: p.y }));
-        }
+      // Map angle ranges to cursor types
+      // Each cursor covers a 45° range centered on its primary direction
+      if (effectiveAngle >= 337.5 || effectiveAngle < 22.5) {
+         return "ew-resize"; // horizontal (→)
+      } else if (effectiveAngle >= 22.5 && effectiveAngle < 67.5) {
+         return "nwse-resize"; // diagonal (\)
+      } else if (effectiveAngle >= 67.5 && effectiveAngle < 112.5) {
+         return "ns-resize"; // vertical (↕)
+      } else if (effectiveAngle >= 112.5 && effectiveAngle < 157.5) {
+         return "nesw-resize"; // diagonal (/)
+      } else if (effectiveAngle >= 157.5 && effectiveAngle < 202.5) {
+         return "ew-resize"; // horizontal (←)
+      } else if (effectiveAngle >= 202.5 && effectiveAngle < 247.5) {
+         return "nwse-resize"; // diagonal (\)
+      } else if (effectiveAngle >= 247.5 && effectiveAngle < 292.5) {
+         return "ns-resize"; // vertical (↕)
       } else {
-        obj[key] = this[key];
+         return "nesw-resize"; // diagonal (/)
       }
-    }
-    return obj;
-  }
+   }
 
-  /**
-   * @param {String|Object} key Property name or object (if object, iterate over the object properties)
-   * @param {Object|Function} value Property value (if function, the value is passed into it and its return value is used as a new one)
-   */
-  set(key: string | Record<string, any>, value?: any) {
-    if (typeof key === "object") {
-      this._setObject(key);
-    } else {
-      this._set(key, value);
-    }
-    this._board.fire("shape:updated", { e: { target: [this] } });
-    return this;
-  }
+   mousedown(s: ShapeEventData): void {
+      this.emit("mousedown", s);
+   }
 
-  /**
-   * Like set(), but does NOT fire "shape:updated".
-   * Use during hot-path operations (drag/resize) to avoid per-frame serialization.
-   */
-  setSilent(key: string | Record<string, any>, value?: any) {
-    if (typeof key === "object") {
-      this._setObject(key);
-    } else {
-      this._set(key, value);
-    }
-    return this;
-  }
+   clean() {
+      this.eventListeners.clear();
+   }
 
-  /**
-   * Manually fire "shape:updated" to persist changes.
-   * Call once after a batch of setSilent() calls (e.g., on pointerup).
-   */
-  commitUpdate() {
-    this._board.fire("shape:updated", { e: { target: [this] } });
-  }
-
-  setTarget(props: Partial<ShapeProps>) {
-    if (props.left !== undefined) this.targetLeft = props.left;
-    if (props.top !== undefined) this.targetTop = props.top;
-    if (props.width !== undefined) this.targetWidth = props.width;
-    if (props.height !== undefined) this.targetHeight = props.height;
-    this.startAnimationLoop();
-  }
-
-  dragTarget(dx: number, dy: number) {
-    if (this.targetLeft === null) this.targetLeft = this.left;
-    if (this.targetTop === null) this.targetTop = this.top;
-    this.targetLeft += dx;
-    this.targetTop += dy;
-    this.startAnimationLoop();
-  }
-
-  private startAnimationLoop() {
-    if (this.isAnimating) return;
-    this.isAnimating = true;
-    requestAnimationFrame(this.animateShape.bind(this));
-  }
-
-  private animateShape() {
-    const ease = 0.5;
-    let active = false;
-
-    if (this.targetWidth !== null) {
-      // this.width += (this.targetWidth - this.width) * ease;
-      this.set("width", this.width += (this.targetWidth - this.width) * ease)
-      if (Math.abs(this.targetWidth - this.width) > 0.5) active = true;
-      else {
-        // this.width = this.targetWidth;
-        this.set("width", this.targetWidth);
-        this.targetWidth = null;
+   adjustHeight(requestedHeight: number) {
+      if (this.text.length === 0) {
+         return requestedHeight;
       }
-    }
 
-    if (this.targetHeight !== null) {
-      // this.height += (this.targetHeight - this.height) * ease;
-      this.set("height", this.height += (this.targetHeight - this.height) * ease)
-      if (Math.abs(this.targetHeight - this.height) > 0.5) active = true;
-      else {
-        // this.height = this.targetHeight;
-        this.set("height", this.targetHeight);
-        this.targetHeight = null;
+      const lines = this.text.split("\n");
+      const lineHeight = this.fontSize * 1.2;
+      const minTextHeight = lines.length * lineHeight;
+
+      return Math.max(requestedHeight, minTextHeight);
+   }
+
+   isWithin(p: Point): boolean {
+      return IsIn({
+         inner: new Box({ x1: p.x, y1: p.y, x2: p.x + 1, y2: p.y + 1 }),
+         outer: new Box({
+            x1: this.left - this.padding,
+            y1: this.top - this.padding,
+            x2: this.left + this.width + this.padding * 2,
+            y2: this.top + this.height + this.padding * 2,
+         }),
+      });
+   }
+
+   /**
+    * Check if a point is in the rotation zone (outside resize zone but within rotation padding).
+    * The rotation zone is a ring around the shape that allows rotating without interfering
+    * with drag or resize operations.
+    */
+   isRotating(p: Point): boolean {
+      // if (this.type === "line") return false;
+      const outerPadding = this.padding + this.rotationPadding;
+
+      // Check if point is within outer rotation zone
+      const inOuterZone = IsIn({
+         inner: new Box({ x1: p.x, y1: p.y, x2: p.x + 1, y2: p.y + 1 }),
+         outer: new Box({
+            x1: this.left - outerPadding,
+            y1: this.top - outerPadding,
+            x2: this.left + this.width + outerPadding * 2,
+            y2: this.top + this.height + outerPadding * 2,
+         }),
+      });
+
+      // Check if point is NOT in resize zone (inner zone)
+      const inResizeZone = this.IsResizable(p) !== null;
+
+      // Check if point is NOT draggable (inside shape)
+      const isDraggable = this.IsDraggable(p);
+
+      // Rotation zone: outside shape, outside resize zone, but within outer padding
+      return inOuterZone && !inResizeZone && !isDraggable;
+   }
+
+   ID(): string {
+      return this.id;
+   }
+
+   getBounds() {
+      return {
+         x: this.left,
+         y: this.top,
+         width: this.width,
+         height: this.height,
+      };
+   }
+
+   private static readonly _transientKeys = new Set([
+      "lastPoints",
+      "indicator",
+      "lastFlippedState",
+      "_board",
+      "targetLeft",
+      "targetTop",
+      "targetWidth",
+      "targetHeight",
+      "isAnimating"
+   ]);
+
+   toObject(): Identity<Shape> {
+      const obj = {} as { [K in keyof this]: this[K] };
+      for (const key of Object.keys(this) as Array<keyof this>) {
+         const keyStr = String(key);
+         if (
+            keyStr.startsWith("_") ||
+            keysNotNeeded.includes(keyStr) ||
+            Shape._transientKeys.has(keyStr)
+         ) {
+            continue;
+         }
+         if (keyStr === "connections") {
+            // Serialize connections with shape IDs instead of live references
+            const serialized: {
+               shapeId: string;
+               connected: "s" | "e";
+               anchor?: string;
+               coords?: { x: number; y: number };
+            }[] = [];
+            this.connections.forEach((c) => {
+               serialized.push({
+                  shapeId: c.s.ID(),
+                  connected: c.connected,
+                  anchor: c.anchor,
+                  coords: c.coords,
+               });
+               return false;
+            });
+            (obj as any).connections = serialized;
+         } else if (keyStr === "points") {
+            // Deep-clone points as plain {x, y} objects
+            const pts = (this as any).points;
+            if (Array.isArray(pts)) {
+               (obj as any).points = pts.map((p: { x: number; y: number }) => ({ x: p.x, y: p.y }));
+            }
+         } else {
+            obj[key] = this[key];
+         }
       }
-    }
+      return obj;
+   }
 
-    if (this.targetLeft !== null) {
-      // this.left += (this.targetLeft - this.left) * ease;
-      this.set("left", this.left += (this.targetLeft - this.left) * ease);
-      if (Math.abs(this.targetLeft - this.left) > 0.5) active = true;
-      else {
-        // this.left = this.targetLeft;
-        this.set("left", this.targetLeft);
-        this.targetLeft = null;
+   /**
+    * @param {String|Object} key Property name or object (if object, iterate over the object properties)
+    * @param {Object|Function} value Property value (if function, the value is passed into it and its return value is used as a new one)
+    */
+   set(key: string | Record<string, any>, value?: any) {
+      if (typeof key === "object") {
+         this._setObject(key);
+      } else {
+         this._set(key, value);
       }
-    }
+      this._board.fire("shape:updated", { e: { target: [this] } });
+      return this;
+   }
 
-    if (this.targetTop !== null) {
-      // this.top += (this.targetTop - this.top) * ease;
-      this.set("top", this.top += (this.targetTop  - this.top ) * ease);
-      if (Math.abs(this.targetTop - this.top) > 0.5) active = true;
-      else {
-        // this.top = this.targetTop;
-        this.set("top", this.targetTop);
-        this.targetTop = null;
+   /**
+    * Like set(), but does NOT fire "shape:updated".
+    * Use during hot-path operations (drag/resize) to avoid per-frame serialization.
+    */
+   setSilent(key: string | Record<string, any>, value?: any) {
+      if (typeof key === "object") {
+         this._setObject(key);
+      } else {
+         this._set(key, value);
       }
-    }
+      return this;
+   }
 
-    // this._board?.render();
+   /**
+    * Manually fire "shape:updated" to persist changes.
+    * Call once after a batch of setSilent() calls (e.g., on pointerup).
+    */
+   commitUpdate() {
+      this._board.fire("shape:updated", { e: { target: [this] } });
+   }
 
-    if (active) {
+   setTarget(props: Partial<ShapeProps>) {
+      if (props.left !== undefined) this.targetLeft = props.left;
+      if (props.top !== undefined) this.targetTop = props.top;
+      if (props.width !== undefined) this.targetWidth = props.width;
+      if (props.height !== undefined) this.targetHeight = props.height;
+      this.startAnimationLoop();
+   }
+
+   dragTarget(dx: number, dy: number) {
+      if (this.targetLeft === null) this.targetLeft = this.left;
+      if (this.targetTop === null) this.targetTop = this.top;
+      this.targetLeft += dx;
+      this.targetTop += dy;
+      this.startAnimationLoop();
+   }
+
+   private startAnimationLoop() {
+      if (this.isAnimating) return;
+      this.isAnimating = true;
       requestAnimationFrame(this.animateShape.bind(this));
-    } else {
-      this.isAnimating = false;
-    }
-  }
+   }
 
-  protected _set(key: string, value: any) {
-    if (typeof value === "function") {
-      value = value();
-    }
-    if (key !== "left" && key !== "top") {
-      this.cachedLocalPath = null;
-    }
-    this[key as keyof this] = value;
-  }
+   private animateShape() {
+      const ease = this.ease;
+      let active = false;
 
-  getLocalPath(): Path2D {
-    if (!this.cachedLocalPath) {
-      this.cachedLocalPath = new Path2D();
-      this.cachedLocalPath.rect(0, 0, this.width, this.height);
-    }
-    return this.cachedLocalPath;
-  }
+      let hasChanges = false;
 
-  protected _setObject(obj: Record<string, any>) {
-    for (const prop in obj) {
-      this._set(prop, obj[prop]);
-    }
-  }
-
-  /**
-   * Basic getter
-   * @param {String} property Property name
-   * @return {*} value of a property
-   */
-  get(property: string): any {
-    return this[property as keyof this];
-  }
-
-  setCoords() { }
-
-  inAnchor(p: Point): { isin: boolean; side: Side; point: Point } {
-    const inSetX = Math.floor(this.width * 0.2);
-    const inSetY = Math.floor(this.height * 0.2);
-    const inner = new Box({ x1: p.x, y1: p.y, x2: p.x + 1, y2: p.y + 1 });
-    const points: { p: Point; cond: Box; side: Side }[] = [
-      {
-        cond: new Box({
-          x1: this.left - inSetX,
-          x2: this.left + inSetX,
-          y1: this.top + this.height * 0.5 - inSetY,
-          y2: this.top + this.height * 0.5 + inSetY,
-        }),
-        p: { x: this.left, y: this.top + this.height * 0.5 },
-        side: "left",
-      },
-      {
-        cond: new Box({
-          x1: this.left + this.width * 0.5 - inSetX,
-          x2: this.left + this.width * 0.5 + inSetX,
-          y1: this.top - inSetX,
-          y2: this.top + inSetY,
-        }),
-        p: { x: this.left + this.width * 0.5, y: this.top },
-        side: "top",
-      },
-      {
-        cond: new Box({
-          x1: this.left + this.width - inSetX,
-          x2: this.left + this.width + inSetX,
-          y1: this.top + this.height * 0.5 - inSetY,
-          y2: this.top + this.height * 0.5 + inSetY,
-        }),
-        p: { x: this.left + this.width, y: this.top + this.height * 0.5 },
-        side: "right",
-      },
-      {
-        cond: new Box({
-          x1: this.left + this.width * 0.5 - inSetX,
-          x2: this.left + this.width * 0.5 + inSetX,
-          y1: this.top + this.height - inSetY,
-          y2: this.top + this.height + inSetY,
-        }),
-        p: { x: this.left + this.width * 0.5, y: this.top + this.height },
-        side: "bottom",
-      },
-    ];
-
-    for (let i = 0; i < points.length; i++) {
-      const p = points[i].cond;
-      if (
-        IsIn({
-          inner,
-          outer: new Box({
-            x1: p.x1 - LINE_CONNECTION_PADDING,
-            y1: p.y1 - LINE_CONNECTION_PADDING,
-            x2: p.x2 + LINE_CONNECTION_PADDING,
-            y2: p.y2 + LINE_CONNECTION_PADDING,
-          }),
-        })
-      ) {
-        return { isin: true, side: points[i].side, point: points[i].p };
+      if (this.targetWidth !== null) {
+         this.setSilent("width", this.width += (this.targetWidth - this.width) * ease)
+         if (Math.abs(this.targetWidth - this.width) > 0.5) active = true;
+         else {
+            this.setSilent("width", this.targetWidth);
+            this.targetWidth = null;
+         }
+         hasChanges = true;
       }
-    }
 
-    return { isin: false, side: "top", point: { x: 0, y: 0 } };
-  }
+      if (this.targetHeight !== null) {
+         this.setSilent("height", this.height += (this.targetHeight - this.height) * ease)
+         if (Math.abs(this.targetHeight - this.height) > 0.5) active = true;
+         else {
+            this.setSilent("height", this.targetHeight);
+            this.targetHeight = null;
+         }
+         hasChanges = true;
+      }
 
-  protected renderText({ context, text }: { text?: string; context: CanvasRenderingContext2D }) {
-    // text
-    // const mesureText = context.measureText("Hello world");
-    const texts = text?.split("\n") || this.text.split("\n");
-    context.fillStyle = "white";
-    if (this.textAlign === "center") {
-      context.textAlign = "center";
-    } else if (this.textAlign === "left") {
-      context.textAlign = "left";
-    } else {
-      context.textAlign = "left";
-    }
+      if (this.targetLeft !== null) {
+         this.setSilent("left", this.left += (this.targetLeft - this.left) * ease);
+         if (Math.abs(this.targetLeft - this.left) > 0.5) active = true;
+         else {
+            this.setSilent("left", this.targetLeft);
+            this.targetLeft = null;
+         }
+         hasChanges = true;
+      }
 
-    context.textBaseline = "middle";
-    const font = `${this.fontWeight} ${this.italic ? "italic" : ""} ${this.fontSize}px system-ui`;
-    context.font = font;
-    context.strokeStyle = this.stroke;
-    context.fillStyle = this.stroke;
+      if (this.targetTop !== null) {
+         this.setSilent("top", this.top += (this.targetTop - this.top) * ease);
+         if (Math.abs(this.targetTop - this.top) > 0.5) active = true;
+         else {
+            this.setSilent("top", this.targetTop);
+            this.targetTop = null;
+         }
+         hasChanges = true;
+      }
 
-    // Measure the height of one line (using fontSize * lineHeight ratio, or estimate)
-    const lineHeight = this.fontSize * 1.2; // adjust multiplier as needed
-    const totalHeight = texts.length * lineHeight;
+      if (hasChanges) {
+         this.commitUpdate();
+      }
 
-    // Compute starting y-point: center of the shape
-    const centerY = this.top + this.height * 0.5;
-    // First line's baseline
-    let y: number;
-    if (this.verticalAlign === "top") {
-      y = this.top + lineHeight * 0.8;
-    } else if (this.verticalAlign === "center") {
-      y = centerY - totalHeight / 2 + lineHeight / 2;
-    } else {
-      y = this.top + this.height - totalHeight;
-    }
-
-    texts.forEach((t) => {
-      let x: number;
-      if (this.textAlign === "left") {
-        x = this.left + this.padding;
-      } else if (this.textAlign === "center") {
-        x = this.left + this.width * 0.5;
+      if (active) {
+         requestAnimationFrame(this.animateShape.bind(this));
       } else {
-        const size = context.measureText(t);
-        x = this.left + this.width - size.width - this.padding;
+         this.isAnimating = false;
       }
-      context.strokeText(t, x, y);
-      context.fillText(t, x, y);
-      y += lineHeight;
-    });
-  }
+   }
+
+   protected _set(key: string, value: any) {
+      if (typeof value === "function") {
+         value = value();
+      }
+      if (key !== "left" && key !== "top") {
+         this.cachedLocalPath = null;
+      }
+      this[key as keyof this] = value;
+   }
+
+   getLocalPath(): Path2D {
+      if (!this.cachedLocalPath) {
+         this.cachedLocalPath = new Path2D();
+         this.cachedLocalPath.rect(0, 0, this.width, this.height);
+      }
+      return this.cachedLocalPath;
+   }
+
+   protected _setObject(obj: Record<string, any>) {
+      for (const prop in obj) {
+         this._set(prop, obj[prop]);
+      }
+   }
+
+   /**
+    * Basic getter
+    * @param {String} property Property name
+    * @return {*} value of a property
+    */
+   get(property: string): any {
+      return this[property as keyof this];
+   }
+
+   setCoords() { }
+
+   inAnchor(p: Point): { isin: boolean; side: Side; point: Point } {
+      const inSetX = Math.floor(this.width * 0.2);
+      const inSetY = Math.floor(this.height * 0.2);
+      const inner = new Box({ x1: p.x, y1: p.y, x2: p.x + 1, y2: p.y + 1 });
+      const points: { p: Point; cond: Box; side: Side }[] = [
+         {
+            cond: new Box({
+               x1: this.left - inSetX,
+               x2: this.left + inSetX,
+               y1: this.top + this.height * 0.5 - inSetY,
+               y2: this.top + this.height * 0.5 + inSetY,
+            }),
+            p: { x: this.left, y: this.top + this.height * 0.5 },
+            side: "left",
+         },
+         {
+            cond: new Box({
+               x1: this.left + this.width * 0.5 - inSetX,
+               x2: this.left + this.width * 0.5 + inSetX,
+               y1: this.top - inSetX,
+               y2: this.top + inSetY,
+            }),
+            p: { x: this.left + this.width * 0.5, y: this.top },
+            side: "top",
+         },
+         {
+            cond: new Box({
+               x1: this.left + this.width - inSetX,
+               x2: this.left + this.width + inSetX,
+               y1: this.top + this.height * 0.5 - inSetY,
+               y2: this.top + this.height * 0.5 + inSetY,
+            }),
+            p: { x: this.left + this.width, y: this.top + this.height * 0.5 },
+            side: "right",
+         },
+         {
+            cond: new Box({
+               x1: this.left + this.width * 0.5 - inSetX,
+               x2: this.left + this.width * 0.5 + inSetX,
+               y1: this.top + this.height - inSetY,
+               y2: this.top + this.height + inSetY,
+            }),
+            p: { x: this.left + this.width * 0.5, y: this.top + this.height },
+            side: "bottom",
+         },
+      ];
+
+      for (let i = 0; i < points.length; i++) {
+         const p = points[i].cond;
+         if (
+            IsIn({
+               inner,
+               outer: new Box({
+                  x1: p.x1 - LINE_CONNECTION_PADDING,
+                  y1: p.y1 - LINE_CONNECTION_PADDING,
+                  x2: p.x2 + LINE_CONNECTION_PADDING,
+                  y2: p.y2 + LINE_CONNECTION_PADDING,
+               }),
+            })
+         ) {
+            return { isin: true, side: points[i].side, point: points[i].p };
+         }
+      }
+
+      return { isin: false, side: "top", point: { x: 0, y: 0 } };
+   }
+
+   protected renderText({ context, text }: { text?: string; context: CanvasRenderingContext2D }) {
+      const rawText = text ?? this.text;
+      if (!rawText) return;
+
+      if (this.textAlign === "center") {
+         context.textAlign = "center";
+      } else if (this.textAlign === "right") {
+         context.textAlign = "right";
+      } else {
+         context.textAlign = "left";
+      }
+
+      context.textBaseline = "middle";
+      const font = `${this.fontWeight} ${this.italic ? "italic" : ""} ${this.fontSize}px ${this.fontFamily}`;
+      context.font = font;
+      context.strokeStyle = this.stroke;
+      context.fillStyle = this.stroke;
+
+      const maxWidth = Math.max(0, this.width - this.padding * 2);
+      const paragraphs = rawText.split("\n");
+      const lines: string[] = [];
+
+      const breakLongWord = (word: string): string[] => {
+         const broken: string[] = [];
+         let current = "";
+
+         for (const char of word) {
+            const test = current + char;
+            if (context.measureText(test).width > maxWidth) {
+               if (current) broken.push(current);
+               current = char;
+            } else {
+               current += char;
+            }
+         }
+
+         if (current) broken.push(current);
+         return broken;
+      };
+
+      for (const paragraph of paragraphs) {
+         if (paragraph.trim() === "") {
+            lines.push("");
+            continue;
+         }
+
+         const words = paragraph.split(" ");
+         let line = "";
+
+         for (const word of words) {
+            const testLine = line ? line + " " + word : word;
+            const testWidth = context.measureText(testLine).width;
+
+            if (testWidth <= maxWidth) {
+               line = testLine;
+            } else {
+               if (line) {
+                  lines.push(line);
+               }
+
+               if (context.measureText(word).width > maxWidth) {
+                  const brokenWords = breakLongWord(word);
+                  for (let i = 0; i < brokenWords.length - 1; i++) {
+                     lines.push(brokenWords[i]);
+                  }
+                  line = brokenWords[brokenWords.length - 1];
+               } else {
+                  line = word;
+               }
+            }
+         }
+
+         if (line) lines.push(line);
+      }
+
+      const lineHeight = this.fontSize * 1.2;
+      const totalHeight = lines.length * lineHeight;
+      const centerY = this.top + this.height * 0.5;
+
+      let y: number;
+      if (this.verticalAlign === "top") {
+         y = this.top + this.padding + lineHeight * 0.5;
+      } else if (this.verticalAlign === "center") {
+         y = centerY - totalHeight / 2 + lineHeight / 2;
+      } else {
+         y = this.top + this.height - this.padding - totalHeight + lineHeight * 0.5;
+      }
+
+      lines.forEach((t) => {
+         let x: number;
+         if (this.textAlign === "left") {
+            x = this.left + this.padding;
+         } else if (this.textAlign === "center") {
+            x = this.left + this.width * 0.5;
+         } else {
+            x = this.left + this.width - this.padding;
+         }
+         context.strokeText(t, x, y);
+         context.fillText(t, x, y);
+         y += lineHeight;
+      });
+   }
 }
 
 export default Shape;

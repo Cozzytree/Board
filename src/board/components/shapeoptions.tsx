@@ -33,7 +33,7 @@ import {
 } from "lucide-react";
 import { useBoard } from "../board-context";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { COLORS, FONT_SIZES, strokeSize } from "../constants";
+import { COLORS, FONT_SIZES, FONT_FAMILIES, strokeSize } from "../constants";
 import { cn } from "@/lib/utils";
 import { useState, useEffect } from "react";
 import type { textAlign } from "../types";
@@ -273,6 +273,7 @@ function ShapeOptions() {
          <StrokeSize />
          <StrokeDash />
          <div className="w-[1px] bg-border mx-1 h-6 hidden md:block" />
+         <FontFamilyOption />
          <FontSizes />
          <div className="flex items-center gap-1">
             <BoldOption />
@@ -777,39 +778,114 @@ function BoldOption() {
 }
 
 function FontSizes() {
-   const { activeShape, canvas } = useBoard();
-   const [size, setSize] = useState(FONT_SIZES.find((f) => f.size === activeShape?.get("fontSize")));
+   const { activeShape, canvas, update } = useBoard();
+   const currentSize = activeShape?.get("fontSize");
+   const matchedPreset = FONT_SIZES.find((f) => f.size === currentSize);
+   const displayLabel = matchedPreset ? matchedPreset.label : currentSize || "Size";
+
+   const handleSizeChange = (newSize: number) => {
+      if (!activeShape || !canvas) return;
+      if (activeShape instanceof ActiveSelection) {
+         activeShape.shapes.forEach((s) => {
+            if (s.s) s.s.set("fontSize", newSize);
+         });
+      }
+      activeShape.set("fontSize", newSize);
+      canvas.render();
+      update();
+   };
 
    return (
       <Popover>
          <PopoverTrigger asChild>
-            <Button size={"xs"} variant={null} className="px-1">
-               {size ? size.label : "Size"}
+            <Button size={"xs"} variant={null} className="px-1 text-xs min-w-[2rem]">
+               {displayLabel}
             </Button>
          </PopoverTrigger>
-         <PopoverContent className="w-32 p-1">
-            <div className="flex flex-col gap-0.5">
+         <PopoverContent className="w-32 p-1" sideOffset={5}>
+            <div className="flex flex-col gap-1">
                {FONT_SIZES.map((f) => (
                   <Button
                      key={f.size}
                      variant={null}
                      className={cn(
                         "justify-start h-6 w-full",
-                        activeShape?.get("fontSize") === f.size ? "bg-muted" : "",
+                        currentSize === f.size ? "bg-muted" : "",
                      )}
+                     onClick={() => handleSizeChange(f.size)}>
+                     <span className="text-xs mr-auto">{f.label}</span>
+                     {currentSize === f.size && <CheckIcon className="h-3 w-3" />}
+                  </Button>
+               ))}
+               <div className="px-1 py-1">
+                  <Input 
+                     onBlur={(e) => {
+                        const num = parseInt(e.target.value);
+                        if (!isNaN(num) && num > 0) {
+                           handleSizeChange(num);
+                        }
+                     }}
+                     onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                           const num = parseInt(e.currentTarget.value);
+                           if (!isNaN(num) && num > 0) {
+                              handleSizeChange(num);
+                           }
+                        }
+                     }}
+                     type="number"
+                     min={1}
+                     defaultValue={Number(currentSize || 20)}
+                     className="h-7 text-xs"
+                     placeholder="Custom"
+                  />
+               </div>
+            </div>
+         </PopoverContent>
+      </Popover>
+   );
+}
+
+function FontFamilyOption() {
+   const { activeShape, canvas, update } = useBoard();
+   const [family, setFamily] = useState(
+      FONT_FAMILIES.find((f) => f.value === activeShape?.get("fontFamily")) || FONT_FAMILIES[0]
+   );
+
+   return (
+      <Popover>
+         <PopoverTrigger asChild>
+            <Button size={"xs"} variant={null} className="px-1 text-xs">
+               <span style={{ fontFamily: family.value }}>
+                  {family.label}
+               </span>
+            </Button>
+         </PopoverTrigger>
+         <PopoverContent className="w-32 p-1">
+            <div className="flex flex-col gap-0.5">
+               {FONT_FAMILIES.map((f) => (
+                  <Button
+                     key={f.label}
+                     variant={null}
+                     className={cn(
+                        "justify-start h-6 w-full",
+                        activeShape?.get("fontFamily") === f.value ? "bg-muted" : "",
+                     )}
+                     style={{ fontFamily: f.value }}
                      onClick={() => {
                         if (!activeShape || !canvas) return;
                         if (activeShape instanceof ActiveSelection) {
                            activeShape.shapes.forEach((s) => {
-                              if (s.s) s.s.set("fontSize", f.size);
+                              if (s.s) s.s.set("fontFamily", f.value);
                            });
                         }
-                        activeShape.set("fontSize", Number(f.size));
+                        activeShape.set("fontFamily", f.value);
                         canvas.render();
-                        setSize(f);
+                        update();
+                        setFamily(f);
                      }}>
                      <span className="text-xs mr-auto">{f.label}</span>
-                     {activeShape?.get("fontSize") === f.size && <CheckIcon className="h-3 w-3" />}
+                     {activeShape?.get("fontFamily") === f.value && <CheckIcon className="h-3 w-3" />}
                   </Button>
                ))}
             </div>
