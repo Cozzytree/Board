@@ -114,15 +114,16 @@ const BoardProvider = ({
       }
    }, [boardTheme]);
 
-   React.useEffect(() => {
-      const root = window.document.documentElement;
-      root.style.setProperty("--background", background);
-      root.style.setProperty("--foreground", foreground);
-      root.style.setProperty("--popover", background);
-   }, [background, foreground]);
+   // React.useEffect(() => {
+   //    const root = window.document.documentElement;
+   //    root.style.setProperty("--background", background);
+   //    root.style.setProperty("--foreground", foreground);
+   //    root.style.setProperty("--popover", background);
+   // }, [background, foreground]);
 
    const handleThemeChange = React.useCallback((newTheme: "dark" | "light") => {
       setBoardThemeState(newTheme);
+      onThemeChange?.({ theme: newTheme, background, foreground })
    }, []);
 
    const [isStat, setStat] = React.useState(() => {
@@ -265,10 +266,14 @@ const BoardProvider = ({
       sm: "free",
    });
    const canvasRef = React.useRef<HTMLCanvasElement>(null);
+   const canvas2Ref = React.useRef<HTMLCanvasElement>(null);
    const borderRef = React.useRef<Board>(null);
 
-   /** Serialize all shapes in the store to localStorage */
-   const saveShapesToStorage = React.useCallback((board: Board) => {
+   const undoStack = React.useRef<Record<string, any>[][]>([]);
+   const redoStack = React.useRef<Record<string, any>[][]>([]);
+   const isUndoing = React.useRef(false);
+
+   const serializeBoard = React.useCallback((board: Board) => {
       const shapes: Record<string, any>[] = [];
       board.shapeStore.forEach((s) => {
          if (s.type !== "selection" && !s.groupId) {
@@ -276,22 +281,104 @@ const BoardProvider = ({
          }
          return false;
       });
+      const seen = new WeakSet();
+      const str = JSON.stringify(shapes, (_key, value) => {
+         if (typeof value === "object" && value !== null) {
+            if (seen.has(value)) return undefined;
+            seen.add(value);
+         }
+         return value;
+      });
+      return JSON.parse(str);
+   }, []);
+
+   const pushHistory = React.useCallback((board: Board) => {
+      if (isUndoing.current) return;
+      const newStateStr = JSON.stringify(serializeBoard(board));
+      if (undoStack.current.length > 0) {
+         const lastStateStr = JSON.stringify(undoStack.current[undoStack.current.length - 1]);
+         if (newStateStr === lastStateStr) return;
+      }
+      undoStack.current.push(JSON.parse(newStateStr));
+      if (undoStack.current.length > 50) {
+         undoStack.current.shift();
+      }
+      redoStack.current = [];
+   }, [serializeBoard]);
+
+   const restoreShapesFromData = React.useCallback((board: Board, data: Record<string, any>[]) => {
+      board.shapeStore.clear();
+      if (!Array.isArray(data) || data.length === 0) {
+         board.renderImmediate();
+         return false;
+      }
+
+      const restored: Shape[] = [];
+
+      for (const obj of data) {
+         const normalized = { ...obj } as Record<string, any>;
+         if (
+            !normalized.type &&
+            typeof normalized.text === "string" &&
+            typeof normalized.fontSize === "number" &&
+            typeof normalized.left === "number" &&
+            typeof normalized.top === "number" &&
+            typeof normalized.width === "number" &&
+            typeof normalized.height === "number" &&
+            !Array.isArray(normalized.points) &&
+            !normalized.svgPath &&
+            !normalized.imageSrc
+         ) {
+            normalized.type = "text";
+         }
+
+         const shape = generateShapeByShapeType(normalized as any, board, board.ctx);
+         if (shape) restored.push(shape);
+      }
+
+      if (restored.length > 0) {
+         board.shapeStore.insert(...restored);
+
+         for (const obj of data) {
+            if (!obj.id || !Array.isArray(obj.connections) || obj.connections.length === 0) continue;
+            const shape = board.shapeStore.get(obj.id);
+            if (!shape) continue;
+
+            for (const conn of obj.connections) {
+               if (!conn.shapeId) continue;
+               const targetShape = board.shapeStore.get(conn.shapeId);
+               if (!targetShape) continue;
+               shape.connections.add({
+                  s: targetShape,
+                  connected: conn.connected,
+                  anchor: conn.anchor,
+                  coords: conn.coords ? { x: conn.coords.x ?? 50, y: conn.coords.y ?? 50 } : { x: 50, y: 50 },
+               });
+            }
+         }
+
+         restored.forEach((shape) => {
+            if (shape.type !== "line" && shape.connections.size() > 0) {
+               const p = { x: shape.left, y: shape.top };
+               shape.dragging(p, p);
+            }
+         });
+
+         board.renderImmediate();
+         return true;
+      }
+      return false;
+   }, []);
+
+   /** Serialize all shapes in the store to localStorage */
+   const saveShapesToStorage = React.useCallback((board: Board) => {
       try {
-         const seen = new WeakSet();
-         localStorage.setItem(
-            STORAGE_KEY,
-            JSON.stringify(shapes, (_key, value) => {
-               if (typeof value === "object" && value !== null) {
-                  if (seen.has(value)) return undefined;
-                  seen.add(value);
-               }
-               return value;
-            }),
-         );
+         const serialized = serializeBoard(board);
+         localStorage.setItem(STORAGE_KEY, JSON.stringify(serialized));
       } catch (err) {
          console.error("Failed to save shapes to localStorage", err);
       }
-   }, []);
+   }, [serializeBoard]);
 
    const saveStatStateToLocalStorage = (v: boolean) => {
       try {
@@ -333,78 +420,13 @@ const BoardProvider = ({
       try {
          const raw = localStorage.getItem(STORAGE_KEY);
          if (!raw) return false;
-
          const data = JSON.parse(raw) as Record<string, any>[];
-         if (!Array.isArray(data) || data.length === 0) return false;
-
-         const restored: Shape[] = [];
-
-         for (const obj of data) {
-            const normalized = { ...obj } as Record<string, any>;
-
-            // Backward compatibility: older Text shapes were saved without `type`.
-            if (
-               !normalized.type &&
-               typeof normalized.text === "string" &&
-               typeof normalized.fontSize === "number" &&
-               typeof normalized.left === "number" &&
-               typeof normalized.top === "number" &&
-               typeof normalized.width === "number" &&
-               typeof normalized.height === "number" &&
-               !Array.isArray(normalized.points) &&
-               !normalized.svgPath &&
-               !normalized.imageSrc
-            ) {
-               normalized.type = "text";
-            }
-
-            const shape = generateShapeByShapeType(normalized as any, board, board.ctx);
-            if (shape) {
-               restored.push(shape);
-            }
-         }
-
-         if (restored.length > 0) {
-            // Use shapeStore.insert directly to avoid re-triggering shape:created
-            board.shapeStore.insert(...restored);
-
-            // Second pass: rebuild connections from serialized { shapeId, connected, anchor, coords }
-            for (const obj of data) {
-               if (!obj.id || !Array.isArray(obj.connections) || obj.connections.length === 0) continue;
-               const shape = board.shapeStore.get(obj.id);
-               if (!shape) continue;
-
-               for (const conn of obj.connections) {
-                  if (!conn.shapeId) continue;
-                  const targetShape = board.shapeStore.get(conn.shapeId);
-                  if (!targetShape) continue;
-                  shape.connections.add({
-                     s: targetShape,
-                     connected: conn.connected,
-                     anchor: conn.anchor,
-                     coords: conn.coords
-                        ? { x: conn.coords.x ?? 50, y: conn.coords.y ?? 50 }
-                        : { x: 50, y: 50 },
-                  });
-               }
-            }
-
-            // Force connectionEvent refresh so line endpoints snap to current shape edges
-            restored.forEach((shape) => {
-               if (shape.type !== "line" && shape.connections.size() > 0) {
-                  const p = { x: shape.left, y: shape.top };
-                  shape.dragging(p, p);
-               }
-            });
-
-            board.renderImmediate();
-            return true;
-         }
+         return restoreShapesFromData(board, data);
       } catch (err) {
          console.error("Failed to load shapes from localStorage", err);
       }
       return false;
-   }, []);
+   }, [restoreShapesFromData]);
 
    const onDelete = React.useCallback(
       (shapes: Shape[]) => {
@@ -431,7 +453,7 @@ const BoardProvider = ({
    }, []);
 
    React.useLayoutEffect(() => {
-      if (!canvasRef.current) return;
+      if (!canvasRef.current || !canvas2Ref.current) return;
 
       const newBoard = new Board({
          scrollEase: 0.5,
@@ -443,6 +465,7 @@ const BoardProvider = ({
          background,
          height,
          canvas: canvasRef.current,
+         canvas2: canvas2Ref.current,
          snap: isSnap,
          hoverEffect: isHover,
          onModeChange: onModeChange,
@@ -471,6 +494,7 @@ const BoardProvider = ({
          if (e.e.target?.length) {
             setActiveShape(e.e.target[e.e.target.length - 1]);
          }
+         pushHistory(newBoard);
          if (onShapesChangedRef.current) {
             onShapesChangedRef.current(newBoard);
          } else if (!hasInitialShapes) {
@@ -487,6 +511,7 @@ const BoardProvider = ({
       });
       newBoard.on("shape:delete", (e) => {
          onDelete(e.e.target || []);
+         pushHistory(newBoard);
       });
       newBoard.on("shape:resize", () => { });
       newBoard.on("shape:move", () => { });
@@ -498,6 +523,7 @@ const BoardProvider = ({
          }
       });
       newBoard.on("shape:created", () => {
+         pushHistory(newBoard);
          if (onShapesChangedRef.current) {
             onShapesChangedRef.current(newBoard);
          } else if (!hasInitialShapes) {
@@ -512,6 +538,7 @@ const BoardProvider = ({
             initialShapes.map((s) => ({ id: s.id || crypto.randomUUID(), props: s })),
          ).then(() => {
             newBoard.renderImmediate();
+            pushHistory(newBoard);
          });
       } else if (!skipLocalStorage) {
          loadViewFromStorage(newBoard);
@@ -527,12 +554,49 @@ const BoardProvider = ({
             });
             newBoard.add(defaultShape);
          }
+         pushHistory(newBoard);
       }
 
-      // Save when shapes are deleted via keyboard
+      // Save when shapes are deleted via keyboard and handle Undo/Redo
       const handleKeyDown = (e: KeyboardEvent) => {
          if (isEditingText(e)) return;
-         if (e.key === "Delete" || (e.ctrlKey && (e.key === "z" || e.key === "y"))) {
+
+         if (e.ctrlKey && e.key === "z") {
+            e.preventDefault();
+            if (e.shiftKey) {
+               // Redo (Ctrl+Shift+Z)
+               if (redoStack.current.length > 0) {
+                  isUndoing.current = true;
+                  undoStack.current.push(serializeBoard(newBoard));
+                  const nextState = redoStack.current.pop()!;
+                  restoreShapesFromData(newBoard, nextState);
+                  saveShapesToStorage(newBoard);
+                  isUndoing.current = false;
+               }
+            } else {
+               // Undo (Ctrl+Z)
+               if (undoStack.current.length > 1) { // Leave the very first state intact
+                  isUndoing.current = true;
+                  const currentState = undoStack.current.pop()!;
+                  redoStack.current.push(currentState);
+                  const prevState = undoStack.current[undoStack.current.length - 1];
+                  restoreShapesFromData(newBoard, prevState);
+                  saveShapesToStorage(newBoard);
+                  isUndoing.current = false;
+               }
+            }
+         } else if (e.ctrlKey && e.key === "y") {
+            e.preventDefault();
+            // Redo (Ctrl+Y)
+            if (redoStack.current.length > 0) {
+               isUndoing.current = true;
+               undoStack.current.push(serializeBoard(newBoard));
+               const nextState = redoStack.current.pop()!;
+               restoreShapesFromData(newBoard, nextState);
+               saveShapesToStorage(newBoard);
+               isUndoing.current = false;
+            }
+         } else if (e.key === "Delete") {
             requestAnimationFrame(() => {
                if (onShapesChangedRef.current) {
                   onShapesChangedRef.current(newBoard);
@@ -552,11 +616,7 @@ const BoardProvider = ({
       };
    }, [
       width,
-      foreground,
-      background,
       height,
-      isHover,
-      isSnap,
       onModeChange,
       onMouseUp,
       customShapes,
@@ -575,9 +635,11 @@ const BoardProvider = ({
 
    React.useEffect(() => {
       if (!borderRef.current) return;
-      borderRef.current.setSnap = isSnap;
+      borderRef.current.snap = isSnap;
       borderRef.current.hoverEffect = isHover;
-   }, [isSnap, isHover]);
+      borderRef.current.foreground = foreground;
+      borderRef.current.background = background;
+   }, [isSnap, isHover, foreground, background]);
 
    const handleModeChange = React.useCallback((m: modes, sm: submodes | null) => {
       if (!borderRef.current) return;
@@ -682,13 +744,25 @@ const BoardProvider = ({
 
    const handleZoom = React.useCallback((v: boolean) => {
       if (!borderRef.current) return;
+      
+      let nextScl = borderRef.current.view.scl;
       if (v) {
-         borderRef.current.view.scl += 0.1;
+         nextScl += 0.1;
       } else {
-         borderRef.current.view.scl -= 0.1;
+         nextScl -= 0.1;
       }
 
-      setZoom(borderRef.current.view.scl * 100);
+      if (nextScl < 0.1) nextScl = 0.1;
+      if (nextScl > 5) nextScl = 5;
+
+      borderRef.current.view.scl = nextScl;
+      
+      // Keep targetView in sync so wheel scroll doesn't snap back
+      if ((borderRef.current as any).targetView) {
+         (borderRef.current as any).targetView.scl = nextScl;
+      }
+
+      setZoom(nextScl * 100);
       borderRef.current.render();
    }, []);
 
@@ -843,6 +917,7 @@ const BoardProvider = ({
             <ContextMenuTrigger asChild>
                <div style={{ position: 'relative', width: width + "px", height: height + "px" }}>
                   <canvas 
+                     ref={canvas2Ref}
                      id="board-overlay-canvas" 
                      style={{ width: width + "px", height: height + "px", position: "absolute", left: 0, top: 0, pointerEvents: "none", zIndex: 5 }} 
                   />

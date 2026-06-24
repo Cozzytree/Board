@@ -356,7 +356,7 @@ class ActiveSelection extends Shape {
             ];
 
             let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-            for (let c of corners) {
+            for (const c of corners) {
                const rx = cx + c.x * cos - c.y * sin;
                const ry = cy + c.x * sin + c.y * cos;
                if (rx < minX) minX = rx;
@@ -446,21 +446,11 @@ class ActiveSelection extends Shape {
 
    mouseup(s: ShapeEventData): void {
       if (this.setUp == 0) {
-         this.shapes = [];
          let updateBox = new Box({
             x1: Infinity,
             x2: -Infinity,
             y1: Infinity,
             y2: -Infinity,
-         });
-
-         const ox = Math.min(this.left, this.left + this.width);
-         const oy = Math.min(this.top, this.top + this.height);
-         const outer = new Box({
-            x1: ox,
-            x2: ox + Math.abs(this.width),
-            y1: oy,
-            y2: oy + Math.abs(this.height),
          });
 
          const getRotatedBounds = (shape: Shape) => {
@@ -485,7 +475,7 @@ class ActiveSelection extends Shape {
             ];
 
             let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-            for (let c of corners) {
+            for (const c of corners) {
                const rx = cx + c.x * cos - c.y * sin;
                const ry = cy + c.x * sin + c.y * cos;
                if (rx < minX) minX = rx;
@@ -496,22 +486,25 @@ class ActiveSelection extends Shape {
             return new Box({ x1: minX, x2: maxX, y1: minY, y2: maxY });
          };
 
-         this._board.shapeStore.forEach((s) => {
-            const inner = getRotatedBounds(s);
-
-            if (outer.intersects(inner)) {
-               this.shapes.push({ s });
-               updateBox = updateBox.compareAndReturnSmall(inner);
-            }
-
-            return false;
+         // Just calculate bounds from the shapes already selected by Resize
+         this.shapes.forEach((item) => {
+            const inner = getRotatedBounds(item.s);
+            updateBox = updateBox.compareAndReturnSmall(inner);
          });
 
-         if (this.shapes.length > 1) {
-            this.left = updateBox.x1;
-            this.top = updateBox.y1;
-            this.width = updateBox.x2 - updateBox.x1;
-            this.height = updateBox.y2 - updateBox.y1;
+         if (this.shapes.length > 0) {
+            this.setSilent({
+               left: updateBox.x1,
+               top: updateBox.y1,
+               width: updateBox.x2 - updateBox.x1,
+               height: updateBox.y2 - updateBox.y1
+            });
+            
+            // Explicitly clear animation targets so they don't instantly override our snapped bounds
+            this.targetLeft = null;
+            this.targetTop = null;
+            this.targetWidth = null;
+            this.targetHeight = null;
          }
       }
 

@@ -28,6 +28,13 @@ class Ellipse extends Shape {
       return new Ellipse({ ...props, rx: this.rx, ry: this.ry });
    }
 
+   toSVG(): string {
+      const attrs = this.getSvgAttributes();
+      const cx = this.left + this.width / 2;
+      const cy = this.top + this.height / 2;
+      return `<ellipse cx="${cx}" cy="${cy}" rx="${this.width / 2}" ry="${this.height / 2}" ${attrs} />`;
+   }
+
    getLocalPath(): Path2D {
       if (!this.cachedLocalPath) {
          this.cachedLocalPath = new Path2D();

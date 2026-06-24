@@ -2,13 +2,14 @@ import { createContext, useContext, type RefObject } from "react";
 import type { LucideIcon } from "lucide-react";
 import { Board, Shape } from "./index";
 import type { modes, submodes } from "./types";
+import type { Theme } from "./board_provider";
 
 export type ContextProps = {
     stat: boolean;
     foreground: string;
     background: string;
-    theme: "dark" | "light";
-    setTheme: (theme: "dark" | "light") => void;
+    theme: Theme;
+    setTheme: (theme: Theme) => void;
     setForeground: (color: string) => void;
     setBackground: (color: string) => void;
     onThemeChange?: (settings: { theme?: "dark" | "light"; background?: string; foreground?: string }) => void;

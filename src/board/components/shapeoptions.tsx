@@ -28,7 +28,6 @@ import {
    ChevronUp,
    ChevronDown,
    MenuIcon,
-   Sliders,
    Square,
 } from "lucide-react";
 import { useBoard } from "../board-context";
@@ -41,7 +40,7 @@ import { useMobile } from "@/hooks/use-mobile";
 import ActiveSelection from "../shapes/active_selection";
 import Group from "../shapes/group";
 import { Button } from "@/components/ui/button";
-import type { Board, Shape } from "../index";
+import type { Board } from "../index";
 import { Input } from "@/components/ui/input";
 
 const EXCALIDRAW_COLORS = [
@@ -230,21 +229,23 @@ function ColorPickerRow({
    disabled?: boolean;
 }) {
    return (
-      <div className="flex items-center gap-2 opacity-50" style={{ opacity: disabled ? 0.5 : 1 }}>
-         <span className="text-xs text-muted-foreground w-20">{label}</span>
-         <div className="w-6 h-6 rounded border border-border" style={{ backgroundColor: color }} />
-         <input
-            type="color"
-            value={color}
-            onChange={(e) => onChange(e.target.value)}
-            disabled={disabled}
-            className="w-6 h-6 rounded border border-border cursor-pointer disabled:cursor-not-allowed"
-         />
+      <div className="flex flex-col items-center gap-2 opacity-50" style={{ opacity: disabled ? 0.5 : 1 }}>
+         <div className="flex gap-2 items-center">
+            <span className="text-xs text-muted-foreground w-20">{label}</span>
+            <div className="w-6 h-6 rounded border border-border" style={{ backgroundColor: color }} />
+         </div>
          <div className="flex gap-1">
+            <input
+               type="color"
+               value={color}
+               onChange={(e) => onChange(e.target.value)}
+               disabled={disabled}
+               className="w-5 h-5 border border-border cursor-pointer disabled:cursor-not-allowed"
+            />
             {COLORS.slice(0, 6).map((c) => (
                <button
                   key={c}
-                  className="w-4 h-4 rounded border border-border hover:scale-110 transition-transform disabled:hover:scale-100 disabled:cursor-not-allowed"
+                  className="w-5 h-5 border border-border hover:scale-110 transition-transform disabled:hover:scale-100 disabled:cursor-not-allowed"
                   style={{ backgroundColor: c }}
                   onClick={() => onChange(c)}
                   disabled={disabled}
@@ -410,8 +411,8 @@ function OpacityOption() {
          </PopoverTrigger>
          <PopoverContent>
             <Input defaultValue={defaultVal * 100} type="range" max={100} min={0} step={100 / 10} onChange={(e) => {
-                const num = Number(e.target.value);
-                if (isNaN(num)) return;
+               const num = Number(e.target.value);
+               if (isNaN(num)) return;
                handleSetOpacity(num / 100)
             }}
             />
@@ -468,6 +469,21 @@ function ArrowOption() {
 function StrokeSize() {
    const { activeShape, canvas, setActiveShape, update } = useBoard();
 
+   const handleStrokeSize = (n: number) => {
+      if (!activeShape) return;
+      // Manual event simulation for helperEvent or direct logic
+      if (activeShape instanceof ActiveSelection) {
+         activeShape.shapes.forEach((sh) => {
+            if (sh.s) sh.s.set("strokeWidth", n);
+         });
+      }
+      activeShape.set("strokeWidth", n);
+      const ac = canvas?.getActiveShapes();
+      if (ac) setActiveShape(ac);
+      canvas?.render();
+      update();
+   }
+
    return (
       <Popover>
          <PopoverTrigger asChild>
@@ -489,18 +505,7 @@ function StrokeSize() {
                         activeShape?.get("strokeWidth") === s ? "bg-muted" : "",
                      )}
                      onClick={() => {
-                        if (!activeShape) return;
-                        // Manual event simulation for helperEvent or direct logic
-                        if (activeShape instanceof ActiveSelection) {
-                           activeShape.shapes.forEach((sh) => {
-                              if (sh.s) sh.s.set("strokeWidth", s);
-                           });
-                        }
-                        activeShape.set("strokeWidth", s);
-                        const ac = canvas?.getActiveShapes();
-                        if (ac) setActiveShape(ac);
-                        canvas?.render();
-                        update();
+                        handleStrokeSize(s);
                      }}>
                      <div className="w-4 flex justify-center">
                         {activeShape?.get("strokeWidth") === s && <CheckIcon className="h-3 w-3" />}
@@ -509,22 +514,32 @@ function StrokeSize() {
                   </div>
                ))}
 
-               <Input onBlur={(e) => {
-                  if (!activeShape) return;
-                  const num = parseInt(e.target.value);
-                  // Manual event simulation for helperEvent or direct logic
-                  if (activeShape instanceof ActiveSelection) {
-                     activeShape.shapes.forEach((sh) => {
-                        if (sh.s) sh.s.set("strokeWidth", num);
-                     });
-                  }
-                  activeShape.set("strokeWidth", num);
-                  const ac = canvas?.getActiveShapes();
-                  if (ac) setActiveShape(ac);
-                  canvas?.render();
-                  update();
+               <Input
+                  onBlur={(e) => {
+                     if (!activeShape) return;
+                     const num = parseInt(e.target.value);
+                     // Manual event simulation for helperEvent or direct logic
+                     if (activeShape instanceof ActiveSelection) {
+                        activeShape.shapes.forEach((sh) => {
+                           if (sh.s) sh.s.set("strokeWidth", num);
+                        });
+                     }
+                     activeShape.set("strokeWidth", num);
+                     const ac = canvas?.getActiveShapes();
+                     if (ac) setActiveShape(ac);
+                     canvas?.render();
+                     update();
 
-               }}
+                  }}
+                  onKeyDown={(e) => {
+                     if (e.key === 'Enter') {
+                        const num = parseInt(e.currentTarget.value);
+                        if (!isNaN(num) && num > 0) {
+                           (num);
+                        }
+                        handleStrokeSize(num);
+                     }
+                  }}
                   type="number"
                   defaultValue={Number(activeShape?.get("strokeWidth") || 0)}
                />
@@ -818,7 +833,7 @@ function FontSizes() {
                   </Button>
                ))}
                <div className="px-1 py-1">
-                  <Input 
+                  <Input
                      onBlur={(e) => {
                         const num = parseInt(e.target.value);
                         if (!isNaN(num) && num > 0) {

@@ -257,8 +257,8 @@ class ShapeTool implements ToolInterface {
   private draw(...shapes: Shape[]) {
     const ctx = this._board.ctx2;
 
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.clearRect(0, 0, this._board.canvas2.width, this._board.canvas2.height);
+    this._board.resetContextTransform(ctx);
+    ctx.clearRect(0, 0, this._board.cssWidth, this._board.cssHeight);
     ctx.save();
 
     ctx.translate(this._board.view.x, this._board.view.y);

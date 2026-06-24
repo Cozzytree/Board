@@ -65,6 +65,11 @@ class ImageShape extends Shape {
     });
   }
 
+  toSVG(): string {
+    const attrs = this.getSvgAttributes();
+    return `<image x="${this.left}" y="${this.top}" width="${this.width}" height="${this.height}" href="${this.imageSrc}" preserveAspectRatio="none" ${attrs} />`;
+  }
+
   mouseup(s: ShapeEventData): void {
     super.set({
       width: Math.max(this.width, 20),

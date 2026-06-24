@@ -15,6 +15,35 @@ class Text extends Shape {
     return new Text(props);
   }
 
+  toSVG(): string {
+    const attrs = this.getSvgAttributes();
+    const lines = this.text.split("\n");
+    const fontSize = this.fontSize || 20;
+    // Base lineHeight approximation is 1.2 * fontSize
+    const lineHeight = fontSize * 1.2;
+    
+    // Convert textAlign to text-anchor
+    let textAnchor = "start";
+    let xOffset = this.left;
+    if (this.textAlign === "center") {
+       textAnchor = "middle";
+       xOffset = this.left + this.width / 2;
+    } else if (this.textAlign === "right") {
+       textAnchor = "end";
+       xOffset = this.left + this.width;
+    }
+
+    let tspanElements = lines.map((line, i) => {
+       // Canvas textBaseline="top" means the Y coordinate is the top of the em-box.
+       // In SVG, dominant-baseline="text-before-edge" simulates this.
+       return `<tspan x="${xOffset}" dy="${i === 0 ? 0 : lineHeight}">${line.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</tspan>`;
+    }).join("");
+
+    const fontFamily = this.fontFamily === "1" ? "'Virgil', sans-serif" : "system-ui, sans-serif";
+    
+    return `<text x="${xOffset}" y="${this.top}" font-family="${fontFamily}" font-size="${fontSize}" font-weight="${this.fontWeight}" text-anchor="${textAnchor}" dominant-baseline="text-before-edge" ${attrs}>${tspanElements}</text>`;
+  }
+
   draw({ ctx, resize = false }: DrawProps): void {
     const context = ctx || this.ctx;
 

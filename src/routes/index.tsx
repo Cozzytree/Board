@@ -117,7 +117,7 @@ function Index() {
               hover:shadow-xl hover:shadow-[#7c3aed]/10
               cursor-pointer text-left"
                >
-                  <div className="w-10 h-10 rounded-xl bg-[#7c3aed]/15 flex items-center justify-center group-hover:bg-[#7c3aed]/25 transition-colors">
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center group-hover:bg-[#7c3aed]/25 transition-colors">
                      <Users size={20} className="text-[#b4befe]" />
                   </div>
                   <div>

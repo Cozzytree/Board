@@ -11,8 +11,8 @@ export type ExcalidrawShapeProps = {
 };
 
 class ExcalidrawShape extends Shape {
-   declare elements: LibraryItem[];
-   private originalBoundingBox: { w: number; h: number };
+   declare elements: any[];
+   declare originalBoundingBox: { w: number; h: number };
    _cachedScale: number = 0;
 
    constructor(props: ShapeProps & ExcalidrawShapeProps) {
@@ -111,11 +111,66 @@ class ExcalidrawShape extends Shape {
    }
 
    clone(): Shape {
-      const props = super.cloneProps();
-      return new ExcalidrawShape({
-         ...props,
-         elements: JSON.parse(JSON.stringify(this.elements)),
+      const p = this.cloneProps();
+      return new ExcalidrawShape({ ...p, elements: this.elements, originalBoundingBox: this.originalBoundingBox });
+   }
+
+   toSVG(): string {
+      const attrs = this.getSvgAttributes();
+      
+      const scaleX = this.width / (this.originalBoundingBox.w || 1);
+      const scaleY = this.height / (this.originalBoundingBox.h || 1);
+      
+      let transformStr = `translate(${this.left}, ${this.top})`;
+      if (this.flipX || this.flipY) {
+         transformStr += ` translate(${this.flipX ? this.width : 0}, ${this.flipY ? this.height : 0}) scale(${this.flipX ? -1 : 1}, ${this.flipY ? -1 : 1})`;
+      }
+      transformStr += ` scale(${scaleX}, ${scaleY})`;
+
+      let elementsSvg = "";
+      this.elements.forEach((el) => {
+         let pMinX = 0, pMinY = 0;
+         if (el.points && el.points.length > 0) {
+            pMinX = Math.min(...el.points.map((p: number[]) => p[0]));
+            pMinY = Math.min(...el.points.map((p: number[]) => p[1]));
+         }
+
+         const cx = el.x + pMinX + (el.width || 0) / 2;
+         const cy = el.y + pMinY + (el.height || 0) / 2;
+
+         let elTransform = `translate(${cx}, ${cy})`;
+         if (el.angle) elTransform += ` rotate(${(el.angle * 180) / Math.PI})`;
+         elTransform += ` translate(${el.x - cx}, ${el.y - cy})`;
+
+         let fill = el.backgroundColor;
+         if (!fill || fill === "transparent") fill = "none";
+         const stroke = this.stroke || "#000000";
+         const strokeWidth = this.strokeWidth || 1;
+         
+         let dash = "";
+         if (el.strokeStyle === "dashed") dash = `stroke-dasharray="8,8"`;
+         else if (el.strokeStyle === "dotted") dash = `stroke-dasharray="2,6"`;
+
+         if (el._svgPath) {
+            elementsSvg += `<path d="${el._svgPath}" fill="${fill}" stroke="${stroke}" stroke-width="${strokeWidth}" ${dash} transform="${elTransform}" />`;
+         } else if (el.type === "text") {
+            const fontSize = el?.fontSize || 20;
+            const fontFamily = el?.fontFamily === 1 ? "'Virgil', sans-serif" : "system-ui, sans-serif";
+            const fontFill = el.fillStyle || stroke;
+            const textAnchor = el.textAlign === "center" ? "middle" : el.textAlign === "right" ? "end" : "start";
+            
+            const lines = (el.text || "").split("\n");
+            const tspanElements = lines.map((line: string, i: number) => {
+               return `<tspan x="0" dy="${i === 0 ? 0 : fontSize * 1.2}">${line.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</tspan>`;
+            }).join("");
+            
+            elementsSvg += `<text font-family="${fontFamily}" font-size="${fontSize}" fill="${fontFill}" text-anchor="${textAnchor}" dominant-baseline="text-before-edge" transform="${elTransform}">${tspanElements}</text>`;
+         }
       });
+
+      // ExcalidrawShape might also have main text, but it's handled by super.renderText. 
+      // For now, let's just group the elements.
+      return `<g ${attrs}><g transform="${transformStr}">${elementsSvg}</g></g>`;
    }
 
    mouseup(s: ShapeEventData): void {
@@ -146,27 +201,41 @@ class ExcalidrawShape extends Shape {
          this.elements.forEach((el: any) => {
             if (el.type === "text") return;
             const p = new Path2D();
+            let svgPath = "";
             if (el.type === "rectangle") {
+               const w = el.width || 100;
+               const h = el.height || 100;
                if (el?.roundness && typeof p.roundRect === "function") {
                   try {
-                     p.roundRect(0, 0, el.width || 100, el.height || 100, 8);
+                     p.roundRect(0, 0, w, h, 8);
+                     svgPath = `M8,0 h${w-16} a8,8 0 0 1 8,8 v${h-16} a8,8 0 0 1 -8,8 h-${w-16} a8,8 0 0 1 -8,-8 v-${h-16} a8,8 0 0 1 8,-8 Z`;
                   } catch (e) {
-                     p.rect(0, 0, el.width || 100, el.height || 100);
+                     p.rect(0, 0, w, h);
+                     svgPath = `M0,0 h${w} v${h} h${-w} Z`;
                   }
                } else {
-                  p.rect(0, 0, el.width || 100, el.height || 100);
+                  p.rect(0, 0, w, h);
+                  svgPath = `M0,0 h${w} v${h} h${-w} Z`;
                }
             } else if (el.type === "ellipse") {
-               p.ellipse((el.width || 100) / 2, (el.height || 100) / 2, (el.width || 100) / 2, (el.height || 100) / 2, 0, 0, Math.PI * 2);
+               const rx = (el.width || 100) / 2;
+               const ry = (el.height || 100) / 2;
+               p.ellipse(rx, ry, rx, ry, 0, 0, Math.PI * 2);
+               // SVG standard way to draw ellipse with path if needed, or just use ellipse tag. 
+               // For simplicity, we can use arc commands to simulate ellipse in path.
+               svgPath = `M0,${ry} a${rx},${ry} 0 1,0 ${rx*2},0 a${rx},${ry} 0 1,0 -${rx*2},0`;
             } else if (el.type === "line" || el.type === "freedraw" || el.type === "arrow" || el.type === "diamond") {
                if (el.points && el.points.length > 0) {
                   p.moveTo(el.points[0][0], el.points[0][1]);
+                  svgPath = `M${el.points[0][0]},${el.points[0][1]} `;
                   for (let i = 1; i < el.points.length; i++) {
                      p.lineTo(el.points[i][0], el.points[i][1]);
+                     svgPath += `L${el.points[i][0]},${el.points[i][1]} `;
                   }
                }
             }
             el._cachedPath = p;
+            el._svgPath = svgPath;
          });
       }
 
@@ -224,7 +293,7 @@ class ExcalidrawShape extends Shape {
          context.translate(el.x - cx, el.y - cy);
 
          if (!resize) {
-            context.strokeStyle = el.strokeColor || this.stroke || "#000000";
+            context.strokeStyle = this.stroke || "#000000";
             let fill = el.backgroundColor;
             if (!fill || fill === "transparent") fill = "transparent";
             context.fillStyle = fill;

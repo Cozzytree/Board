@@ -33,6 +33,7 @@ type BoardProps = {
    background: string;
    foreground: string;
    canvas: HTMLCanvasElement;
+   canvas2: HTMLCanvasElement;
    width: number;
    height: number;
    onModeChange?: (m: modes, sm: submodes) => void;
@@ -135,14 +136,69 @@ class Board implements BoardInterface {
 
    canvas: HTMLCanvasElement;
    ctx: CanvasRenderingContext2D;
+   cssWidth: number;
+   cssHeight: number;
    modes: { m: modes; sm: submodes | null };
    onActiveShapeCallback?: (e: Shape | null) => void;
    customShapes: Map<string, ShapeConstructor>;
    onImageUpload?: (file: File) => Promise<string>;
 
+   getCanvasDpr() {
+      const dpr = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1;
+      
+      // Use fixed steps so we aren't constantly resizing the DOM canvas during continuous zooming!
+      if (this.view.scl < 0.55) {
+         return dpr * 0.55;
+      } else if (this.view.scl < 0.5) {
+         return dpr * 0.5;
+      } else if (this.view.scl < 0.4) {
+         return dpr * 0.4;
+      } else if (this.view.scl < 0.3) {
+         return dpr * 0.3;
+      } else if (this.view.scl < 0.15) {
+         return dpr * 0.15;
+      }
+      return dpr; // High resolution for normal/zoomed in
+   }
+
+   syncCanvasResolution() {
+      if (!this.ctx || !this.ctx2) return;
+      const currentDpr = this.getCanvasDpr();
+      const targetWidth = Math.floor(this.cssWidth * currentDpr);
+      const targetHeight = Math.floor(this.cssHeight * currentDpr);
+
+      // Only resize if necessary (resizing canvas clears it and is an expensive DOM operation)
+      if (this.canvas.width !== targetWidth || this.canvas.height !== targetHeight) {
+         this.canvas.width = targetWidth;
+         this.canvas.height = targetHeight;
+         this.canvas2.width = targetWidth;
+         this.canvas2.height = targetHeight;
+      }
+
+      // Apply pixelated rendering if zoomed out
+      const isPixelated = this.view.scl < 0.5;
+      const imageRendering = isPixelated ? "pixelated" : "auto";
+      
+      if (this.canvas.style.imageRendering !== imageRendering) {
+         this.canvas.style.imageRendering = imageRendering;
+         this.canvas2.style.imageRendering = imageRendering;
+      }
+      
+      // Also apply to context directly
+      this.ctx.imageSmoothingEnabled = !isPixelated;
+      this.ctx2.imageSmoothingEnabled = !isPixelated;
+   }
+
+   resetContextTransform(context: CanvasRenderingContext2D) {
+      context.setTransform(1, 0, 0, 1, 0, 0);
+      const dpr = this.getCanvasDpr();
+      context.scale(dpr, dpr);
+   }
+
    constructor({
       scrollEase,
       canvas,
+      canvas2,
       width,
       scl = 1,
       height,
@@ -156,7 +212,6 @@ class Board implements BoardInterface {
       onScroll,
       customShapes = [],
       onImageUpload,
-      container,
       isLocked = false,
    }: BoardProps) {
       this.scrollEase = scrollEase ?? 0.5;
@@ -174,8 +229,8 @@ class Board implements BoardInterface {
       this.snap = !!snap;
       this.hoverEffect = !!hoverEffect;
       this.canvas = canvas;
-      this.canvas.width = width;
-      this.canvas.height = height;
+      this.cssWidth = width;
+      this.cssHeight = height;
       this.onModeChange = onModeChange;
       this.view = { x: 0, y: 0, scl, cartesian: false };
       this._background = background;
@@ -183,22 +238,20 @@ class Board implements BoardInterface {
       this.canvas.style.background = this._background;
 
       this.onActiveShapeCallback = onActiveShape;
-      // Get the secondary canvas rendered by React
-      let c2 = document.getElementById("board-overlay-canvas") as HTMLCanvasElement | null;
-      if (!c2) {
-         throw new Error("board-overlay-canvas not found in DOM");
+
+      if (!canvas2) {
+         throw new Error("canvas2 was not provided to Board constructor");
       }
       
-      this.canvas2 = c2;
-      this.canvas2.width = width;
-      this.canvas2.height = height;
+      this.canvas2 = canvas2;
+      this.syncCanvasResolution();
 
       // Ensure main canvas has transparent or specific background
       this.canvas.style.backgroundColor = this._background;
 
       // Get proper contexts
       const ctx = this.canvas.getContext("2d");
-      const ctx2 = c2.getContext("2d");
+      const ctx2 = this.canvas2.getContext("2d");
 
       if (!ctx || !ctx2) throw new Error("canvas context not supported");
 
@@ -539,16 +592,19 @@ class Board implements BoardInterface {
 
    /** Internal: actual draw logic */
    private _drawFrame() {
-      const { ctx, canvas, view, shapeStore, activeShapes } = this;
+      this.syncCanvasResolution();
+      this.resetContextTransform(this.ctx);
+      this.resetContextTransform(this.ctx2);
 
-      ctx.setTransform(1, 0, 0, 1, 0, 0);
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      const { view, ctx, ctx2, shapeStore, activeShapes } = this;
+      ctx.clearRect(0, 0, this.cssWidth, this.cssHeight);
+      ctx2.clearRect(0, 0, this.cssWidth, this.cssHeight);
 
-      // Compute world-space viewport
+      // We still want to cull based on CSS bounds, mapped to world space
       const viewLeft = -view.x / view.scl;
       const viewTop = -view.y / view.scl;
-      const viewRight = viewLeft + canvas.width / view.scl;
-      const viewBottom = viewTop + canvas.height / view.scl;
+      const viewRight = viewLeft + this.cssWidth / view.scl;
+      const viewBottom = viewTop + this.cssHeight / view.scl;
 
       ctx.save();
       ctx.translate(view.x, view.y);
@@ -759,7 +815,6 @@ class Board implements BoardInterface {
       this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
       this.ctx2.clearRect(0, 0, this.canvas2.width, this.canvas2.height);
 
-      this.canvas2.remove();
       this.events.clear();
       if (this._renderDirty) {
          cancelAnimationFrame(this._renderRafId);
@@ -819,13 +874,15 @@ class Board implements BoardInterface {
          e.preventDefault();
          // Calculate zoom factor
          const dscl = e.deltaY > 0 ? 8 / 10 : 10 / 8;
+         
+         if (this.targetView.scl * dscl < 0.1 || this.targetView.scl * dscl > 5) {
+            return;
+         }
 
          // Update TARGET view (zoom towards cursor)
          this.targetView.x = e.x + dscl * (this.targetView.x - e.x);
          this.targetView.y = e.y + dscl * (this.targetView.y - e.y);
          this.targetView.scl *= dscl;
-
-         // (Update your this.evt.eps here if needed based on targetView.scl)
       }
 
       // Start the smooth animation loop if it's not already running

@@ -17,6 +17,7 @@ import { Box, type Board } from "../index";
 import { IsIn } from "../utils/utilfunc";
 import Connections from "../connections";
 import { HoveredColor, LINE_CONNECTION_PADDING } from "../constants";
+import type { Theme } from "../board_provider";
 
 export type DrawProps = {
    ctx?: CanvasRenderingContext2D;
@@ -25,6 +26,8 @@ export type DrawProps = {
 };
 
 const keysNotNeeded = ["ctx", "eventListeners"];
+
+// const defaultStroke = (theme: Theme) => theme === "dark" ? "#efefef" : "#060505";
 
 abstract class Shape implements ShapeProps {
    padding = 4;
@@ -80,7 +83,33 @@ abstract class Shape implements ShapeProps {
    abstract IsResizable(p: Point, hitPadding?: number): resizeDirection | null;
    abstract IsDraggable(p: Point): boolean;
    abstract clone(): Shape;
+   abstract toSVG(): string;
    // abstract connectionEvent(e: connectionEventData): void;
+
+   protected getSvgAttributes(): string {
+      const fillStr = this.fill === "transparent" ? "none" : this.fill;
+      const strokeStr = this.stroke === "transparent" ? "none" : this.stroke;
+      const dashStr = this.dash && (this.dash[0] || this.dash[1]) ? `stroke-dasharray="${this.dash.join(',')}"` : "";
+      
+      const cx = this.left + this.width / 2;
+      const cy = this.top + this.height / 2;
+      
+      let transformStr = "";
+      if (this.rotate !== 0 || this.flipX || this.flipY || this.scale !== 1) {
+         transformStr = `transform="`;
+         if (this.rotate !== 0) {
+            transformStr += `rotate(${(this.rotate * 180) / Math.PI} ${cx} ${cy}) `;
+         }
+         
+         if (this.flipX || this.flipY || this.scale !== 1) {
+            // Translate to center, scale/flip, translate back
+            transformStr += `translate(${cx} ${cy}) scale(${this.flipX ? -this.scale : this.scale}, ${this.flipY ? -this.scale : this.scale}) translate(${-cx} ${-cy})`;
+         }
+         transformStr += `"`;
+      }
+
+      return `fill="${fillStr}" stroke="${strokeStr}" stroke-width="${this.strokeWidth}" opacity="${this.opacity}" ${dashStr} ${transformStr}`.trim();
+   }
 
    constructor({
       opacity,

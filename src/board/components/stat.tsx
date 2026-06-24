@@ -68,10 +68,10 @@ export function StatsForNerds({ className }: ClassProps) {
    }
 
    return (
-      <div className={cn("bg-background shadow-xl border border-gray-200 dark:border-[#313244] rounded-lg p-3 md:p-4 w-48 md:w-64 pointer-events-auto", className)}>
+      <div className={cn("bg-background shadow-xl border rounded-lg p-3 md:p-4 w-48 md:w-64 pointer-events-auto", className)}>
          <div className="flex justify-between items-center mb-3 md:mb-4">
             <h3 className="text-xs md:text-sm font-semibold text-gray-800 dark:text-gray-200">Stats for nerds</h3>
-            <button onClick={() => setStat(false)} className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 p-1 rounded-md hover:bg-gray-100 dark:hover:bg-[#313244] transition-colors">
+            <button onClick={() => setStat(false)} className="text-gray-500 hover:text-gray-700 p-1 rounded-md hover:bg-gray-100 transition-colors">
                <X size={14} />
             </button>
          </div>

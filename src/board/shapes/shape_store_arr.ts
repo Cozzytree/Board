@@ -2,126 +2,131 @@ import type { ShapeInterface } from "../types";
 import type { ActiveSeletionProps } from "./active_selection";
 
 class ShapeStoreArr<T extends ShapeInterface & ActiveSeletionProps> {
-    shapes: T[];
-    declare private _zCounter: number;
-    declare private lastInserted: T | null;
+   shapes: T[];
+   declare private _zCounter: number;
+   declare private lastInserted: T | null;
 
-    constructor() {
-        this.shapes = []
-    }
+   constructor() {
+      this.shapes = []
+   }
 
-    forEach(callback: (o: T) => boolean): T | null {
-        for (let i = 0; i < this.shapes.length; i++) {
-            if (callback(this.shapes[i])) {
-                return this.shapes[i]
-            }
-        }
-        return null;
-    }
+   clear() {
+      this.shapes = [];
+      this.lastInserted = null;
+   }
 
-    getLastInsertedShape(): T | null {
-        return this.lastInserted;
-    }
+   forEach(callback: (o: T) => boolean): T | null {
+      for (let i = 0; i < this.shapes.length; i++) {
+         if (callback(this.shapes[i])) {
+            return this.shapes[i]
+         }
+      }
+      return null;
+   }
 
-    insert(...objs: T[]) {
-        for (const o of objs) {
-            if (o.Index() == null || o.Index() === 0) {
-                o.SetIndex(this._zCounter++);
-            } else {
-                this._zCounter = Math.max(this._zCounter, o.Index() + 1);
-            }
-            this.shapes.push(o);
-            this.lastInserted = o;
-        }
-    }
+   getLastInsertedShape(): T | null {
+      return this.lastInserted;
+   }
 
-    get(id: string) {
-        const index = this.shapes.findIndex((s) => s.ID() === id);
-        if (index == -1) return undefined;
-        return this.shapes[index];
-    }
+   insert(...objs: T[]) {
+      for (const o of objs) {
+         if (o.Index() == null || o.Index() === 0) {
+            o.SetIndex(this._zCounter++);
+         } else {
+            this._zCounter = Math.max(this._zCounter, o.Index() + 1);
+         }
+         this.shapes.push(o);
+         this.lastInserted = o;
+      }
+   }
 
-    set setLastInserted(v: T | null) {
-        this.lastInserted = v;
-    }
+   get(id: string) {
+      const index = this.shapes.findIndex((s) => s.ID() === id);
+      if (index == -1) return undefined;
+      return this.shapes[index];
+   }
 
-    removeById(id: string): boolean {
-        const index = this.shapes.findIndex((s) => s.ID() === id);
-        if (index == -1) return false;
-        this.shapes.splice(index, 1);
-        return true;
-    }
+   set setLastInserted(v: T | null) {
+      this.lastInserted = v;
+   }
 
-    bringForward(id: string): boolean {
-        const index = this.shapes.findIndex((s) => s.ID() === id);
-        if (index === -1 || index === this.shapes.length - 1) return false;
-        const current = this.shapes[index];
-        const next = this.shapes[index + 1];
+   removeById(id: string): boolean {
+      const index = this.shapes.findIndex((s) => s.ID() === id);
+      if (index == -1) return false;
+      this.shapes.splice(index, 1);
+      return true;
+   }
 
-        const tempZ = current.Index();
-        current.SetIndex(next.Index());
-        next.SetIndex(tempZ);
+   bringForward(id: string): boolean {
+      const index = this.shapes.findIndex((s) => s.ID() === id);
+      if (index === -1 || index === this.shapes.length - 1) return false;
+      const current = this.shapes[index];
+      const next = this.shapes[index + 1];
 
-        // Physically swap array elements to maintain sorted rendering order
-        this.shapes[index] = next;
-        this.shapes[index + 1] = current;
+      const tempZ = current.Index();
+      current.SetIndex(next.Index());
+      next.SetIndex(tempZ);
 
-        return true;
-    }
+      // Physically swap array elements to maintain sorted rendering order
+      this.shapes[index] = next;
+      this.shapes[index + 1] = current;
 
-    sendBackward(id: string): boolean {
-        const index = this.shapes.findIndex((s) => s.ID() === id);
-        if (index === -1 || index === 0) return false;
-        const current = this.shapes[index];
-        const prev = this.shapes[index - 1];
+      return true;
+   }
 
-        const tempZ = current.Index();
-        current.SetIndex(prev.Index());
-        prev.SetIndex(tempZ);
+   sendBackward(id: string): boolean {
+      const index = this.shapes.findIndex((s) => s.ID() === id);
+      if (index === -1 || index === 0) return false;
+      const current = this.shapes[index];
+      const prev = this.shapes[index - 1];
 
-        // Physically swap array elements
-        this.shapes[index] = prev;
-        this.shapes[index - 1] = current;
+      const tempZ = current.Index();
+      current.SetIndex(prev.Index());
+      prev.SetIndex(tempZ);
 
-        return true;
-    }
+      // Physically swap array elements
+      this.shapes[index] = prev;
+      this.shapes[index - 1] = current;
 
-    bringToFront(id: string): boolean {
-        const index = this.shapes.findIndex((s) => s.ID() === id);
-        if (index === -1 || index === this.shapes.length - 1) return false;
+      return true;
+   }
 
-        const shape = this.shapes[index];
-        const maxZ = this.shapes[this.shapes.length - 1].Index();
-        shape.SetIndex(maxZ + 1);
+   bringToFront(id: string): boolean {
+      const index = this.shapes.findIndex((s) => s.ID() === id);
+      if (index === -1 || index === this.shapes.length - 1) return false;
 
-        // Remove from current position and push to the very end (top layer)
-        this.shapes.splice(index, 1);
-        this.shapes.push(shape);
+      const shape = this.shapes[index];
+      const maxZ = this.shapes[this.shapes.length - 1].Index();
+      shape.SetIndex(maxZ + 1);
 
-        return true;
-    }
+      // Remove from current position and push to the very end (top layer)
+      this.shapes.splice(index, 1);
+      this.shapes.push(shape);
 
-    sendToBack(id: string): boolean {
-        const index = this.shapes.findIndex((s) => s.ID() === id);
-        if (index === -1 || index === 0) return false;
+      return true;
+   }
 
-        const shape = this.shapes[index];
-        const minZ = this.shapes[0].Index();
-        shape.SetIndex(minZ - 1);
+   sendToBack(id: string): boolean {
+      const index = this.shapes.findIndex((s) => s.ID() === id);
+      if (index === -1 || index === 0) return false;
 
-        // Remove from current position and unshift to the very beginning (bottom layer)
-        this.shapes.splice(index, 1);
-        this.shapes.unshift(shape);
+      const shape = this.shapes[index];
+      const minZ = this.shapes[0].Index();
+      shape.SetIndex(minZ - 1);
 
-        return true;
-    }
+      // Remove from current position and unshift to the very beginning (bottom layer)
+      this.shapes.splice(index, 1);
+      this.shapes.unshift(shape);
 
-    setZOrder(id: string, zOrder: number): boolean {
-        const index = this.shapes.findIndex((s) => s.ID() === id);
-        if (index === -1) return false;
-        this.shapes[index].SetIndex(zOrder);
-        return true;
-    }
+      return true;
+   }
+
+   setZOrder(id: string, zOrder: number): boolean {
+      const index = this.shapes.findIndex((s) => s.ID() === id);
+      if (index === -1) return false;
+      this.shapes[index].SetIndex(zOrder);
+      return true;
+   }
 }
 
 export default ShapeStoreArr;

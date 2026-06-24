@@ -2,8 +2,10 @@ import { Box, Pointer, Shape } from "../index";
 import type { BoxInterface, Point, resizeDirection, ShapeEventData, ShapeProps } from "../types";
 import { resizeRect, isDraggableWithRotation } from "../utils/resize";
 import { resizeWithRotation } from "../utils/resizeWithRotation";
-import { breakText, calcPointWithRotation } from "../utils/utilfunc";
+import { calcPointWithRotation, breakText } from "../utils/utilfunc";
 import type { DrawProps } from "./shape";
+import rough from "roughjs";
+import type { Drawable } from "roughjs/bin/core";
 
 type RectProps = {
    rx?: number;
@@ -13,6 +15,9 @@ type RectProps = {
 class Rect extends Shape {
    declare rx: number;
    declare ry: number;
+   private roughDrawable: Drawable | null = null;
+   private lastWidth: number = 0;
+   private lastHeight: number = 0;
 
    constructor(props: ShapeProps & RectProps) {
       super({ ...props });
@@ -26,6 +31,12 @@ class Rect extends Shape {
    clone(): Shape {
       const props = this.cloneProps();
       return new Rect({ ...props, rx: this.rx, ry: this.ry });
+   }
+
+   toSVG(): string {
+      const attrs = this.getSvgAttributes();
+      const r = Math.min(this.rx || 0, this.ry || 0, this.width / 2, this.height / 2);
+      return `<rect x="${this.left}" y="${this.top}" width="${this.width}" height="${this.height}" rx="${r}" ${attrs} />`;
    }
 
    getLocalPath(): Path2D {
@@ -146,24 +157,42 @@ class Rect extends Shape {
          context.globalAlpha = this.selectionAlpha;
          context.strokeStyle = this.selectionColor;
          context.fillStyle = this.selectionFill;
-         // context.lineWidth = this.selectionStrokeWidth / currentScale;
          context.lineWidth = this.selectionStrokeWidth;
          context.setLineDash([
             this.selectionDash[0] / currentScale,
             this.selectionDash[1] / currentScale,
          ]);
+         
+         // Standard crisp rect for selection outline
+         context.strokeRect(this.left, this.top, this.width, this.height);
+         if (addStyles) context.fillRect(this.left, this.top, this.width, this.height);
       } else {
-         context.setLineDash(this.dash);
-         context.lineWidth = this.strokeWidth;
-         context.strokeStyle = this.stroke;
-         context.fillStyle = this.fill;
-      }
+         // Generate Rough.js Drawable at (0, 0) ONCE to prevent 60fps vibration.
+         // We only regenerate if the width/height changes (user resizes).
+         if (!this.roughDrawable || this.width !== this.lastWidth || this.height !== this.lastHeight) {
+            const generator = rough.generator();
+            this.roughDrawable = generator.rectangle(0, 0, this.width, this.height, {
+               stroke: this.stroke,
+               fill: this.fill,
+               strokeWidth: this.strokeWidth,
+               fillStyle: "hachure", // signature roughjs shading
+               roughness: 2,
+               seed: this.left + this.top // pseudo-random seed so it doesn't change
+            });
+            this.lastWidth = this.width;
+            this.lastHeight = this.height;
+         }
 
-      context.roundRect(this.left, this.top, this.width, this.height, r);
-      context.stroke();
-
-      if (addStyles) {
-         context.fill();
+         // We must translate to this.left, this.top since the Drawable is at 0,0
+         context.translate(this.left, this.top);
+         
+         // Context switching! 
+         // We grab whichever canvas element owns the current `context` (main, overlay, or offscreen export).
+         const rc = rough.canvas(context.canvas as HTMLCanvasElement);
+         rc.draw(this.roughDrawable);
+         
+         // Translate back so text renders at correct world coordinates
+         context.translate(-this.left, -this.top);
       }
 
       context.closePath();

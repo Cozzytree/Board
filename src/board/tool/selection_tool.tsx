@@ -673,8 +673,8 @@ class SelectionTool implements ToolInterface {
       if (this.hoveredShape) {
          this.draw(this.hoveredShape);
       } else {
-         this._board.ctx2.setTransform(1, 0, 0, 1, 0, 0);
-         this._board.ctx2.clearRect(0, 0, this._board.canvas2.width, this._board.canvas2.height);
+         this._board.resetContextTransform(this._board.ctx2);
+         this._board.ctx2.clearRect(0, 0, this._board.cssWidth, this._board.cssHeight);
          this._board.ctx2.save();
       }
 
@@ -707,6 +707,18 @@ class SelectionTool implements ToolInterface {
 
       if (this.activeShape) {
          if (!this.draggedShape && !this.resizableShape && this.isDragging) {
+            // Ensure the selection box catches up to the final pointer position before resolving
+            this.activeShape.Resize(
+               p,
+               new Box({
+                  x1: this.mouseDownPoint.x,
+                  x2: this.mouseDownPoint.x,
+                  y1: this.mouseDownPoint.y,
+                  y2: this.mouseDownPoint.y,
+               }),
+               "br",
+            );
+            
             this.activeShape.mouseup({ e: { point: p } });
             if (this.activeShape.shapes.length === 1) {
                this._board.setActiveShape(this.activeShape.shapes[0].s);
@@ -872,24 +884,11 @@ class SelectionTool implements ToolInterface {
       this.isGrabbing = false;
    }
 
-   private pullFromUndo() {
-      const callback = this._board.shapeStore.getLastUndo();
-      if (!callback) return null;
-      return callback;
-   }
-
-   private pullFromRedo() {
-      const callback = this._board.shapeStore.getLasRedo();
-      if (callback === null) return;
-      return callback;
-   }
-
    private createText() {
       if (!this.textEdit) return;
       const { ctx2: context, canvas2: canvas } = this._board;
-
-      context.setTransform(1, 0, 0, 1, 0, 0);
-      context.clearRect(0, 0, canvas.width, canvas.height);
+      this._board.resetContextTransform(context);
+      context.clearRect(0, 0, this._board.cssWidth, this._board.cssHeight);
 
       this.textEdit.adjustHeight(this.textEdit.height);
       this.textEdit.draw({ ctx: context, addStyles: true });
@@ -971,117 +970,9 @@ class SelectionTool implements ToolInterface {
                e.preventDefault();
                this.getCopiesFromStoreAndAdd();
                break;
-            case "z":
-               e.preventDefault();
-               this.undo();
-               break;
-            case "y":
-               e.preventDefault();
-               this.redo();
-               break;
             default:
          }
       }
-   }
-
-   private redo() {
-      const history = this.pullFromRedo();
-      if (!history) return;
-
-      history((val) => {
-         return this.historyAction(val, 1);
-      });
-   }
-
-   private undo() {
-      const history = this.pullFromUndo();
-      if (!history) return;
-
-      history((val) => {
-         return this.historyAction(val, 0);
-      });
-   }
-
-   /*
-       @redoUndo: 1 == redo | 0 == undo
-    */
-   private historyAction(data: HistoryType, redoUndo: number) {
-      const currState: Record<string, any>[] = [];
-      const shapes = data.objects as { [K in keyof Shape]: Shape[K] }[];
-
-      const create = () => {
-         shapes.forEach((s) => {
-            if (s.type) {
-               const newShape = generateShapeByShapeType(s, this._board, this._board.ctx);
-               if (newShape) {
-                  newShape.id = s.id;
-                  this._board.add(newShape);
-                  currState.push(newShape.toObject());
-               }
-            }
-         });
-      };
-
-      const del = () => {
-         data.objects.forEach((o) => {
-            if (o.id) {
-               if (this._board.shapeStore.removeById(o.id)) {
-                  currState.push(o);
-               }
-               this._board.discardActiveShapes();
-               const lastInserted = this._board.shapeStore.getLastInsertedShape();
-               if (lastInserted instanceof ActiveSelection) {
-                  this._board.removeShape(lastInserted);
-               }
-            } else {
-               console.error("error deleing shapes");
-            }
-         });
-      };
-
-      switch (data.undoType) {
-         case "default":
-            shapes.forEach((s) => {
-               if (s?.id) {
-                  const found = this._board.shapeStore.get(s.id);
-                  if (found) {
-                     currState.push(found.toObject());
-                     found.set({
-                        left: s.left,
-                        top: s.top,
-                        width: s.width,
-                        height: s.height,
-                        stroke: s.stroke,
-                        strokeWidth: s.strokeWidth,
-                        fill: s.fill,
-                        flipX: s.flipX,
-                        flipY: s.flipY,
-                        rotate: s.rotate,
-                        scale: s.scale,
-                        dash: s.dash,
-                        text: s.text,
-                        connections: s.connections,
-                     });
-                  }
-               }
-            });
-            break;
-         case "create":
-            if (redoUndo === 1) {
-               create();
-            } else {
-               del();
-            }
-            break;
-         case "delete":
-            if (redoUndo === 1) {
-               del();
-            } else {
-               create();
-            }
-      }
-      this._board.render();
-      return currState;
    }
 
    private getCopiesFromStoreAndAdd() {
@@ -1181,8 +1072,8 @@ class SelectionTool implements ToolInterface {
    private draw(...shapes: Shape[]) {
       const ctx = this._board.ctx2;
 
-      ctx.setTransform(1, 0, 0, 1, 0, 0);
-      ctx.clearRect(0, 0, this._board.canvas2.width, this._board.canvas2.height);
+      this._board.resetContextTransform(ctx);
+      ctx.clearRect(0, 0, this._board.cssWidth, this._board.cssHeight);
       ctx.save();
 
       // ctx.translate(this._board.offset.x, this._board.offset.y);
