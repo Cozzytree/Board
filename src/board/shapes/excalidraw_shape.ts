@@ -1,10 +1,12 @@
-import type { BoxInterface, LibraryItem, Point, resizeDirection, ShapeEventData, ShapeProps } from "../types";
+import type { BoxInterface, Point, resizeDirection, ShapeEventData, ShapeProps } from "../types";
 import type { DrawProps } from "./shape";
 import { isDraggableWithRotation, resizeRect } from "../utils/resize";
 import Box from "@/board/utils/box";
 import Shape from "@/board/shapes/shape";
 import { calcPointWithRotation } from "@/board/utils/utilfunc";
 import { resizeWithRotationAndFlip } from "@/board/utils/resizeWithRotation";
+import rough from "roughjs";
+import type { Drawable } from "roughjs/bin/core";
 
 export type ExcalidrawShapeProps = {
    elements?: any[];
@@ -14,6 +16,13 @@ class ExcalidrawShape extends Shape {
    declare elements: any[];
    declare originalBoundingBox: { w: number; h: number };
    _cachedScale: number = 0;
+   private _lastRoughness: number | undefined = undefined;
+   private _lastFillStyle: string | undefined = undefined;
+   private _lastStroke: string | undefined = undefined;
+   private _lastFill: string | undefined = undefined;
+   private _lastStrokeWidth: number | undefined = undefined;
+   private _lastDash0: number | undefined = undefined;
+   private _lastDash1: number | undefined = undefined;
 
    constructor(props: ShapeProps & ExcalidrawShapeProps) {
       super(props);
@@ -195,16 +204,64 @@ class ExcalidrawShape extends Shape {
    draw({ ctx, addStyles: _addStyles = true, resize }: DrawProps): void {
       const context = ctx || this.ctx;
       const currentScale = context.getTransform().a;
+      const currentRoughness = this.roughness ?? 1;
+      const currentFillStyle = this.fillStyle || "hachure";
+      const currentFill = this.fill !== "transparent" && this.fill !== "#00000000" ? this.fill : undefined;
+      const dash0 = this.dash?.[0] || 0;
+      const dash1 = this.dash?.[1] || 0;
 
-      if (currentScale !== this._cachedScale) {
+      if (
+         currentScale !== this._cachedScale ||
+         currentRoughness !== this._lastRoughness ||
+         currentFillStyle !== this._lastFillStyle ||
+         this.stroke !== this._lastStroke ||
+         currentFill !== this._lastFill ||
+         this.strokeWidth !== this._lastStrokeWidth ||
+         dash0 !== this._lastDash0 ||
+         dash1 !== this._lastDash1
+      ) {
          this._cachedScale = currentScale;
+         this._lastRoughness = currentRoughness;
+         this._lastFillStyle = currentFillStyle;
+         this._lastStroke = this.stroke;
+         this._lastFill = currentFill;
+         this._lastStrokeWidth = this.strokeWidth;
+         this._lastDash0 = dash0;
+         this._lastDash1 = dash1;
+
+         const generator = rough.generator();
+
          this.elements.forEach((el: any) => {
             if (el.type === "text") return;
             const p = new Path2D();
             let svgPath = "";
+            let roughDrawable: Drawable | null = null;
+            
+            // Excalidraw shapes use el.backgroundColor, but if this.fill is set we can override
+            let elFill = currentFill || el.backgroundColor;
+            if (elFill === "transparent" || !elFill) elFill = undefined;
+            
+            let elRoughness = currentRoughness;
+            if (elRoughness === undefined || elRoughness === 1) elRoughness = el.roughness ?? currentRoughness;
+            
+            const roughOptions: any = {
+               stroke: this.stroke || el.strokeColor || "#000000",
+               fill: elFill,
+               strokeWidth: this.strokeWidth || 1,
+               fillStyle: currentFillStyle || el.fillStyle || "hachure",
+               roughness: elRoughness === 0 ? 0 : (elRoughness === 1 ? 1.5 : 3),
+            };
+
+            if (el.strokeStyle === "dashed") roughOptions.strokeLineDash = [8, 8];
+            else if (el.strokeStyle === "dotted") roughOptions.strokeLineDash = [2, 6];
+            else if (dash0 > 0 || dash1 > 0) roughOptions.strokeLineDash = [dash0, dash1];
+
             if (el.type === "rectangle") {
                const w = el.width || 100;
                const h = el.height || 100;
+               
+               roughDrawable = generator.rectangle(0, 0, w, h, roughOptions);
+
                if (el?.roundness && typeof p.roundRect === "function") {
                   try {
                      p.roundRect(0, 0, w, h, 8);
@@ -220,12 +277,22 @@ class ExcalidrawShape extends Shape {
             } else if (el.type === "ellipse") {
                const rx = (el.width || 100) / 2;
                const ry = (el.height || 100) / 2;
+               
+               // Rough.js ellipse takes center x,y and width,height
+               roughDrawable = generator.ellipse(rx, ry, rx * 2, ry * 2, roughOptions);
+               
                p.ellipse(rx, ry, rx, ry, 0, 0, Math.PI * 2);
-               // SVG standard way to draw ellipse with path if needed, or just use ellipse tag. 
-               // For simplicity, we can use arc commands to simulate ellipse in path.
                svgPath = `M0,${ry} a${rx},${ry} 0 1,0 ${rx*2},0 a${rx},${ry} 0 1,0 -${rx*2},0`;
             } else if (el.type === "line" || el.type === "freedraw" || el.type === "arrow" || el.type === "diamond") {
                if (el.points && el.points.length > 0) {
+                  // Rough.js path or linear path
+                  const points = el.points.map((pt: any) => [pt[0], pt[1]]);
+                  if (el.type === "diamond") {
+                     roughDrawable = generator.polygon(points, roughOptions);
+                  } else {
+                     roughDrawable = generator.curve(points, roughOptions);
+                  }
+                  
                   p.moveTo(el.points[0][0], el.points[0][1]);
                   svgPath = `M${el.points[0][0]},${el.points[0][1]} `;
                   for (let i = 1; i < el.points.length; i++) {
@@ -236,6 +303,7 @@ class ExcalidrawShape extends Shape {
             }
             el._cachedPath = p;
             el._svgPath = svgPath;
+            el._roughDrawable = roughDrawable;
          });
       }
 
@@ -304,7 +372,10 @@ class ExcalidrawShape extends Shape {
             context.fillStyle = "transparent";
          }
 
-         if (el._cachedPath) {
+         if (el._roughDrawable && !resize) {
+            const rc = rough.canvas(context.canvas as HTMLCanvasElement);
+            rc.draw(el._roughDrawable);
+         } else if (el._cachedPath) {
             if (!resize) {
                if (context.fillStyle !== "transparent") {
                   context.fill(el._cachedPath);

@@ -3,6 +3,8 @@ import type { BoxInterface, Point, resizeDirection, ShapeEventData, ShapeProps }
 import { resizeRect } from "../utils/resize";
 import { breakText, calcPointWithRotation } from "../utils/utilfunc";
 import type { DrawProps } from "./shape";
+import rough from "roughjs";
+import type { Drawable } from "roughjs/bin/core";
 
 type EllipseProps = {
    rx?: number;
@@ -12,6 +14,16 @@ type EllipseProps = {
 class Ellipse extends Shape {
    declare rx: number;
    declare ry: number;
+   private roughDrawable: Drawable | null = null;
+   private lastWidth: number = 0;
+   private lastHeight: number = 0;
+   private lastRoughness: number | undefined = undefined;
+   private lastFillStyle: string | undefined = undefined;
+   private lastStroke: string | undefined = undefined;
+   private lastFill: string | undefined = undefined;
+   private lastStrokeWidth: number | undefined = undefined;
+   private lastDash0: number | undefined = undefined;
+   private lastDash1: number | undefined = undefined;
 
    constructor(props: ShapeProps & EllipseProps) {
       super(props);
@@ -164,26 +176,77 @@ class Ellipse extends Shape {
       if (resize) {
          context.globalAlpha = this.selectionAlpha;
          context.strokeStyle = this.selectionColor;
+         context.fillStyle = this.selectionFill;
          context.lineWidth = this.selectionStrokeWidth / currentScale;
          context.setLineDash([
             this.selectionDash[0] / currentScale,
             this.selectionDash[1] / currentScale,
          ]);
+         
+         context.beginPath();
+         context.ellipse(this.left + this.rx, this.top + this.ry, this.rx, this.ry, 0, 0, Math.PI * 2);
+         if (addStyles) context.fill();
+         context.stroke();
+         context.closePath();
       } else {
-         context.setLineDash(this.dash);
-         context.lineWidth = this.strokeWidth;
-         context.strokeStyle = this.stroke;
-         context.fillStyle = this.fill;
+         const currentRoughness = this.roughness ?? 1;
+         const currentFillStyle = this.fillStyle || "hachure";
+         const currentFill = this.fill !== "transparent" && this.fill !== "#00000000" ? this.fill : undefined;
+         const dash0 = this.dash?.[0] || 0;
+         const dash1 = this.dash?.[1] || 0;
+         
+         if (
+            !this.roughDrawable || 
+            this.width !== this.lastWidth || 
+            this.height !== this.lastHeight || 
+            currentRoughness !== this.lastRoughness || 
+            currentFillStyle !== this.lastFillStyle ||
+            this.stroke !== this.lastStroke ||
+            currentFill !== this.lastFill ||
+            this.strokeWidth !== this.lastStrokeWidth ||
+            dash0 !== this.lastDash0 ||
+            dash1 !== this.lastDash1
+         ) {
+            const generator = rough.generator();
+            const roughOptions: any = {
+               stroke: this.stroke,
+               fill: currentFill,
+               strokeWidth: this.strokeWidth,
+               fillStyle: currentFillStyle,
+            };
+            
+            if (dash0 > 0 || dash1 > 0) {
+               roughOptions.strokeLineDash = [dash0, dash1];
+            }
+            
+            if (currentRoughness === 0) {
+               this.roughDrawable = generator.ellipse(0, 0, this.width, this.height, {
+                  ...roughOptions,
+                  roughness: 0,
+               });
+            } else {
+               this.roughDrawable = generator.ellipse(0, 0, this.width, this.height, {
+                  ...roughOptions,
+                  roughness: currentRoughness === 1 ? 1.5 : 3,
+                  seed: this.left + this.top
+               });
+            }
+            this.lastWidth = this.width;
+            this.lastHeight = this.height;
+            this.lastRoughness = currentRoughness;
+            this.lastFillStyle = currentFillStyle;
+            this.lastStroke = this.stroke;
+            this.lastFill = currentFill;
+            this.lastStrokeWidth = this.strokeWidth;
+            this.lastDash0 = dash0;
+            this.lastDash1 = dash1;
+         }
+
+         context.translate(this.left + this.rx, this.top + this.ry);
+         const rc = rough.canvas(context.canvas as HTMLCanvasElement);
+         rc.draw(this.roughDrawable);
+         context.translate(-(this.left + this.rx), -(this.top + this.ry));
       }
-
-      context.ellipse(this.left + this.rx, this.top + this.ry, this.rx, this.ry, 0, 0, Math.PI * 2);
-
-      if (addStyles) {
-         context.fill();
-      }
-
-      context.stroke();
-      context.closePath();
 
       if (this.text.length) {
          super.renderText({

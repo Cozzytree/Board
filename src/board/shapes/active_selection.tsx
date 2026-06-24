@@ -34,6 +34,10 @@ class ActiveSelection extends Shape {
       this.setCoords();
    }
 
+   toSVG(): string {
+      return "";
+   }
+
    group() {
       if (!this.shapes.length) return;
 
@@ -409,7 +413,7 @@ class ActiveSelection extends Shape {
                newTop = this.top + newHeight - (relativeTop * scaleY) - newHeightS;
             }
 
-            if (s.s.type === "ellipse") {
+            if (s.s instanceof Ellipse && s.s.type === "ellipse") {
                s.s.rx = newWidthS / 2;
                s.s.ry = newHeightS / 2;
             }

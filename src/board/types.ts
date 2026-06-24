@@ -20,6 +20,7 @@ export type CustomShapeDef = {
 
 export type LibraryItem = {
    _cachedPath?: Path2D | null,
+   roughness: number;
    fillStyle?: string;
    type: "line" | "ellipse" | "text" | "rectangle" | "diamond",
    angle: number,
@@ -65,6 +66,8 @@ export interface EventData {
 export type ShapeEventCallback = (shape: Shape, data?: ShapeEventData) => void;
 
 export type ShapeProps = {
+   fillStyle?: string;
+   roughness?: number;
    ease?: number;
    opacity?: number;
    locked?: boolean;

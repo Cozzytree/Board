@@ -18,6 +18,13 @@ class Rect extends Shape {
    private roughDrawable: Drawable | null = null;
    private lastWidth: number = 0;
    private lastHeight: number = 0;
+   private lastRoughness: number | undefined = undefined;
+   private lastFillStyle: string | undefined = undefined;
+   private lastStroke: string | undefined = undefined;
+   private lastFill: string | undefined = undefined;
+   private lastStrokeWidth: number | undefined = undefined;
+   private lastDash0: number | undefined = undefined;
+   private lastDash1: number | undefined = undefined;
 
    constructor(props: ShapeProps & RectProps) {
       super({ ...props });
@@ -168,21 +175,60 @@ class Rect extends Shape {
          if (addStyles) context.fillRect(this.left, this.top, this.width, this.height);
       } else {
          // Generate Rough.js Drawable at (0, 0) ONCE to prevent 60fps vibration.
-         // We only regenerate if the width/height changes (user resizes).
-         if (!this.roughDrawable || this.width !== this.lastWidth || this.height !== this.lastHeight) {
+         // We only regenerate if any relevant property changes.
+         const currentRoughness = this.roughness ?? 1;
+         const currentFillStyle = this.fillStyle || "hachure";
+         const currentFill = this.fill !== "transparent" && this.fill !== "#00000000" ? this.fill : undefined;
+         const dash0 = this.dash?.[0] || 0;
+         const dash1 = this.dash?.[1] || 0;
+
+         if (
+            !this.roughDrawable || 
+            this.width !== this.lastWidth || 
+            this.height !== this.lastHeight || 
+            currentRoughness !== this.lastRoughness || 
+            currentFillStyle !== this.lastFillStyle ||
+            this.stroke !== this.lastStroke ||
+            currentFill !== this.lastFill ||
+            this.strokeWidth !== this.lastStrokeWidth ||
+            dash0 !== this.lastDash0 ||
+            dash1 !== this.lastDash1
+         ) {
             const generator = rough.generator();
-            this.roughDrawable = generator.rectangle(0, 0, this.width, this.height, {
+            const roughOptions: any = {
                stroke: this.stroke,
-               fill: this.fill,
+               fill: currentFill,
                strokeWidth: this.strokeWidth,
-               fillStyle: "hachure", // signature roughjs shading
-               roughness: 2,
-               seed: this.left + this.top // pseudo-random seed so it doesn't change
-            });
+               fillStyle: currentFillStyle,
+            };
+            
+            if (dash0 > 0 || dash1 > 0) {
+               roughOptions.strokeLineDash = [dash0, dash1];
+            }
+            
+            // Only use roughjs if roughness > 0, otherwise draw crisp rect
+            if (currentRoughness === 0) {
+               this.roughDrawable = generator.rectangle(0, 0, this.width, this.height, {
+                  ...roughOptions,
+                  roughness: 0,
+               });
+            } else {
+               this.roughDrawable = generator.rectangle(0, 0, this.width, this.height, {
+                  ...roughOptions,
+                  roughness: currentRoughness === 1 ? 1.5 : 3, // Artist = 1.5, Cartoonist = 3
+                  seed: this.left + this.top // pseudo-random seed so it doesn't change
+               });
+            }
             this.lastWidth = this.width;
             this.lastHeight = this.height;
+            this.lastRoughness = currentRoughness;
+            this.lastFillStyle = currentFillStyle;
+            this.lastStroke = this.stroke;
+            this.lastFill = currentFill;
+            this.lastStrokeWidth = this.strokeWidth;
+            this.lastDash0 = dash0;
+            this.lastDash1 = dash1;
          }
-
          // We must translate to this.left, this.top since the Drawable is at 0,0
          context.translate(this.left, this.top);
          

@@ -17,7 +17,6 @@ import { Box, type Board } from "../index";
 import { IsIn } from "../utils/utilfunc";
 import Connections from "../connections";
 import { HoveredColor, LINE_CONNECTION_PADDING } from "../constants";
-import type { Theme } from "../board_provider";
 
 export type DrawProps = {
    ctx?: CanvasRenderingContext2D;
@@ -43,6 +42,8 @@ abstract class Shape implements ShapeProps {
    declare selectionFill: string;
    declare selectionStrokeWidth: number;
 
+   fillStyle: string;
+   roughness: number;
    ease: number;
    opacity: number;
    locked?: boolean;
@@ -142,8 +143,12 @@ abstract class Shape implements ShapeProps {
       id,
       locked,
       zOrder,
-      ease
+      ease,
+      roughness,
+      fillStyle,
    }: ShapeProps) {
+      this.fillStyle = fillStyle || "hachure";
+      this.roughness = roughness ?? 1;
       this.ease = ease ?? 0.8;
       this.locked = locked || false;
       this.fill = fill || "#00000000";
@@ -212,6 +217,9 @@ abstract class Shape implements ShapeProps {
          verticalAlign: this.verticalAlign,
          locked: this.locked,
          zOrder: this.zOrder,
+         fillStyle: this.fillStyle,
+         roughness: this.roughness,
+         opacity: this.opacity,
       };
    }
 
@@ -361,7 +369,7 @@ abstract class Shape implements ShapeProps {
     * Get the appropriate cursor style for a resize direction considering rotation.
     * The cursor rotates with the shape so it visually matches the resize direction.
     */
-   private getRotatedCursor(direction: resizeDirection, rotation: number): string {
+   getRotatedCursor(direction: resizeDirection, rotation: number): string {
       // Convert rotation from radians to degrees and normalize to 0-360
       const degrees = ((rotation * 180) / Math.PI) % 360;
       const normalizedDegrees = degrees < 0 ? degrees + 360 : degrees;

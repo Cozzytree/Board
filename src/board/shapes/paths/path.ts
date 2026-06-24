@@ -5,6 +5,8 @@ import Box from "@/board/utils/box";
 import Shape from "@/board/shapes/shape";
 import { setCoords, calcPointWithRotation } from "@/board/utils/utilfunc";
 import { resizeWithRotationAndFlip } from "@/board/utils/resizeWithRotation";
+import rough from "roughjs";
+import type { Drawable } from "roughjs/bin/core";
 
 export type PathProps = {
    points?: Point[];
@@ -12,12 +14,20 @@ export type PathProps = {
 };
 
 class Path extends Shape {
+   private roughDrawable: Drawable | null = null;
    declare points: Point[];
    lastPoints: Point[];
    declare pathType: string;
    _cachedPath: Path2D | null = null;
    _cachedScale: number = 0;
    _cachedPointsLen: number = 0;
+   private lastRoughness: number | undefined = undefined;
+   private lastFillStyle: string | undefined = undefined;
+   private lastStroke: string | undefined = undefined;
+   private lastFill: string | undefined = undefined;
+   private lastStrokeWidth: number | undefined = undefined;
+   private lastDash0: number | undefined = undefined;
+   private lastDash1: number | undefined = undefined;
 
    constructor(props: ShapeProps & PathProps) {
       super(props);
@@ -26,12 +36,14 @@ class Path extends Shape {
          return { x: p.x, y: p.y };
       });
       this.type = "path";
+      this.roughDrawable = null;
    }
 
    invalidateCache() {
       this._cachedPath = null;
       this._cachedScale = 0;
       this._cachedPointsLen = 0;
+      this.roughDrawable = null;
    }
 
    set(key: string | Record<string, any>, value?: any) {
@@ -127,6 +139,59 @@ class Path extends Shape {
       const context = ctx || this.ctx;
 
       const currentScale = context.getTransform().a;
+      
+      const currentRoughness = this.roughness ?? 1;
+      const currentFillStyle = this.fillStyle || "hachure";
+      const currentFill = this.fill !== "transparent" && this.fill !== "#00000000" ? this.fill : undefined;
+      const dash0 = this.dash?.[0] || 0;
+      const dash1 = this.dash?.[1] || 0;
+
+      if (
+         (!this.roughDrawable && currentRoughness > 0) ||
+         this._cachedPointsLen !== this.points.length ||
+         currentRoughness !== this.lastRoughness ||
+         currentFillStyle !== this.lastFillStyle ||
+         this.stroke !== this.lastStroke ||
+         currentFill !== this.lastFill ||
+         this.strokeWidth !== this.lastStrokeWidth ||
+         dash0 !== this.lastDash0 ||
+         dash1 !== this.lastDash1
+      ) {
+         this._cachedPointsLen = this.points.length;
+         this.lastRoughness = currentRoughness;
+         this.lastFillStyle = currentFillStyle;
+         this.lastStroke = this.stroke;
+         this.lastFill = currentFill;
+         this.lastStrokeWidth = this.strokeWidth;
+         this.lastDash0 = dash0;
+         this.lastDash1 = dash1;
+
+         const transformedPoints = this.points.map((point) => {
+            let x = point.x;
+            let y = point.y;
+            if (this.flipX) x = this.width - x;
+            if (this.flipY) y = this.height - y;
+            return [x, y] as [number, number];
+         });
+
+         if (currentRoughness > 0) {
+            const generator = rough.generator();
+            const roughOptions: any = {
+               stroke: this.stroke,
+               fill: currentFill,
+               strokeWidth: this.strokeWidth,
+               fillStyle: currentFillStyle,
+               roughness: currentRoughness === 1 ? 1.5 : 3,
+               seed: this.left + this.top
+            };
+            if (dash0 > 0 || dash1 > 0) roughOptions.strokeLineDash = [dash0, dash1];
+            
+            // Path draws a polygon (it fills and closes path)
+            this.roughDrawable = generator.polygon(transformedPoints, roughOptions);
+         } else {
+            this.roughDrawable = null;
+         }
+      }
 
       context.save();
 
@@ -150,51 +215,64 @@ class Path extends Shape {
             this.selectionDash[0] / currentScale,
             this.selectionDash[1] / currentScale,
          ]);
+         
+         context.scale(this.scale, this.scale);
+         context.beginPath();
+
+         let startX = this.points[0].x;
+         let startY = this.points[0].y;
+
+         if (this.flipX) startX = this.width - startX;
+         if (this.flipY) startY = this.height - startY;
+
+         context.moveTo(startX, startY);
+
+         for (let i = 1; i < this.points.length; i++) {
+            let x = this.points[i].x;
+            let y = this.points[i].y;
+            if (this.flipX) x = this.width - x;
+            if (this.flipY) y = this.height - y;
+            context.lineTo(x, y);
+         }
+         
+         context.closePath();
+         if (addStyles) context.fill();
+         context.stroke();
       } else {
-         context.setLineDash(this.dash);
-         context.lineWidth = this.strokeWidth / currentScale;
-         context.strokeStyle = this.stroke;
-         context.fillStyle = this.fill;
-      }
-      context.scale(this.scale, this.scale);
+         if (this.roughDrawable && currentRoughness > 0) {
+            const rc = rough.canvas(context.canvas as HTMLCanvasElement);
+            rc.draw(this.roughDrawable);
+         } else {
+            context.setLineDash(this.dash);
+            context.lineWidth = this.strokeWidth / currentScale;
+            context.strokeStyle = this.stroke;
+            context.fillStyle = this.fill;
 
-      context.beginPath();
+            context.scale(this.scale, this.scale);
+            context.beginPath();
 
-      let startX = this.points[0].x;
-      let startY = this.points[0].y;
+            let startX = this.points[0].x;
+            let startY = this.points[0].y;
 
-      if (this.flipX) {
-         startX = this.width - startX;
-      }
+            if (this.flipX) startX = this.width - startX;
+            if (this.flipY) startY = this.height - startY;
 
-      if (this.flipY) {
-         startY = this.height - startY;
-      }
+            context.moveTo(startX, startY);
 
-      context.moveTo(startX, startY);
-
-      for (let i = 1; i < this.points.length; i++) {
-         let x = this.points[i].x;
-         let y = this.points[i].y;
-
-         if (this.flipX) {
-            x = this.width - x;
+            for (let i = 1; i < this.points.length; i++) {
+               let x = this.points[i].x;
+               let y = this.points[i].y;
+               if (this.flipX) x = this.width - x;
+               if (this.flipY) y = this.height - y;
+               context.lineTo(x, y);
+            }
+            
+            context.closePath();
+            context.fill();
+            context.stroke();
          }
-
-         if (this.flipY) {
-            y = this.height - y;
-         }
-         context.lineTo(x, y);
-      }
-      if (addStyles) {
-         context.fill();
       }
 
-      if (!resize) {
-         context.fill();
-      }
-      context.closePath();
-      context.stroke();
       context.restore(); // Restore inner path transforms
 
       if (this.text.length) {
