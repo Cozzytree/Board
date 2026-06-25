@@ -18,13 +18,6 @@ class Hexagon extends Path {
   scaleShape(): void {
     const w = this.width;
     const h = this.height;
-
-    // Flat topped hexagon? Or Pointy topped?
-    // Let's do Pointy topped to fit typical generic use, or Flat topped to fit wide bounds?
-    // Usually "Hexagon" icon implies pointy sides (left/right).
-    // Let's do the one that matches width/height box well.
-    // Pointy sides (left/right) is common for flowcharts.
-
     // Pointy left/right
     const points = [
       new Pointer({ x: w * 0.25, y: 0 }), // Top Left

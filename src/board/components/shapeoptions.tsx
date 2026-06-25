@@ -31,6 +31,8 @@ import {
    Square,
    Waves,
    HashIcon,
+   LockIcon,
+   UnlockIcon,
 } from "lucide-react";
 import { useBoard } from "../board-context";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -42,7 +44,7 @@ import { useMobile } from "@/hooks/use-mobile";
 import ActiveSelection from "../shapes/active_selection";
 import Group from "../shapes/group";
 import { Button } from "@/components/ui/button";
-import type { Board } from "../index";
+import type { Board, Shape } from "../index";
 import { Input } from "@/components/ui/input";
 
 const EXCALIDRAW_COLORS = [
@@ -116,6 +118,18 @@ function remapShapeColorsForTheme(
 
       return false;
    });
+}
+
+function LockShape({ as, canvas }: { as: Shape, canvas: Board }) {
+   return (
+      <Button
+         onClick={() => {
+            as.set("locked", !as.locked);
+         }}
+         variant={"ghost"} size={"sm"}>
+         {as.locked ? <LockIcon /> : <UnlockIcon />}
+      </Button>
+   )
 }
 
 function ThemeToggle() {
@@ -359,6 +373,7 @@ function ShapeOptions() {
          <div className="w-[1px] bg-border mx-1 h-6 hidden md:block" />
 
          <ThemeToggle />
+         <LockShape as={activeShape} canvas={canvas} />
       </>
    );
 

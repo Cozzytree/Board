@@ -91,6 +91,21 @@ class Path extends Shape {
       return new Path({ ...props, points: this.points });
    }
 
+   toSVG(): string {
+      const attrs = this.getSvgAttributes();
+      if (this.points.length < 2) return "";
+
+      let d = `M ${this.left + this.points[0].x} ${this.top + this.points[0].y}`;
+
+      for (let i = 1; i < this.points.length; i++) {
+         d += ` L ${this.left + this.points[i].x} ${this.top + this.points[i].y}`;
+      }
+      
+      d += " Z";
+
+      return `<path d="${d}" ${attrs} />`;
+   }
+
    getLocalPath(): Path2D {
       if (!this.cachedLocalPath) {
          this.cachedLocalPath = new Path2D();
@@ -174,22 +189,26 @@ class Path extends Shape {
             return [x, y] as [number, number];
          });
 
-         if (currentRoughness > 0) {
-            const generator = rough.generator();
-            const roughOptions: any = {
-               stroke: this.stroke,
-               fill: currentFill,
-               strokeWidth: this.strokeWidth,
-               fillStyle: currentFillStyle,
+         const generator = rough.generator();
+         const roughOptions: any = {
+            stroke: this.stroke,
+            fill: currentFill,
+            strokeWidth: this.strokeWidth,
+            fillStyle: currentFillStyle,
+         };
+         if (dash0 > 0 || dash1 > 0) roughOptions.strokeLineDash = [dash0, dash1];
+         
+         if (currentRoughness === 0) {
+            this.roughDrawable = generator.polygon(transformedPoints, {
+               ...roughOptions,
+               roughness: 0,
+            });
+         } else {
+            this.roughDrawable = generator.polygon(transformedPoints, {
+               ...roughOptions,
                roughness: currentRoughness === 1 ? 1.5 : 3,
                seed: this.left + this.top
-            };
-            if (dash0 > 0 || dash1 > 0) roughOptions.strokeLineDash = [dash0, dash1];
-            
-            // Path draws a polygon (it fills and closes path)
-            this.roughDrawable = generator.polygon(transformedPoints, roughOptions);
-         } else {
-            this.roughDrawable = null;
+            });
          }
       }
 
@@ -239,37 +258,9 @@ class Path extends Shape {
          if (addStyles) context.fill();
          context.stroke();
       } else {
-         if (this.roughDrawable && currentRoughness > 0) {
+         if (this.roughDrawable) {
             const rc = rough.canvas(context.canvas as HTMLCanvasElement);
             rc.draw(this.roughDrawable);
-         } else {
-            context.setLineDash(this.dash);
-            context.lineWidth = this.strokeWidth / currentScale;
-            context.strokeStyle = this.stroke;
-            context.fillStyle = this.fill;
-
-            context.scale(this.scale, this.scale);
-            context.beginPath();
-
-            let startX = this.points[0].x;
-            let startY = this.points[0].y;
-
-            if (this.flipX) startX = this.width - startX;
-            if (this.flipY) startY = this.height - startY;
-
-            context.moveTo(startX, startY);
-
-            for (let i = 1; i < this.points.length; i++) {
-               let x = this.points[i].x;
-               let y = this.points[i].y;
-               if (this.flipX) x = this.width - x;
-               if (this.flipY) y = this.height - y;
-               context.lineTo(x, y);
-            }
-            
-            context.closePath();
-            context.fill();
-            context.stroke();
          }
       }
 

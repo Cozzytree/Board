@@ -147,7 +147,11 @@ class Board implements BoardInterface {
       const dpr = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1;
       
       // Use fixed steps so we aren't constantly resizing the DOM canvas during continuous zooming!
-      if (this.view.scl < 0.55) {
+      if (this.view.scl < 0.75) {
+         return dpr * 0.75;
+      } else if (this.view.scl < 0.65) {
+         return dpr * 0.65;
+      } else if (this.view.scl < 0.55) {
          return dpr * 0.55;
       } else if (this.view.scl < 0.5) {
          return dpr * 0.5;

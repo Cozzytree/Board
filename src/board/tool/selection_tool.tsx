@@ -126,7 +126,7 @@ class SelectionTool implements ToolInterface {
       if (this.isInput || document.getElementById(textAreaId)) {
          // Force cleanup
          const el = document.getElementById(textAreaId);
-         try { el?.remove(); } catch(e) {}
+         try { el?.remove(); } catch (e) { }
          this.isInput = false;
 
          if (this.textEdit) {
@@ -151,22 +151,22 @@ class SelectionTool implements ToolInterface {
       if (this.subMode === "free") {
          // altkey for duplicate
          if (e.altKey) {
-             const activeShape = this._board.getActiveShapes();
-             if (activeShape && activeShape.IsDraggable(p)) {
-                if (activeShape instanceof ActiveSelection) {
-                   const clonedChildren = activeShape.shapes.map((s) => s.s.clone());
-                   this._board.add(...clonedChildren);
-                   const newSelection = this._board.getActiveShapes();
-                   if (newSelection) {
-                      this.draggedShape = newSelection;
-                      this.unsnappedPos = new Pointer({ x: newSelection.left, y: newSelection.top });
-                   }
-                } else {
-                   const clone = activeShape.clone();
-                   this._board.add(clone);
-                   this.draggedShape = clone;
-                   this.unsnappedPos = new Pointer({ x: clone.left, y: clone.top });
-                }
+            const activeShape = this._board.getActiveShapes();
+            if (activeShape && activeShape.IsDraggable(p)) {
+               if (activeShape instanceof ActiveSelection) {
+                  const clonedChildren = activeShape.shapes.map((s) => s.s.clone());
+                  this._board.add(...clonedChildren);
+                  const newSelection = this._board.getActiveShapes();
+                  if (newSelection) {
+                     this.draggedShape = newSelection;
+                     this.unsnappedPos = new Pointer({ x: newSelection.left, y: newSelection.top });
+                  }
+               } else {
+                  const clone = activeShape.clone();
+                  this._board.add(clone);
+                  this.draggedShape = clone;
+                  this.unsnappedPos = new Pointer({ x: clone.left, y: clone.top });
+               }
             } else {
                let shapeFound: Shape | null = null;
                this._board.shapeStore.forEach((s) => {
@@ -202,8 +202,8 @@ class SelectionTool implements ToolInterface {
                   y: currentActive.top + currentActive.height / 2,
                };
 
-               this.initialRotationAngle = Math.atan2(p.y - this.rotationCenter.y, p.x - this.rotationCenter.x);
-               this.initialShapeRotation = currentActive.rotate;
+               // this.initialRotationAngle = Math.atan2(p.y - this.rotationCenter.y, p.x - this.rotationCenter.x);
+               // this.initialShapeRotation = currentActive.rotate;
                return;
             }
 
@@ -369,7 +369,6 @@ class SelectionTool implements ToolInterface {
             this.unsnappedPos = new Pointer({ x: drag.left, y: drag.top });
 
             this._board.setActiveShape(drag);
-
             this.mouseDowmShapeState.push(drag.toObject());
          }
 
@@ -718,7 +717,7 @@ class SelectionTool implements ToolInterface {
                }),
                "br",
             );
-            
+
             this.activeShape.mouseup({ e: { point: p } });
             if (this.activeShape.shapes.length === 1) {
                this._board.setActiveShape(this.activeShape.shapes[0].s);
@@ -793,7 +792,7 @@ class SelectionTool implements ToolInterface {
 
       // Remove any existing textarea
       const existingEl = document.getElementById(textAreaId);
-      try { existingEl?.remove(); } catch(e) {}
+      try { existingEl?.remove(); } catch (e) { }
 
       // Create container div
       const div = document.createElement("div");
@@ -848,7 +847,7 @@ class SelectionTool implements ToolInterface {
                this.textEdit.set("text", value);
                this.textEdit = null;
             }
-            try { div.remove(); } catch(e) {}
+            try { div.remove(); } catch (e) { }
             this.isInput = false;
             this._board.render();
          }
@@ -865,7 +864,7 @@ class SelectionTool implements ToolInterface {
          }
 
          this.isInput = false;
-         try { div.remove(); } catch(e) {}
+         try { div.remove(); } catch (e) { }
          this._board.render();
       };
       textarea.addEventListener("blur", handleBlur);
@@ -911,7 +910,7 @@ class SelectionTool implements ToolInterface {
    cleanUp(): void {
       // Clean up textarea if active
       const el = document.getElementById(textAreaId);
-      try { el?.remove(); } catch(e) {}
+      try { el?.remove(); } catch (e) { }
       this.isInput = false;
       this.textEdit = null;
       document.removeEventListener("keydown", this.handleKeyDown);
@@ -939,7 +938,7 @@ class SelectionTool implements ToolInterface {
                e.preventDefault();
                const activeShape = this._board.getActiveShapes();
                if (!activeShape) return;
-               
+
                if (activeShape instanceof ActiveSelection) {
                   const clonedChildren = activeShape.shapes.map((s) => {
                      const clonedChild = s.s.clone();
