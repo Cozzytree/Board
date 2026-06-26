@@ -16,7 +16,7 @@ import type {
 import { Box, type Board } from "../index";
 import { IsIn } from "../utils/utilfunc";
 import Connections from "../connections";
-import { HoveredColor, LINE_CONNECTION_PADDING } from "../constants";
+import { HoveredColor, LINE_CONNECTION_PADDING, INDICATOR_COLOR } from "../constants";
 
 export type DrawProps = {
    ctx?: CanvasRenderingContext2D;
@@ -174,7 +174,7 @@ abstract class Shape implements ShapeProps {
       this.connections = connections instanceof Connections ? connections : new Connections();
       this.id = id || uuidv4();
       this.selectionColor = selectionColor || HoveredColor;
-      this.selectionStrokeWidth = selectionStrokeWidth || 2;
+      this.selectionStrokeWidth = selectionStrokeWidth || 1;
       this.selectionAlpha = selectionAlpha || 0.4;
       this.selectionDash = selectionDash || [0, 0];
       this.selectionFill = selectionFill || "#20202050";
@@ -274,28 +274,29 @@ abstract class Shape implements ShapeProps {
       context.rotate(this.rotate);
       context.translate(-centerX, -centerY);
 
-      const indicatorColor = "#4A90E2";
+      const indicatorColor = "#6965db"; // Excalidraw-like purple
       const handleSizePx = 8;
-      const outlineWidthPx = 1.5;
-      const handleBorderPx = 1.5;
+      const outlineWidthPx = 1;
+      const handleBorderPx = 1;
 
       // Excalidraw-like active outline
       context.beginPath();
-      context.setLineDash([]);
-      context.strokeStyle = indicatorColor;
-      context.fillStyle = "rgba(74, 144, 226, 0.05)";
+      context.setLineDash([0,0]);
+      context.strokeStyle = INDICATOR_COLOR;
       context.lineWidth = outlineWidthPx / currentScale;
       context.rect(x, y, w, h);
-      context.fill();
       context.stroke();
       context.closePath();
 
       const drawHandle = (cx: number, cy: number) => {
          const size = handleSizePx / currentScale;
          context.beginPath();
+         context.fillStyle = this._board.background || "#ffffff";
          context.strokeStyle = indicatorColor;
          context.lineWidth = handleBorderPx / currentScale;
+         // Semi rounded dots
          context.roundRect(cx - size / 2, cy - size / 2, size, size, size * 0.5);
+         context.fill();
          context.stroke();
          context.closePath();
       };
@@ -580,6 +581,13 @@ abstract class Shape implements ShapeProps {
       if (props.width !== undefined) this.targetWidth = props.width;
       if (props.height !== undefined) this.targetHeight = props.height;
       this.startAnimationLoop();
+   }
+
+   dragInstant(dx: number, dy: number) {
+      this.setSilent({
+         left: this.left += dx,
+         top: this.top += dy,
+      })
    }
 
    dragTarget(dx: number, dy: number) {

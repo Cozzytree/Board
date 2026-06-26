@@ -50,15 +50,11 @@ class Text extends Shape {
       const currentScale = context.getTransform().a;
       if (resize) {
          context.globalAlpha = 0.5;
-
+         const pad = this.padding;
          context.beginPath();
          context.lineWidth = this.selectionStrokeWidth;
          context.strokeStyle = this.selectionColor;
-         context.rect(this.left, this.top, this.width, this.height);
-         context.setLineDash([
-            this.selectionStrokeWidth / currentScale,
-            this.selectionStrokeWidth / currentScale,
-         ]);
+         context.rect(this.left - pad, this.top - pad, this.width + pad * 2, this.height + pad * 2);
          context.stroke();
          context.closePath();
       }
@@ -78,139 +74,153 @@ class Text extends Shape {
       context.restore();
    }
 
-   Resize(current: Point, old: BoxInterface, d: resizeDirection): Shape[] | void {
-      let newHeight = 0,
-         newWidth = 0;
-      switch (d) {
-         case "t":
-            if (current.y > old.y2) {
-               super.setSilent({
-                  top: old.y2,
-               });
-               newHeight = current.y - old.y2;
-            } else {
-               super.setSilent({
-                  top: current.y,
-               });
-               newHeight = old.y1 - current.y;
-            }
-            break;
-         case "b":
-            if (current.y > old.y1) {
-               super.setSilent({
-                  top: old.y1,
-               });
-               newHeight = current.y - old.y1;
-            } else {
-               super.setSilent({
-                  top: current.y,
-               });
-               newHeight = old.y2 - current.y;
-            }
-            break;
-         case "l":
-            if (current.x > old.x2) {
-               super.setSilent({
-                  left: old.x2,
-               });
-               newWidth = current.x - old.x2;
-            } else {
-               super.setSilent({
-                  left: current.x,
-               });
-               newWidth = old.x2 - current.x;
-            }
-            break;
-         case "r":
-            if (current.x > old.x1) {
-               super.setSilent({
-                  left: old.x1,
-                  width: current.x - old.x1,
-               });
-               newWidth = current.x - old.x1;
-            } else {
-               super.setSilent({
-                  left: current.x,
-                  width: old.x1 - current.x,
-               });
-               newWidth = old.x1 - current.x;
-            }
-            break;
-         case "tl":
-            if (current.x > old.x2) {
-               this.left = old.x2;
-               newWidth = current.x - old.x2;
-            } else {
-               this.left = current.x;
-               newWidth = old.x2 - current.x;
-            }
+   private _lastOldBox: BoxInterface | null = null;
+   private _initialFontSize: number = 20;
 
-            if (current.y > old.y2) {
-               this.top = old.y2;
-               newHeight = current.y - old.y2;
-            } else {
-               this.top = current.y;
-               newHeight = old.y2 - current.y;
-            }
-            break;
-         case "tr":
-            if (current.x < old.x1) {
-               this.left = current.x;
-               newWidth = old.x1 - current.x;
-            } else {
-               this.left = old.x1;
-               newWidth = current.x - old.x1;
-            }
+   private getWrappedHeight(width: number): number {
+      const context = this.ctx || document.createElement("canvas").getContext("2d");
+      if (!context) return this.fontSize * 1.2 * (this.text.split("\n").length || 1);
 
-            if (current.y > old.y2) {
-               this.top = old.y2;
-               newHeight = current.y - old.y2;
-            } else {
-               this.top = current.y;
-               newHeight = old.y2 - current.y;
-            }
-            break;
-         case "br":
-            if (current.x - old.x1 <= this.fontSize || current.y - old.y1 <= this.fontSize) return;
-            if (current.x < old.x1) {
-               this.left = current.x;
-               newWidth = old.x1 - current.x;
-            } else {
-               this.left = old.x1;
-               newWidth = current.x - old.x1;
-            }
+      const font = `${this.fontWeight} ${this.italic ? "italic" : ""} ${this.fontSize}px ${this.fontFamily}`;
+      context.font = font;
 
-            if (current.y > old.y1) {
-               this.top = old.y1;
-               newHeight = current.y - old.y1;
+      const maxWidth = Math.max(0, width - this.padding * 2);
+      const paragraphs = this.text.split("\n");
+      const lines: string[] = [];
+
+      const breakLongWord = (word: string): string[] => {
+         const broken: string[] = [];
+         let current = "";
+         for (const char of word) {
+            const test = current + char;
+            if (context.measureText(test).width > maxWidth) {
+               if (current) broken.push(current);
+               current = char;
             } else {
-               this.top = current.y;
-               newHeight = old.y1 - current.y;
+               current += char;
             }
-            break;
-         case "bl":
-            if (current.x > old.x2) {
-               this.left = old.x2;
-               newWidth = current.x - old.x2;
+         }
+         if (current) broken.push(current);
+         return broken;
+      };
+
+      for (const paragraph of paragraphs) {
+         if (paragraph.trim() === "") {
+            lines.push("");
+            continue;
+         }
+         const words = paragraph.split(" ");
+         let line = "";
+         for (const word of words) {
+            const testLine = line ? line + " " + word : word;
+            if (context.measureText(testLine).width <= maxWidth) {
+               line = testLine;
             } else {
-               this.left = current.x;
-               newWidth = old.x2 - current.x;
+               if (line) lines.push(line);
+               if (context.measureText(word).width > maxWidth) {
+                  const brokenWords = breakLongWord(word);
+                  for (let i = 0; i < brokenWords.length - 1; i++) {
+                     lines.push(brokenWords[i]);
+                  }
+                  line = brokenWords[brokenWords.length - 1];
+               } else {
+                  line = word;
+               }
             }
-            if (current.y > old.y1) {
-               this.top = old.y1;
-               newHeight = current.y - old.y1;
-            } else {
-               this.top = current.y;
-               newHeight = old.y1 - current.y;
-            }
+         }
+         if (line) lines.push(line);
       }
 
-      this.setTarget({
-         width: newWidth,
-         height: this.adjustHeight(newHeight)
-      })
-      // this.setSilent({ width: newWidth, height: this.adjustHeight(newHeight) });
-      return super.Resize(current, old, d);
+      // Add a bit of padding offset to calculate the true needed bounding height
+      return lines.length * (this.fontSize * 1.2) + this.padding * 2;
+   }
+
+   Resize(current: Point, old: BoxInterface, d: resizeDirection): Shape[] | void {
+      if (this._lastOldBox !== old) {
+         this._lastOldBox = old;
+         this._initialFontSize = this.fontSize;
+      }
+
+      const isDiagonal = d === "tl" || d === "tr" || d === "bl" || d === "br";
+      const isVertical = d === "t" || d === "b";
+      const oldWidth = old.x2 - old.x1;
+      const oldHeight = old.y2 - old.y1;
+
+      let newWidth = oldWidth;
+      let newHeight = oldHeight;
+
+      if (isDiagonal || isVertical) {
+         let scale = 1;
+
+         // Scale proportionally based on drag delta
+         if (isDiagonal) {
+            if (d === "br" || d === "tr") newWidth = current.x - old.x1;
+            else newWidth = old.x2 - current.x;
+
+            if (newWidth <= 0) return; // Prevent flipping past opposite side
+            newWidth = Math.max(10, newWidth);
+            scale = newWidth / oldWidth;
+         } else {
+            if (d === "b") newHeight = current.y - old.y1;
+            else newHeight = old.y2 - current.y;
+
+            if (newHeight <= 0) return; // Prevent flipping past opposite side
+            newHeight = Math.max(10, newHeight);
+            scale = newHeight / oldHeight;
+         }
+
+         this.fontSize = Math.max(8, this._initialFontSize * scale);
+         
+         // In diagonal/vertical resize, maintain exact aspect ratio
+         newHeight = oldHeight * scale;
+         newWidth = oldWidth * scale;
+
+         // Adjust coords based on anchor
+         let newLeft = this.left;
+         let newTop = this.top;
+
+         if (d === "br") {
+            newLeft = old.x1;
+            newTop = old.y1;
+         } else if (d === "tr") {
+            newLeft = old.x1;
+            newTop = old.y2 - newHeight;
+         } else if (d === "bl") {
+            newLeft = old.x2 - newWidth;
+            newTop = old.y1;
+         } else if (d === "tl") {
+            newLeft = old.x2 - newWidth;
+            newTop = old.y2 - newHeight;
+         } else if (d === "b") {
+            newLeft = old.x1;
+            newTop = old.y1;
+         } else if (d === "t") {
+            newLeft = old.x1;
+            newTop = old.y2 - newHeight;
+         }
+
+         this.setSilent({ left: newLeft, top: newTop });
+         this.setTarget({ width: newWidth, height: newHeight });
+         return super.Resize(current, old, d);
+      } else {
+         // Horizontal
+         if (d === "l" || d === "r") {
+            if (d === "r") {
+               newWidth = current.x - old.x1;
+               if (newWidth <= 0) return; // Prevent flipping past opposite side
+               this.setSilent({ left: old.x1 });
+            } else {
+               newWidth = old.x2 - current.x;
+               if (newWidth <= 0) return; // Prevent flipping past opposite side
+               this.setSilent({ left: current.x });
+            }
+            newWidth = Math.max(20, newWidth);
+            newHeight = Math.max(oldHeight, this.getWrappedHeight(newWidth));
+         }
+
+         this.setTarget({ width: newWidth, height: newHeight });
+         return super.Resize(current, old, d);
+      }
    }
 
    IsDraggable(p: Point): boolean {
@@ -229,14 +239,10 @@ class Text extends Shape {
       const dx = current.x - prev.x;
       const dy = current.y - prev.y;
 
-      this.dragTarget(
+      this.dragInstant(
          dx,
          dy,
       )
-      // this.set({
-      // });
-      // this.left += dx;
-      // this.top += dy;
 
       return super.dragging(prev, current);
    }

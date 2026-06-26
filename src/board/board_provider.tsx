@@ -20,6 +20,7 @@ import {
    Cloud,
    ImageIcon,
 } from "lucide-react";
+import { debounce } from "@/lib/utils";
 import * as React from "react";
 import { Board, Rect, Shape } from "./index";
 import type { modes, submodes, CustomShapeDef, EventData, ShapeProps } from "./types";
@@ -455,8 +456,10 @@ const BoardProvider = ({
    React.useLayoutEffect(() => {
       if (!canvasRef.current || !canvas2Ref.current) return;
 
+      const debouncedSaveViewToStorage = debounce((board: Board) => saveViewToStorage(board), 200);
+
       const newBoard = new Board({
-         scrollEase: 0.5,
+         scrollEase:1,
          isLocked: isLockedCanvas,
          initialShapes: initialShapes || [],
          width,
@@ -475,12 +478,12 @@ const BoardProvider = ({
          onZoom: (v) => {
             setZoom(v.scl * 100);
             setOffset([v.x, v.y]);
-            saveViewToStorage(newBoard);
+            debouncedSaveViewToStorage(newBoard);
          },
          onScroll: (v) => {
             setOffset([v.x, v.y]);
             setZoom(v.scl * 100);
-            saveViewToStorage(newBoard);
+            debouncedSaveViewToStorage(newBoard);
          },
          customShapes,
          onImageUpload,

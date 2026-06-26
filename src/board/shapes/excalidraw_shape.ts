@@ -444,31 +444,28 @@ class ExcalidrawShape extends Shape {
       context.rotate(this.rotate);
       context.translate(-centerX, -centerY);
 
-      const indicatorColor = "#4A90E2";
-      const handleSizePx = 10;
-      const outlineWidthPx = 1.5;
-      const handleBorderPx = 1.5;
+      const handleSizePx = 8;
+      const outlineWidthPx = 1;
+      const handleBorderPx = 1;
 
       // Excalidraw-like active outline
       context.beginPath();
-      context.setLineDash([8, 8]);
-      context.strokeStyle = indicatorColor;
-      context.fillStyle = "rgba(74, 144, 226, 0.05)";
+      context.setLineDash([3 / currentScale, 3 / currentScale, 1 / currentScale]);
+      context.strokeStyle = this._board.indicatorColor;
       context.lineWidth = outlineWidthPx / currentScale;
       context.rect(x, y, w, h);
-      context.fill();
       context.stroke();
       context.closePath();
 
-
-      context.setLineDash([0, 0]);
       const drawHandle = (cx: number, cy: number) => {
          const size = handleSizePx / currentScale;
          context.beginPath();
-         context.strokeStyle = indicatorColor;
-         context.fillStyle = this.fill;
+         context.setLineDash([]);
+         context.fillStyle = this._board.background || "#ffffff";
+         context.strokeStyle = this._board.indicatorColor;
          context.lineWidth = handleBorderPx / currentScale;
-         context.roundRect(cx - size / 2, cy - size / 2, size, size, size * 0.4);
+         // Semi rounded dots
+         context.roundRect(cx - size / 2, cy - size / 2, size, size, size * 0.5);
          context.fill();
          context.stroke();
          context.closePath();

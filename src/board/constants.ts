@@ -1,5 +1,6 @@
 import Pointer from "./utils/point";
 
+const INDICATOR_COLOR = "#6965db"; // Excalidraw-like purple
 const LINE_CONNECTION_PADDING = 10;
 const SCALE_RATE = 0.15;
 const keysNotNeeded = ["ctx", "eventListeners"];
@@ -56,4 +57,5 @@ export {
    COLORS,
    FONT_SIZES,
    FONT_FAMILIES,
+   INDICATOR_COLOR
 };

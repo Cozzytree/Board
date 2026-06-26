@@ -25,8 +25,10 @@ import { parseSvgToShapeProps } from "./utils/svg_parser";
 import SvgShape from "./shapes/svg_shape";
 import ShapeStoreArr from "./shapes/shape_store_arr";
 type view_t = { x: number; y: number; scl: number };
+import { INDICATOR_COLOR } from "./constants";
 
 type BoardProps = {
+   indicatorColor: string;
    scrollEase?: number;
    initialShapes: any[];
    container?: HTMLElement;
@@ -51,6 +53,7 @@ type BoardProps = {
 type EventCallback = (e: EventData) => void;
 
 class Board implements BoardInterface {
+   indicatorColor: string;
    onZoomCallback: (n: view_t) => void;
    onScroll: (view: view_t) => void;
    currentTool: ToolInterface;
@@ -146,23 +149,20 @@ class Board implements BoardInterface {
    getCanvasDpr() {
       const dpr = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1;
       
-      // Use fixed steps so we aren't constantly resizing the DOM canvas during continuous zooming!
-      if (this.view.scl < 0.75) {
-         return dpr * 0.75;
-      } else if (this.view.scl < 0.65) {
-         return dpr * 0.65;
-      } else if (this.view.scl < 0.55) {
-         return dpr * 0.55;
-      } else if (this.view.scl < 0.5) {
-         return dpr * 0.5;
-      } else if (this.view.scl < 0.4) {
-         return dpr * 0.4;
-      } else if (this.view.scl < 0.3) {
-         return dpr * 0.3;
-      } else if (this.view.scl < 0.15) {
-         return dpr * 0.15;
+      // Use full resolution for normal viewing or zooming in
+      if (this.view.scl >= 0.75) {
+         return dpr;
       }
-      return dpr; // High resolution for normal/zoomed in
+
+      // Use fixed steps so we aren't constantly resizing the DOM canvas during continuous zooming out!
+      // if (this.view.scl < 0.15) return dpr * 0.15;
+      if (this.view.scl < 0.3) return dpr * 0.3;
+      if (this.view.scl < 0.4) return dpr * 0.4;
+      if (this.view.scl < 0.5) return dpr * 0.5;
+      if (this.view.scl < 0.55) return dpr * 0.55;
+      if (this.view.scl < 0.65) return dpr * 0.65;
+      
+      return dpr * 0.75;
    }
 
    syncCanvasResolution() {
@@ -217,7 +217,9 @@ class Board implements BoardInterface {
       customShapes = [],
       onImageUpload,
       isLocked = false,
+      indicatorColor
    }: BoardProps) {
+      this.indicatorColor = indicatorColor || INDICATOR_COLOR;
       this.scrollEase = scrollEase ?? 0.5;
       this.customShapes = new Map();
       customShapes.forEach((s) => {
@@ -840,27 +842,31 @@ class Board implements BoardInterface {
       return preventList.includes(type);
    }
 
-   // private onWheel(e: WheelEvent) {
-   //    const target = e.target as HTMLElement;
-   //    if (target.tagName !== "CANVAS") return;
-   //    if (!e.ctrlKey) {
-   //       this.view.y = e.deltaY > 0 ? this.view.y - 80 : this.view.y + 80;
-   //    } else {
-   //       e.preventDefault();
-
-   //       // updated scale
-   //       this.evt.dscl = e.deltaY > 0 ? 8 / 10 : 10 / 8;
-   //       this.evt.eps /= this.evt.dscl;
-   //       this.view.x = e.x + this.evt.dscl * (this.view.x - e.x);
-   //       this.view.y = e.y + this.evt.dscl * (this.view.y - e.y);
-   //       this.view.scl *= this.evt.dscl;
-   //       this.onZoomCallback(this.view);
-   //    }
-   //    this.render();
-   //    this.onScroll(this.view);
-   // }
-
    private onWheel(e: WheelEvent) {
+      const target = e.target as HTMLElement;
+      if (target.tagName !== "CANVAS") return;
+      if (!e.ctrlKey) {
+         this.view.y = e.deltaY > 0 ? this.view.y - 80 : this.view.y + 80;
+      } else {
+         e.preventDefault();
+         // this.evt.dscl = e.deltaY > 0 ? 8 / 10 : 10 / 8;
+         const dscl = e.deltaY > 0 ? 8 / 10 : 10 / 8;
+
+         if (this.view.scl * dscl < 0.1 || this.view.scl * dscl > 5) {
+            return;
+         }
+
+         this.evt.eps /= dscl;
+         this.view.x = e.x + dscl * (this.view.x - e.x);
+         this.view.y = e.y + dscl * (this.view.y - e.y);
+         this.view.scl *= dscl;
+         this.onZoomCallback(this.view);
+      }
+      this.render();
+      this.onScroll(this.view);
+   }
+
+   private onWheelSmooth(e: WheelEvent) {
       const target = e.target as HTMLElement;
       if (target.tagName !== "CANVAS") return;
 
@@ -896,7 +902,6 @@ class Board implements BoardInterface {
       }
    }
 
-
    private animateView() {
       // 0.15 is the "spring" stiffness. Lower = smoother/slower, Higher = snappier
       const ease = this.scrollEase;
@@ -908,7 +913,7 @@ class Board implements BoardInterface {
 
       // Trigger your callbacks
       this.onZoomCallback(this.view);
-      this.render();
+      this.renderImmediate();
       this.onScroll(this.view);
 
       // Check if we are close enough to stop animating (saves CPU)

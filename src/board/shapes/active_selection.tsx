@@ -5,6 +5,7 @@ import { resizeRect, isDraggableWithRotation } from "../utils/resize";
 import { resizeWithRotationAndFlip } from "../utils/resizeWithRotation";
 import { calcPointWithRotation, rotatePoint } from "../utils/utilfunc";
 import Group from "./group";
+import { INDICATOR_COLOR } from "../constants.ts";
 
 export type ActiveSeletionProps = {
    shapes?: { oldProps?: BoxInterface; s: Shape }[];
@@ -131,13 +132,18 @@ class ActiveSelection extends Shape {
       this.shapes.forEach((s) => {
          // guard just incase if it calls itself
          if (s?.s && this.ID() != s?.s.ID()) {
-            s.s.dragging(prev, current);
+            s.s.setSilent({
+               left: s.s.left + dx,
+               top: s.s.top + dy
+            });
          }
       });
 
-      // this.left += dx;
-      // this.top += dy;
-      this.dragTarget(dx, dy)
+      this.setSilent({
+         left: this.left += dx,
+         top: this.top += dy,
+      })
+      // this.dragTarget(dx, dy)
 
       const drg = super.dragging(prev, current);
       if (!drg) {
@@ -147,12 +153,8 @@ class ActiveSelection extends Shape {
    }
 
    draw(options: { active: boolean; ctx?: CanvasRenderingContext2D; addStyles?: boolean }): void {
-      // if (this._board.getActiveShapes()?.ID() === this.ID()) {
-      //    return; // Let activeRect handle the rendering to avoid double drawing
-      // }
-
       const context = options.ctx || this.ctx;
-      const pad = 0;
+      const pad = this.padding * 0.5;
       const x = this.left - pad;
       const y = this.top - pad;
       const w = this.width + pad;
@@ -173,8 +175,8 @@ class ActiveSelection extends Shape {
 
       // Draw outer rectangle with constant visual width
       context.beginPath();
-      context.setLineDash([3, 3]);
-      context.strokeStyle = this.selectionColor;
+      context.setLineDash([10 / currentScale, 10 / currentScale, 3 / currentScale]);
+      context.strokeStyle = INDICATOR_COLOR;
       context.lineWidth = this.strokeWidth / currentScale; // Adjust for scale
       context.rect(x, y, w, h);
       context.stroke();
@@ -187,7 +189,7 @@ class ActiveSelection extends Shape {
          context.beginPath();
          context.setLineDash([0, 0]);
          context.fillStyle = this._board.background;
-         context.strokeStyle = this.selectionColor;
+         context.strokeStyle = INDICATOR_COLOR;
          context.lineWidth = this.selectionStrokeWidth / currentScale; // Keep dot border consistent too
          context.roundRect(cx - wh / 2, cy - wh / 2, wh, wh, 0);
          context.stroke();
@@ -224,32 +226,30 @@ class ActiveSelection extends Shape {
       context.rotate(this.rotate);
       context.translate(-centerX, -centerY);
 
-      const indicatorColor = "#4A90E2";
       const handleSizePx = 8;
-      const outlineWidthPx = 1.5;
-      const handleBorderPx = 1.5;
+      const outlineWidthPx = 3;
+      const handleBorderPx = 1;
 
       // Excalidraw-like active outline
       context.beginPath();
-      context.setLineDash([3, 3]);
-      context.strokeStyle = indicatorColor;
-      context.fillStyle = "rgba(74, 144, 226, 0.05)";
+      context.setLineDash([10 / currentScale, 10 / currentScale, 3 / currentScale]);
+      context.strokeStyle = INDICATOR_COLOR;
       context.lineWidth = outlineWidthPx / currentScale;
       context.rect(x, y, w, h);
-      context.fill();
       context.stroke();
       context.closePath();
 
       const drawHandle = (cx: number, cy: number) => {
          const size = handleSizePx / currentScale;
          context.beginPath();
-         context.setLineDash([0, 0]);
-         context.fillStyle = "#FFFFFF";
-         context.strokeStyle = indicatorColor;
+         context.setLineDash([]);
+         context.fillStyle = this._board.background || "#ffffff";
+         context.strokeStyle = INDICATOR_COLOR;
          context.lineWidth = handleBorderPx / currentScale;
-         context.roundRect(cx - size / 2, cy - size / 2, size, size, size * 0.5);
-         context.stroke();
+         // Semi rounded dots
+         context.roundRect(cx - size * 0.5, cy - size * 0.5, size, size, size * 0.5);
          context.fill();
+         context.stroke();
          context.closePath();
       };
 
@@ -313,12 +313,12 @@ class ActiveSelection extends Shape {
             break;
       }
 
-      this.setTarget({
+      this.setSilent({
          left: newBounds.left,
          top: newBounds.top,
          width: newBounds.width,
          height: newBounds.height,
-      })
+      });
 
       const oldWidth = old.x2 - old.x1;
       const oldHeight = old.y2 - old.y1;
@@ -427,19 +427,14 @@ class ActiveSelection extends Shape {
                   p.x = scaledX;
                   p.y = scaledY;
                });
+               s.s.cachedLocalPath = null; // Clear path cache since points changed
             }
 
-            s.s.setTarget({
+            s.s.setSilent({
                left: newLeft,
                top: newTop,
                width: newWidthS,
-               height: newHeightS
-            });
-            s.s.setSilent({
-               // left: newLeft,
-               // top: newTop,
-               // width: newWidthS,
-               // height: newHeightS,
+               height: newHeightS,
                flipX: groupFlipX ? !s.originalFlipX : s.originalFlipX,
                flipY: groupFlipY ? !s.originalFlipY : s.originalFlipY,
             });

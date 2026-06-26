@@ -16,6 +16,7 @@ import type {
 } from "../types";
 import { generateShapeByShapeType } from "../utils/utilfunc";
 import { snapRotation, snapShape, snapResize } from "../utils/snap";
+import { debounce } from "../../lib/utils";
 
 const textAreaId = "text-update";
 
@@ -124,19 +125,21 @@ class SelectionTool implements ToolInterface {
       // this.snapLines = [];
       // Check if we are currently editing text or if the input exists
       if (this.isInput || document.getElementById(textAreaId)) {
-         // Force cleanup
          const el = document.getElementById(textAreaId);
-         try { el?.remove(); } catch (e) { }
-         this.isInput = false;
-
-         if (this.textEdit) {
-            // Commit changes might be needed here, or just discard?
-            // Usually blur handles commit, but if blur failed...
-            // Let's assume blur handled it or we just discard.
-            // Or better, trigger blur logic manually?
-            // Actually, removing the element triggers blur? No, it removes it.
-            this.textEdit = null;
+         if (el) {
+            const textarea = el.querySelector("textarea") || (el.tagName === "TEXTAREA" ? el : null) as HTMLTextAreaElement | null;
+            if (textarea && this.textEdit) {
+               const value = textarea.value;
+               const originalOpacity = this.textEdit.opacity; // or just assume 1 if it's visible normally
+               // Try to restore opacity if it was hidden, though commitAndClose in tryStartTextEdit handles this.
+               // We will just force commit here.
+               this.textEdit.setSilent({ text: value, opacity: 1 });
+               this.textEdit.set("text", value);
+            }
+            try { el.remove(); } catch (e) {}
          }
+         this.isInput = false;
+         this.textEdit = null;
          this._board.render();
       }
 
@@ -792,36 +795,62 @@ class SelectionTool implements ToolInterface {
 
       // Remove any existing textarea
       const existingEl = document.getElementById(textAreaId);
-      try { existingEl?.remove(); } catch (e) { }
+      try { existingEl?.remove(); } catch (e) {}
 
       // Create container div
       const div = document.createElement("div");
       div.setAttribute("id", textAreaId);
       div.style.position = "absolute";
-      div.style.left =
-         rect.left + this.textEdit.left * this._board.view.scl + this._board.view.x + "px";
+      div.style.left = rect.left + this.textEdit.left * this._board.view.scl + this._board.view.x + "px";
       div.style.top = rect.top + this.textEdit.top * this._board.view.scl + this._board.view.y + "px";
+      div.style.width = this.textEdit.width * this._board.view.scl + "px";
+      div.style.height = this.textEdit.height * this._board.view.scl + "px";
       div.style.zIndex = "1000";
+      
+      div.style.display = "flex";
+      // Text alignment logic for container
+      div.style.alignItems = this.textEdit.verticalAlign === "top" ? "flex-start" : this.textEdit.verticalAlign === "bottom" ? "flex-end" : "center";
+      div.style.justifyContent = this.textEdit.textAlign === "left" ? "flex-start" : this.textEdit.textAlign === "right" ? "flex-end" : "center";
+
+      const scale = this._board.view.scl;
+      const editorFontSize = this.textEdit.fontSize * scale;
 
       // Create textarea
       const textarea = document.createElement("textarea");
       textarea.setAttribute("data-board-text-edit", "true");
-      textarea.value = this.textEdit.text || "";
-      textarea.style.width = this.textEdit.width * this._board.view.scl + "px";
-      textarea.style.height = this.textEdit.height * this._board.view.scl + "px";
-      textarea.style.fontSize = this.textEdit.fontSize * this._board.view.scl + "px";
-      textarea.style.lineHeight = this.textEdit.fontSize * this._board.view.scl * 1.2 + "px";
-      textarea.style.padding = "0px";
+      
+      const originalText = this.textEdit.text || "";
+      textarea.value = originalText;
+      
+      textarea.spellcheck = true;
+      textarea.autocomplete = "off";
+      textarea.setAttribute("autocapitalize", "sentences");
+      textarea.setAttribute("inputmode", "text");
+      
       textarea.style.margin = "0px";
+      textarea.style.padding = `${(this.textEdit.padding || 8) * scale}px`;
       textarea.style.border = "none";
       textarea.style.outline = "none";
       textarea.style.resize = "none";
       textarea.style.overflow = "hidden";
       textarea.style.background = "transparent";
-      textarea.style.color = this.textEdit.stroke; // Match shape stroke color
-      textarea.style.fontFamily = (this.textEdit as any).fontFamily || "system-ui";
-      textarea.style.textAlign = this.textEdit.textAlign;
+      textarea.style.color = this.textEdit.stroke;
+      textarea.style.fontFamily = (this.textEdit as any).fontFamily || "system-ui, sans-serif";
       textarea.style.fontWeight = this.textEdit.fontWeight + "";
+      textarea.style.fontSize = `${editorFontSize}px`;
+      textarea.style.lineHeight = `${editorFontSize * 1.2}px`;
+      
+      // Crucial part for wrapping text in shape bounds
+      textarea.style.whiteSpace = "pre-wrap"; 
+      textarea.style.wordBreak = "break-word";
+      textarea.style.boxSizing = "border-box";
+      textarea.style.caretColor = this.textEdit.stroke;
+      textarea.style.textAlign = this.textEdit.textAlign || "center";
+      
+      // Textarea will fit its content, but never exceed parent div's width
+      textarea.style.width = "fit-content";
+      textarea.style.maxWidth = "100%";
+
       if (this.textEdit.italic) {
          textarea.style.fontStyle = "italic";
       }
@@ -829,53 +858,85 @@ class SelectionTool implements ToolInterface {
       div.append(textarea);
       document.body.append(div);
 
+      // Hide the text from the shape but keep the shape itself visible
+      this.textEdit.setSilent({ text: "" });
+      this._board.render(); // Redraws main canvas immediately (shape is drawn without text)
+
+      const checkResize = debounce(() => {
+         if (!this.textEdit) return;
+         
+         // In a pre-wrap textarea, width wraps naturally, but we need to track height
+         const requiredHeight = textarea.scrollHeight;
+         const currentHeightScaled = this.textEdit.height * scale;
+
+         // If the textarea height exceeds the shape height, we resize the shape
+         if (requiredHeight > currentHeightScaled) {
+            const newHeightUnscaled = requiredHeight / scale;
+            this.textEdit.setSilent({ height: newHeightUnscaled });
+            div.style.height = `${requiredHeight}px`; // Update the container div too
+            this._board.render(); // Redraw main canvas
+         }
+      }, 50);
+
+      const autoSizeTextareaHeight = () => {
+         // Reset height to let scrollHeight shrink if lines are deleted
+         textarea.style.height = "0px";
+         const scrollHeight = textarea.scrollHeight;
+         textarea.style.height = scrollHeight + "px";
+         checkResize();
+      };
+
+      // Initial size
+      autoSizeTextareaHeight();
+
       // Focus the textarea
       requestAnimationFrame(() => {
          textarea.focus();
-         // Move cursor to end
          textarea.setSelectionRange(textarea.value.length, textarea.value.length);
       });
 
-      // Handle Escape key to save and close
+      textarea.addEventListener("input", autoSizeTextareaHeight);
+
+      const commitAndClose = () => {
+         const value = textarea.value;
+         if (this.textEdit) {
+            this.textEdit.setSilent({ text: value }); // Set silently first
+            this.textEdit.set("text", value); // Commit text officially to history
+            this.textEdit = null;
+         }
+         this.isInput = false;
+         try { div.remove(); } catch (e) { }
+         this._board.render(); // Re-render main canvas with text
+      };
+
+      // Handle Escape/Enter keys
       const handleKeyDown = (e: KeyboardEvent) => {
-         e.stopPropagation(); // Stop event bubbling to canvas
+         e.stopPropagation();
          if (e.key === "Escape") {
             e.preventDefault();
-            // Save on Escape as requested
-            const value = textarea.value;
-            if (this.textEdit) {
-               this.textEdit.set("text", value);
-               this.textEdit = null;
-            }
-            try { div.remove(); } catch (e) { }
-            this.isInput = false;
-            this._board.render();
+            commitAndClose();
+         } else if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+            e.preventDefault();
+            commitAndClose();
          }
       };
       textarea.addEventListener("keydown", handleKeyDown);
+      textarea.addEventListener("blur", () => {
+         commitAndClose();
+      })
 
-      // Handle blur (when user clicks outside or finishes)
+      // Handle blur
       const handleBlur = () => {
-         const value = textarea.value; // Don't trim to allow spaces if desired, or keep trim
-
-         if (this.textEdit) {
-            this.textEdit.set("text", value);
-            this.textEdit = null;
-         }
-
-         this.isInput = false;
-         try { div.remove(); } catch (e) { }
-         this._board.render();
+         commitAndClose();
       };
       textarea.addEventListener("blur", handleBlur);
 
       this._board.discardActiveShapes();
-      this.clearOverlay();
 
       return true;
    }
 
-   private clearOverlay(): void {
+   private clearOverlay() {
       this._board.ctx2.clearRect(0, 0, this._board.canvas2.width, this._board.canvas2.height);
    }
 
@@ -902,6 +963,9 @@ class SelectionTool implements ToolInterface {
          if (a.IsDraggable(p)) {
             this.createText();
          }
+      } else {
+         this._board.setMode = { m: "text", sm: null, originUi: true }
+         this._board.currentTool?.onClick({ p });
       }
    }
 

@@ -93,20 +93,11 @@ class Rect extends Shape {
    dragging(prev: Point, current: Point) {
       const dx = current.x - prev.x;
       const dy = current.y - prev.y;
-      // const dx = current.x - this._startMouse.x;
-      // const dy = current.y - this._startMouse.y;
-
-      // const cos = Math.cos(-this.rotate);
-      // const sin = Math.sin(-this.rotate);
-      // const localDx = dx * cos - dy * sin;
-      // const localDy = dx * sin + dy * cos;
-
-      // const rotatedDx = dx * cos - dy * sin;
-      // const rotatedDy = dx * sin + dy * cos;
-
-      // this.left = this._startPos.x + localDx;
-      // this.top = this._startPos.y + localDy;
-      this.dragTarget(dx, dy);
+      // this.dragTarget(dx, dy);
+      this.setSilent({
+         left: this.left += dx,
+         top: this.top += dy,
+      })
 
       return super.dragging(prev, current);
    }
@@ -271,12 +262,18 @@ class Rect extends Shape {
       // Adjust height for text if needed
       const adjustedHeight = this.adjustHeight(newBounds.height);
 
-      this.setTarget({
+      this.setSilent({
          left: newBounds.left,
          top: newBounds.top,
          width: newBounds.width,
          height: adjustedHeight,
-      });
+      })
+      // this.setTarget({
+      //    left: newBounds.left,
+      //    top: newBounds.top,
+      //    width: newBounds.width,
+      //    height: adjustedHeight,
+      // });
 
       return super.Resize(current, old, d);
    }

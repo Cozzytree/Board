@@ -46,6 +46,7 @@ import Group from "../shapes/group";
 import { Button } from "@/components/ui/button";
 import type { Board, Shape } from "../index";
 import { Input } from "@/components/ui/input";
+import { debounce } from "@/lib/utils";
 
 const EXCALIDRAW_COLORS = [
    "#1E1E1E",
@@ -272,7 +273,11 @@ function ColorPickerRow({
    );
 }
 
-function ShapeOptions() {
+type Props = {
+   debounceMs?: number
+}
+
+function ShapeOptions({ debounceMs = 250 }: Props) {
    const { activeShape, canvas, setActiveShape, update } = useBoard();
    const isMobile = useMobile();
 
@@ -284,28 +289,28 @@ function ShapeOptions() {
 
    const Content = () => (
       <>
-         <FillOption />
-         <StrokeOption />
-         <OpacityOption />
-         <StrokeSize />
-         <RoughnessOption />
-         <FillStyleOption />
-         <StrokeDash />
-         <div className="w-[1px] bg-border mx-1 h-6 hidden md:block" />
-         <FontFamilyOption />
-         <FontSizes />
+         <FillOption debounceMs={debounceMs} />
+         <StrokeOption debounceMs={debounceMs} />
+         <OpacityOption debounceMs={debounceMs} />
+         <StrokeSize debounceMs={debounceMs} />
+         <RoughnessOption debounceMs={debounceMs} />
+         <FillStyleOption debounceMs={debounceMs} />
+         <StrokeDash debounceMs={debounceMs} />
+         <div className="w-[1px] bg-border mx-1 h-6 hidden md:block" debounceMs={debounceMs} />
+         <FontFamilyOption debounceMs={debounceMs} />
+         <FontSizes debounceMs={debounceMs} />
          <div className="flex items-center gap-1">
-            <BoldOption />
-            <ItalicOption />
+            <BoldOption debounceMs={debounceMs} />
+            <ItalicOption debounceMs={debounceMs} />
          </div>
-         <div className="w-[1px] bg-border mx-1 h-6 hidden md:block" />
-         <RotationOption />
-         <div className="w-[1px] bg-border mx-1 h-6 hidden md:block" />
-         <AlignOptions />
-         <div className="w-[1px] bg-border mx-1 h-6 hidden md:block" />
-         <VerticalAlignOptions />
-         <div className="w-[1px] bg-border mx-1 h-6 hidden md:block" />
-         <ZOrderButtons />
+         <div className="w-[1px] bg-border mx-1 h-6 hidden md:block" debounceMs={debounceMs} />
+         <RotationOption debounceMs={debounceMs} />
+         <div className="w-[1px] bg-border mx-1 h-6 hidden md:block" debounceMs={debounceMs} />
+         <AlignOptions debounceMs={debounceMs} />
+         <div className="w-[1px] bg-border mx-1 h-6 hidden md:block" debounceMs={debounceMs} />
+         <VerticalAlignOptions debounceMs={debounceMs} />
+         <div className="w-[1px] bg-border mx-1 h-6 hidden md:block" debounceMs={debounceMs} />
+         <ZOrderButtons debounceMs={debounceMs} />
 
          {(activeShape?.type === "group" || activeShape instanceof ActiveSelection) && (
             <div className="flex items-center gap-1">
@@ -408,7 +413,7 @@ function ShapeOptions() {
 function OpacityOption() {
    const { activeShape, canvas } = useBoard();
 
-   const handleSetOpacity = (v: number) => {
+   const handleSetOpacity = debounce((v: number) => {
       if (!activeShape || !canvas) return;
       if (activeShape instanceof ActiveSelection) {
          activeShape.shapes.forEach((s) => {
@@ -418,7 +423,7 @@ function OpacityOption() {
          activeShape.set("opacity", v);
       }
       canvas.render();
-   }
+   }, 200)
 
    const defaultVal = parseInt(activeShape?.get("opacity")) ?? 0;
    return (
@@ -568,10 +573,10 @@ function StrokeSize() {
    );
 }
 
-function StrokeOption() {
+function StrokeOption({ debounceMs }: Props) {
    const { activeShape, canvas, setActiveShape, update } = useBoard();
 
-   const applyStroke = (val: string) => {
+   const applyStroke = debounce((val: string) => {
       if (!activeShape) return;
 
       if (activeShape instanceof ActiveSelection) {
@@ -585,7 +590,7 @@ function StrokeOption() {
       if (ac) setActiveShape(ac);
       canvas?.render();
       update();
-   };
+   }, debounceMs);
 
    return (
       <Popover>
@@ -635,10 +640,10 @@ function StrokeOption() {
    );
 }
 
-function FillOption() {
+function FillOption({ debounceMs }: Pros) {
    const { activeShape, canvas, setActiveShape, update } = useBoard();
 
-   const applyFill = (color: string) => {
+   const applyFill = debounce((color: string) => {
       if (!activeShape) return;
       if (activeShape instanceof ActiveSelection) {
          activeShape.shapes.forEach((s) => {
@@ -652,7 +657,7 @@ function FillOption() {
       }
       canvas?.render();
       update();
-   };
+   }, debounceMs);
 
    return (
       <Popover>
@@ -934,7 +939,7 @@ function RoughnessOption() {
    // Provide a fallback of 1 (Artist) if roughness isn't explicitly set yet
    const activeRoughness = activeShape?.get("roughness") ?? 1;
 
-   const handleSetRoughness = (v: number) => {
+   const handleSetRoughness = debounce((v: number) => {
       if (!activeShape || !canvas) return;
       if (activeShape instanceof ActiveSelection) {
          activeShape.shapes.forEach((s) => {
@@ -945,7 +950,7 @@ function RoughnessOption() {
       }
       canvas.render();
       update();
-   };
+   }, 200);
 
    return (
       <Popover>

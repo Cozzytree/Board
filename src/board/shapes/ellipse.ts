@@ -107,7 +107,7 @@ class Ellipse extends Shape {
 
       // this.left += dx;
       // this.top += dy;
-      this.dragTarget(dx, dy);
+      this.dragInstant(dx, dy);
 
       return super.dragging(prev, current);
    }
