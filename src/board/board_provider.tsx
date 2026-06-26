@@ -22,7 +22,7 @@ import {
 } from "lucide-react";
 import { debounce } from "@/lib/utils";
 import * as React from "react";
-import { Board, Rect, Shape } from "./index";
+import { ActiveSelection, Board, Box, Rect, Shape } from "./index";
 import type { modes, submodes, CustomShapeDef, EventData, ShapeProps } from "./types";
 import { generateShapeByShapeType } from "./utils/utilfunc";
 import { saveLibraryItems } from "./utils/library_db";
@@ -34,7 +34,9 @@ import {
    ContextMenuTrigger,
 } from "@/components/ui/context-menu";
 import CloudShape from "./shapes/paths/cloud_shape";
-import { BoardContext } from "./board-context";
+import { BoardContext, useBoard } from "./board-context";
+import type { HocuspocusProvider } from "@hocuspocus/provider";
+import { CURSOR_COLORS } from "./constants";
 
 const isEditingText = (e: KeyboardEvent) => {
    const target = e.target as HTMLElement;
@@ -47,6 +49,18 @@ const isEditingText = (e: KeyboardEvent) => {
 
 export type Theme = "dark" | "light" | "system";
 
+type CursorData = {
+   x: number;
+   y: number;
+   id?: number;
+   name?: string
+}
+
+type RemoteCursor = {
+   clientId: number;
+   cursor: CursorData;
+}
+
 const STORAGE_KEY = "board_shapes";
 const VIEW_STORAGE_KEY = "board_view";
 const STAT_STORAGE_KEY = "stat_key";
@@ -58,6 +72,9 @@ const DEFAULT_CUSTOM_SHAPES: CustomShapeDef[] = [
       shape: CloudShape,
    },
 ];
+
+let lastCursorUpdate = 0;
+const THROTTLE_MS = 100;
 
 const BoardProvider = ({
    container,
@@ -75,7 +92,9 @@ const BoardProvider = ({
    onThemeChange,
    initialShapes,
    canvasLock = false,
+   provider
 }: {
+   provider?: HocuspocusProvider,
    canvasLock?: boolean;
    initialShapes?: ShapeProps[];
    container?: React.RefObject<HTMLElement | null>;
@@ -114,13 +133,6 @@ const BoardProvider = ({
          setBackground("#efefef");
       }
    }, [boardTheme]);
-
-   // React.useEffect(() => {
-   //    const root = window.document.documentElement;
-   //    root.style.setProperty("--background", background);
-   //    root.style.setProperty("--foreground", foreground);
-   //    root.style.setProperty("--popover", background);
-   // }, [background, foreground]);
 
    const handleThemeChange = React.useCallback((newTheme: "dark" | "light") => {
       setBoardThemeState(newTheme);
@@ -268,6 +280,7 @@ const BoardProvider = ({
    });
    const canvasRef = React.useRef<HTMLCanvasElement>(null);
    const canvas2Ref = React.useRef<HTMLCanvasElement>(null);
+   const remoteCanvasRef = React.useRef<HTMLCanvasElement>(null);
    const borderRef = React.useRef<Board>(null);
 
    const undoStack = React.useRef<Record<string, any>[][]>([]);
@@ -438,9 +451,18 @@ const BoardProvider = ({
    const onMouseUp = React.useCallback(() => { }, []);
    const onMouseMove = React.useCallback(
       (e: EventData) => {
-         onCursorMove?.(e);
+         if (provider) {
+            const now = Date.now();
+            if (now - lastCursorUpdate < THROTTLE_MS) return;
+            lastCursorUpdate = now;
+            const x = e.e.x ?? 0;
+            const y = e.e.y ?? 0;
+            provider?.awareness?.setLocalStateField("cursor", {
+               x, y, id: provider.awareness.clientID
+            })
+         }
       },
-      [onCursorMove],
+      [provider],
    );
 
    // Keep a stable ref to the onShapesChanged callback
@@ -459,7 +481,7 @@ const BoardProvider = ({
       const debouncedSaveViewToStorage = debounce((board: Board) => saveViewToStorage(board), 200);
 
       const newBoard = new Board({
-         scrollEase:1,
+         scrollEase: 1,
          isLocked: isLockedCanvas,
          initialShapes: initialShapes || [],
          width,
@@ -469,6 +491,7 @@ const BoardProvider = ({
          height,
          canvas: canvasRef.current,
          canvas2: canvas2Ref.current,
+         canvasRemote: remoteCanvasRef.current,
          snap: isSnap,
          hoverEffect: isHover,
          onModeChange: onModeChange,
@@ -747,7 +770,7 @@ const BoardProvider = ({
 
    const handleZoom = React.useCallback((v: boolean) => {
       if (!borderRef.current) return;
-      
+
       let nextScl = borderRef.current.view.scl;
       if (v) {
          nextScl += 0.1;
@@ -759,7 +782,7 @@ const BoardProvider = ({
       if (nextScl > 5) nextScl = 5;
 
       borderRef.current.view.scl = nextScl;
-      
+
       // Keep targetView in sync so wheel scroll doesn't snap back
       if ((borderRef.current as any).targetView) {
          (borderRef.current as any).targetView.scl = nextScl;
@@ -868,105 +891,236 @@ const BoardProvider = ({
    }, []);
 
    return (
-      <ContextMenu>
-         <BoardContext.Provider
-            value={{
-               stat: isStat,
-               setStat: (v) => {
-                  setStat(v);
-                  saveStatStateToLocalStorage(v);
-               },
-               foreground,
-               background,
-               theme: boardTheme,
-               setTheme: handleThemeChange,
-               setForeground,
-               setBackground,
-               onThemeChange,
-               setActiveShape: (s) => {
-                  setActiveShape(s);
-               },
-               canvas: borderRef.current,
-               activeShape,
-               tools,
-               mode,
-               setMode: handleModeChange,
-               hover: isHover,
-               setHover: (h) => {
-                  setHover(h);
-               },
+      <>
+         <ContextMenu>
+            <BoardContext.Provider
+               value={{
+                  stat: isStat,
+                  setStat: (v) => {
+                     setStat(v);
+                     saveStatStateToLocalStorage(v);
+                  },
+                  foreground,
+                  background,
+                  theme: boardTheme,
+                  setTheme: handleThemeChange,
+                  setForeground,
+                  setBackground,
+                  onThemeChange,
+                  setActiveShape: (s) => {
+                     setActiveShape(s);
+                  },
+                  canvas: borderRef.current,
+                  activeShape,
+                  tools,
+                  mode,
+                  setMode: handleModeChange,
+                  hover: isHover,
+                  setHover: (h) => {
+                     setHover(h);
+                  },
 
-               snap: isSnap,
-               setSnap: (s) => {
-                  setSnap(s);
-               },
-               update: () => {
-                  setVersion((v) => v + 1);
-               },
-               importLibrary,
+                  snap: isSnap,
+                  setSnap: (s) => {
+                     setSnap(s);
+                  },
+                  update: () => {
+                     setVersion((v) => v + 1);
+                  },
+                  importLibrary,
 
-               // Composable UI state
-               zoom,
-               offset,
-               isMinimal,
-               setMinimal,
-               handleZoom,
-               handleCenter,
-               exportBoardAsLibrary,
-               canvasRef,
-               width,
-               height,
-            }}>
-            <ContextMenuTrigger asChild>
-               <div style={{ position: 'relative', width: width + "px", height: height + "px" }}>
-                  <canvas 
-                     ref={canvas2Ref}
-                     id="board-overlay-canvas" 
-                     style={{ width: width + "px", height: height + "px", position: "absolute", left: 0, top: 0, pointerEvents: "none", zIndex: 5 }} 
-                  />
-                  <canvas 
-                     ref={canvasRef} 
-                     style={{ width: width + "px", height: height + "px", position: "absolute", left: 0, top: 0, zIndex: 10 }} 
-                  />
-               </div>
-            </ContextMenuTrigger>
+                  // Composable UI state
+                  zoom,
+                  offset,
+                  isMinimal,
+                  setMinimal,
+                  handleZoom,
+                  handleCenter,
+                  exportBoardAsLibrary,
+                  canvasRef,
+                  width,
+                  height,
+               }}>
+               {provider && borderRef.current &&
+                  <RemoteStateManager provider={provider} view={borderRef.current.view} />
+               }
+               <ContextMenuTrigger asChild>
+                  <div style={{ position: 'relative', width: width + "px", height: height + "px" }}>
+                     <canvas
+                        ref={remoteCanvasRef}
+                        id="board-remote-canvas"
+                        style={{ width: width + "px", height: height + "px", position: "absolute", left: 0, top: 0, pointerEvents: "none", zIndex: 15 }}
+                     />
+                     <canvas
+                        ref={canvas2Ref}
+                        id="board-overlay-canvas"
+                        style={{ width: width + "px", height: height + "px", position: "absolute", left: 0, top: 0, pointerEvents: "none", zIndex: 5 }}
+                     />
+                     <canvas
+                        ref={canvasRef}
+                        style={{ width: width + "px", height: height + "px", position: "absolute", left: 0, top: 0, zIndex: 10 }}
+                     />
+                  </div>
+               </ContextMenuTrigger>
 
-            {children}
-         </BoardContext.Provider>
-         <ContextMenuContent>
-            <ContextMenuItem
-               onClick={() => {
-                  setSnap(() => !isSnap);
+               {children}
+            </BoardContext.Provider>
+            <ContextMenuContent>
+               <ContextMenuItem
+                  onClick={() => {
+                     setSnap(() => !isSnap);
+                  }}>
+                  snap {isSnap ? "off" : "on"}
+               </ContextMenuItem>
+               <ContextMenuItem
+                  onClick={() => {
+                     setMinimal((prev) => !prev);
+                  }}>
+                  {isMinimal ? "show UI" : "minimal mode"}
+               </ContextMenuItem>
+               <ContextMenuItem
+                  onClick={() => {
+                     setHover((prev) => !prev);
+                  }}>
+                  hover {isHover ? "off" : "on"}
+               </ContextMenuItem>
+               <ContextMenuItem
+                  onClick={() => {
+                     void exportBoardAsLibrary();
+                  }}>
+                  make board library
+               </ContextMenuItem>
+               <ContextMenuItem onClick={() => {
+                  setStat(!isStat);
+                  saveStatStateToLocalStorage(!isStat);
                }}>
-               snap {isSnap ? "off" : "on"}
-            </ContextMenuItem>
-            <ContextMenuItem
-               onClick={() => {
-                  setMinimal((prev) => !prev);
-               }}>
-               {isMinimal ? "show UI" : "minimal mode"}
-            </ContextMenuItem>
-            <ContextMenuItem
-               onClick={() => {
-                  setHover((prev) => !prev);
-               }}>
-               hover {isHover ? "off" : "on"}
-            </ContextMenuItem>
-            <ContextMenuItem
-               onClick={() => {
-                  void exportBoardAsLibrary();
-               }}>
-               make board library
-            </ContextMenuItem>
-            <ContextMenuItem onClick={() => {
-               setStat(!isStat);
-               saveStatStateToLocalStorage(!isStat);
-            }}>
-               Stats {isStat ? "off" : "on"}
-            </ContextMenuItem>
-         </ContextMenuContent>
-      </ContextMenu>
+                  Stats {isStat ? "off" : "on"}
+               </ContextMenuItem>
+            </ContextMenuContent>
+         </ContextMenu>
+      </>
    );
 };
+
+function getColorForClient(clientId: number): string {
+   return CURSOR_COLORS[clientId % CURSOR_COLORS.length];
+}
+
+function RemoteStateManager({ view, provider }: { provider: HocuspocusProvider, view: { x: number, y: number, scl: number } }) {
+   const [cursors, setCursors] = React.useState<RemoteCursor[]>([]);
+   const { activeShape, canvas } = useBoard();
+
+   React.useEffect(() => {
+      if (!provider) return;
+      if (!activeShape) {
+         provider.awareness?.setLocalStateField("selection", { ids: [] });
+         return;
+      }
+
+      if (activeShape instanceof ActiveSelection) {
+         const ids = activeShape.shapes.map((s) => s.s.ID());
+         provider.awareness?.setLocalStateField("selection", { ids })
+      } else {
+         provider.awareness?.setLocalStateField("selection", {
+            ids: [activeShape.ID()]
+         })
+      }
+   }, [activeShape])
+
+
+   React.useEffect(() => {
+      if (!provider || !canvas) return;
+      const updateCursors = () => {
+         const states = provider.awareness?.getStates();
+         const localID = provider.awareness?.clientID;
+         const remoteCursors: RemoteCursor[] = [];
+         if (!states) return;
+
+         states.forEach((state, clientId) => {
+            if (clientId === localID) return;
+            if (state.cursor && typeof state.cursor.x === "number") {
+               remoteCursors.push({
+                  clientId,
+                  cursor: state.cursor as CursorData
+               });
+            }
+
+            if (state?.selection && state.selection?.ids && state.selection.ids.length > 0) {
+                canvas.remoteSelections.set(clientId, {
+                    color: getColorForClient(clientId),
+                    shapeIds: state.selection.ids as string[],
+                });
+            } else {
+               canvas.remoteSelections.delete(clientId);
+            }
+         })
+
+         for (const [clientID] of canvas.remoteSelections.entries()) {
+            if (!states.has(clientID)) {
+               canvas.remoteSelections.delete(clientID);
+            }
+         }
+
+         canvas.renderRemoteSelectionsAsync();
+         setCursors(remoteCursors);
+      }
+
+      provider.awareness?.on("change", updateCursors);
+      return () => {
+         provider.awareness?.off("change", updateCursors);
+      }
+   }, [provider, canvas])
+
+   return <CursorOverlay cursors={cursors} view={view} />
+}
+
+function CursorOverlay({ cursors, view }: { cursors: RemoteCursor[], view?: { x: number, y: number, scl: number } }) {
+   if (cursors.length === 0) return;
+
+   return (
+      <div className="fixed inset-0 pointer-events-none overflow-hidden" style={{ zIndex: 45 }}>
+         {cursors.map(({ clientId, cursor }) => {
+            const color = getColorForClient(clientId);
+            const screenX = view ? cursor.x * view.scl + view.x : cursor.x;
+            const screenY = view ? cursor.y * view.scl + view.y : cursor.y;
+
+            return (
+               <div
+                  key={clientId}
+                  className="absolute"
+                  style={{
+                     left: screenX,
+                     top: screenY,
+                     transition: "left 80ms linear, top 80ms linear",
+                  }}>
+                  <svg
+                     width="16"
+                     height="20"
+                     viewBox="0 0 16 20"
+                     fill="none"
+                     style={{ filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.5))" }}>
+                     <path
+                        d="M0.928711 0.514648L14.9287 8.51465L7.92871 10.5146L4.92871 18.5146L0.928711 0.514648Z"
+                        fill={color}
+                        stroke="white"
+                        strokeWidth="1"
+                        strokeLinejoin="round"
+                     />
+                  </svg>
+                  <div
+                     className="absolute left-4 top-4 px-1.5 py-0.5 rounded text-[10px] font-medium whitespace-nowrap"
+                     style={{
+                        backgroundColor: color,
+                        color: "white",
+                        boxShadow: "0 1px 3px rgba(0,0,0,0.3)",
+                     }}>
+                     {cursor.name || `User ${clientId.toString().slice(-4)}`}
+                  </div>
+               </div>
+            );
+         })}
+      </div>
+   );
+}
 
 export { BoardProvider };

@@ -94,7 +94,7 @@ class Rect extends Shape {
       const dx = current.x - prev.x;
       const dy = current.y - prev.y;
       // this.dragTarget(dx, dy);
-      this.setSilent({
+      this.set({
          left: this.left += dx,
          top: this.top += dy,
       })
@@ -262,7 +262,7 @@ class Rect extends Shape {
       // Adjust height for text if needed
       const adjustedHeight = this.adjustHeight(newBounds.height);
 
-      this.setSilent({
+      this.set({
          left: newBounds.left,
          top: newBounds.top,
          width: newBounds.width,

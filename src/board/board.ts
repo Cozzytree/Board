@@ -8,6 +8,7 @@ import type {
    ToolInterface,
    CustomShapeDef,
    ShapeConstructor,
+   BoxInterface,
 } from "./types";
 import {
    SelectionTool,
@@ -36,6 +37,7 @@ type BoardProps = {
    foreground: string;
    canvas: HTMLCanvasElement;
    canvas2: HTMLCanvasElement;
+   canvasRemote?: HTMLCanvasElement | null;
    width: number;
    height: number;
    onModeChange?: (m: modes, sm: submodes) => void;
@@ -57,7 +59,10 @@ class Board implements BoardInterface {
    onZoomCallback: (n: view_t) => void;
    onScroll: (view: view_t) => void;
    currentTool: ToolInterface;
+   isLocked: boolean;
+   remoteSelections: Map<number, { color: string; shapeIds: string[] }> = new Map();
    _lastMousePosition: Point = { x: 0, y: 0 };
+   throttlePointer: boolean = false;
    evt = {
       type: false,
       x: -2,
@@ -120,6 +125,8 @@ class Board implements BoardInterface {
    declare shapeStore: ShapeStoreArr<Shape>;
    declare canvas2: HTMLCanvasElement;
    declare ctx2: CanvasRenderingContext2D;
+   declare canvasRemote: HTMLCanvasElement | null;
+   declare ctxRemote: CanvasRenderingContext2D | null;
    declare scrollEase: number;
 
    private events: Map<ShapeEvent, Set<EventCallback>>;
@@ -131,7 +138,7 @@ class Board implements BoardInterface {
    private handlePointerDown: (e: PointerEvent | MouseEvent | TouchEvent) => void;
    private handlePointerMove: (e: PointerEvent | MouseEvent | TouchEvent) => void;
    private handlePointerUp: (e: PointerEvent | MouseEvent | TouchEvent) => void;
-   private handleWheel: (e: WheelEvent) => void;
+   private handleWheel: (e: WheelEvent | Event) => void;
    private handleTouchStart: (e: TouchEvent) => void;
    declare onModeChange?: (m: modes, sm: submodes) => void;
    private targetView = { x: 0, y: 0, scl: 1 };
@@ -148,7 +155,7 @@ class Board implements BoardInterface {
 
    getCanvasDpr() {
       const dpr = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1;
-      
+
       // Use full resolution for normal viewing or zooming in
       if (this.view.scl >= 0.75) {
          return dpr;
@@ -161,7 +168,7 @@ class Board implements BoardInterface {
       if (this.view.scl < 0.5) return dpr * 0.5;
       if (this.view.scl < 0.55) return dpr * 0.55;
       if (this.view.scl < 0.65) return dpr * 0.65;
-      
+
       return dpr * 0.75;
    }
 
@@ -177,20 +184,30 @@ class Board implements BoardInterface {
          this.canvas.height = targetHeight;
          this.canvas2.width = targetWidth;
          this.canvas2.height = targetHeight;
+         if (this.canvasRemote) {
+            this.canvasRemote.width = targetWidth;
+            this.canvasRemote.height = targetHeight;
+         }
       }
 
       // Apply pixelated rendering if zoomed out
       const isPixelated = this.view.scl < 0.5;
       const imageRendering = isPixelated ? "pixelated" : "auto";
-      
+
       if (this.canvas.style.imageRendering !== imageRendering) {
          this.canvas.style.imageRendering = imageRendering;
          this.canvas2.style.imageRendering = imageRendering;
+         if (this.canvasRemote) {
+            this.canvasRemote.style.imageRendering = imageRendering;
+         }
       }
-      
+
       // Also apply to context directly
       this.ctx.imageSmoothingEnabled = !isPixelated;
       this.ctx2.imageSmoothingEnabled = !isPixelated;
+      if (this.ctxRemote) {
+         this.ctxRemote.imageSmoothingEnabled = !isPixelated;
+      }
    }
 
    resetContextTransform(context: CanvasRenderingContext2D) {
@@ -203,6 +220,7 @@ class Board implements BoardInterface {
       scrollEase,
       canvas,
       canvas2,
+      canvasRemote,
       width,
       scl = 1,
       height,
@@ -216,10 +234,11 @@ class Board implements BoardInterface {
       onScroll,
       customShapes = [],
       onImageUpload,
-      isLocked = false,
-      indicatorColor
-   }: BoardProps) {
-      this.indicatorColor = indicatorColor || INDICATOR_COLOR;
+   isLocked = false,
+   indicatorColor
+}: BoardProps) {
+   this.indicatorColor = indicatorColor || INDICATOR_COLOR;
+   this.isLocked = isLocked;
       this.scrollEase = scrollEase ?? 0.5;
       this.customShapes = new Map();
       customShapes.forEach((s) => {
@@ -248,8 +267,9 @@ class Board implements BoardInterface {
       if (!canvas2) {
          throw new Error("canvas2 was not provided to Board constructor");
       }
-      
+
       this.canvas2 = canvas2;
+      this.canvasRemote = canvasRemote || null;
       this.syncCanvasResolution();
 
       // Ensure main canvas has transparent or specific background
@@ -263,6 +283,7 @@ class Board implements BoardInterface {
 
       this.ctx = ctx;
       this.ctx2 = ctx2;
+      this.ctxRemote = this.canvasRemote ? this.canvasRemote.getContext("2d") : null;
 
       this.modes = { m: "cursor", sm: "free" };
       this.shapeStore = new ShapeStoreArr();
@@ -277,53 +298,16 @@ class Board implements BoardInterface {
       this.handleDoubleClick = this.ondoubleclick.bind(this);
       this.handleTouchStart = this.ontouchstart.bind(this);
 
-      this.canvas.addEventListener(
-         "touchstart",
-         (e) => {
-            if (isLocked) return;
-            this.handleTouchStart(e);
-         },
-         { passive: false },
-      );
-      this.canvas.addEventListener("touchmove", (e) => {
-         if (isLocked) return;
-         this.handlePointerMove(e);
-      });
-      this.canvas.addEventListener("touchend", (e) => {
-         if (isLocked) return;
-         this.handlePointerUp(e);
-      });
+      this.canvas.addEventListener("touchstart", this.handleTouchStart, { passive: false });
+      this.canvas.addEventListener("touchmove", this.handlePointerMove);
+      this.canvas.addEventListener("touchend", this.handlePointerUp);
 
-      this.canvas.addEventListener("click", (e) => {
-         if (isLocked) return;
-         this.handleClick(e);
-      });
-      this.canvas.addEventListener("pointerdown", (e) => {
-         if (isLocked) return;
-         this.handlePointerDown(e);
-      });
-      // this.canvas.addEventListener("pointermove", (e) => {if (isLocked) return; this.handlePointerMove(e)});
-      document.addEventListener("pointermove", (e) => {
-         if (isLocked) return;
-         this.handlePointerMove(e);
-      });
-      this.canvas.addEventListener("pointerup", (e) => {
-         if (isLocked) return;
-         this.handlePointerUp(e);
-      });
-      // document.addEventListener("pointerup", (e) => {if (isLocked) return; this.handlePointerUp(e)});
-      this.canvas.addEventListener("dblclick", (e) => {
-         if (isLocked) return;
-         this.handleDoubleClick(e);
-      });
-      window.addEventListener(
-         "wheel",
-         (e) => {
-            if (isLocked) return;
-            this.handleWheel(e);
-         },
-         { passive: false },
-      );
+      this.canvas.addEventListener("click", this.handleClick);
+      this.canvas.addEventListener("pointerdown", this.handlePointerDown);
+      document.addEventListener("pointermove", this.handlePointerMove);
+      this.canvas.addEventListener("pointerup", this.handlePointerUp);
+      this.canvas.addEventListener("dblclick", this.handleDoubleClick);
+      window.addEventListener("wheel", this.handleWheel, { passive: false });
 
       this.events = new Map();
       this.render();
@@ -596,9 +580,88 @@ class Board implements BoardInterface {
       this._drawFrame();
    }
 
+   async renderRemoteSelectionsAsync() {
+      if (!this.ctxRemote) return;
+      
+      // Yield to macrotask/microtask to avoid blocking main thread
+      await new Promise((resolve) => requestAnimationFrame(resolve));
+
+      this.resetContextTransform(this.ctxRemote);
+      this.ctxRemote.clearRect(0, 0, this.cssWidth, this.cssHeight);
+
+      const { view, ctxRemote } = this;
+      
+      const viewLeft = -view.x / view.scl;
+      const viewTop = -view.y / view.scl;
+      const viewRight = viewLeft + this.cssWidth / view.scl;
+      const viewBottom = viewTop + this.cssHeight / view.scl;
+
+      let localActiveShapeIds = new Set<string>();
+      if (this.activeShapes) {
+         if (this.activeShapes.type === "selection") {
+            (this.activeShapes as any).shapes?.forEach((item: any) => {
+               if (item?.s?.ID) localActiveShapeIds.add(item.s.ID());
+            });
+         } else if (this.activeShapes.ID) {
+            localActiveShapeIds.add(this.activeShapes.ID());
+         }
+      }
+
+      ctxRemote.save();
+      ctxRemote.translate(view.x, view.y);
+      ctxRemote.scale(view.scl, view.scl);
+
+      this.remoteSelections.forEach(({ color, shapeIds }) => {
+         if (shapeIds.length === 0) return;
+
+         let minX = Infinity;
+         let minY = Infinity;
+         let maxX = -Infinity;
+         let maxY = -Infinity;
+         let foundAny = false;
+
+         for (const id of shapeIds) {
+            if (localActiveShapeIds.has(id)) continue;
+            
+            const shape = this.shapeStore.get(id);
+            if (!shape) continue;
+            foundAny = true;
+            const bounds = shape.getBounds();
+            if (bounds.x < minX) minX = bounds.x;
+            if (bounds.y < minY) minY = bounds.y;
+            if (bounds.x + bounds.width > maxX) maxX = bounds.x + bounds.width;
+            if (bounds.y + bounds.height > maxY) maxY = bounds.y + bounds.height;
+         }
+
+         if (!foundAny) return;
+
+         const x = minX;
+         const y = minY;
+         const width = maxX - minX;
+         const height = maxY - minY;
+
+         // AABB viewport culling for remote selections
+         if (x + width < viewLeft || x > viewRight || y + height < viewTop || y > viewBottom) {
+            return;
+         }
+
+         ctxRemote.save();
+         ctxRemote.strokeStyle = color;
+         ctxRemote.lineWidth = 1.5 / view.scl; // Keep stroke size visually consistent despite zoom
+         ctxRemote.setLineDash([5 / view.scl, 5 / view.scl]);
+         ctxRemote.beginPath();
+         ctxRemote.rect(x - 2, y - 2, width + 4, height + 4);
+         ctxRemote.stroke();
+         ctxRemote.restore();
+      });
+
+      ctxRemote.restore();
+   }
+
    /** Internal: actual draw logic */
    private _drawFrame() {
       this.syncCanvasResolution();
+      this.renderRemoteSelectionsAsync();
       this.resetContextTransform(this.ctx);
       this.resetContextTransform(this.ctx2);
 
@@ -638,6 +701,7 @@ class Board implements BoardInterface {
    }
 
    private onmousedown(e: PointerEvent | MouseEvent | TouchEvent) {
+      if (this.isLocked) return;
       // Ignore right-click (mouse only)
       if ((e instanceof MouseEvent || e instanceof PointerEvent) && e.button === 2) {
          return;
@@ -660,7 +724,8 @@ class Board implements BoardInterface {
    }
 
    private ontouchstart(e: TouchEvent) {
-      if (e.touches.length >= 2) {
+      if (this.isLocked) return;
+      if (e.touches.length === 2) {
          e.preventDefault();
       }
       if (this.currentTool && typeof (this.currentTool as any).touchStart === "function") {
@@ -669,7 +734,11 @@ class Board implements BoardInterface {
    }
 
    private onmousemove(e: PointerEvent | MouseEvent | TouchEvent) {
-      e.preventDefault();
+      if (this.isLocked) return;
+      if (!this.throttlePointer) {
+         this.throttledPointerMove(e);
+         this.throttlePointer = true;
+      }
       if (typeof TouchEvent !== "undefined" && e instanceof TouchEvent && e.touches.length >= 2) {
          if (typeof (this.currentTool as any).touchMove === "function") {
             (this.currentTool as any).touchMove(e);
@@ -680,6 +749,8 @@ class Board implements BoardInterface {
    }
 
    private onmouseup(e: PointerEvent | MouseEvent | TouchEvent) {
+      if (this.isLocked) return;
+      this.syncView();
       if (typeof TouchEvent !== "undefined" && e instanceof TouchEvent) {
          if (typeof (this.currentTool as any).touchEnd === "function") {
             (this.currentTool as any).touchEnd(e);
@@ -700,13 +771,15 @@ class Board implements BoardInterface {
       );
    }
 
-   private ondoubleclick(e: PointerEvent | MouseEvent) {
+   private ondoubleclick(e: MouseEvent | PointerEvent | TouchEvent) {
+      if (this.isLocked) return;
       const p = this.getTransFormedCoords(e);
-
       this.currentTool.dblClick({ e, p });
    }
 
    private onclick(e: PointerEvent | MouseEvent | TouchEvent) {
+      if (this.isLocked) return;
+      this.syncView();
       const p = this.getTransFormedCoords(e);
       this.currentTool.onClick({ e, p });
    }
@@ -842,23 +915,30 @@ class Board implements BoardInterface {
       return preventList.includes(type);
    }
 
-   private onWheel(e: WheelEvent) {
+   private onWheel(e: WheelEvent | Event) {
       const target = e.target as HTMLElement;
       if (target.tagName !== "CANVAS") return;
-      if (!e.ctrlKey) {
-         this.view.y = e.deltaY > 0 ? this.view.y - 80 : this.view.y + 80;
+
+
+      if (this.isLocked) return;
+      e.preventDefault();
+      // Calculate cursor position in original CSS pixels relative to top-left of canvas
+      const rawX = (e as WheelEvent).offsetX;
+      const rawY = (e as WheelEvent).offsetY;
+
+      if (!(e as WheelEvent).ctrlKey) {
+         this.view.y = (e as WheelEvent).deltaY > 0 ? this.view.y - 80 : this.view.y + 80;
       } else {
-         e.preventDefault();
          // this.evt.dscl = e.deltaY > 0 ? 8 / 10 : 10 / 8;
-         const dscl = e.deltaY > 0 ? 8 / 10 : 10 / 8;
+         const dscl = (e as WheelEvent).deltaY > 0 ? 8 / 10 : 10 / 8;
 
          if (this.view.scl * dscl < 0.1 || this.view.scl * dscl > 5) {
             return;
          }
 
          this.evt.eps /= dscl;
-         this.view.x = e.x + dscl * (this.view.x - e.x);
-         this.view.y = e.y + dscl * (this.view.y - e.y);
+         this.view.x = rawX + dscl * (this.view.x - rawX);
+         this.view.y = rawY + dscl * (this.view.y - rawY);
          this.view.scl *= dscl;
          this.onZoomCallback(this.view);
       }
@@ -884,7 +964,7 @@ class Board implements BoardInterface {
          e.preventDefault();
          // Calculate zoom factor
          const dscl = e.deltaY > 0 ? 8 / 10 : 10 / 8;
-         
+
          if (this.targetView.scl * dscl < 0.1 || this.targetView.scl * dscl > 5) {
             return;
          }

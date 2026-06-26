@@ -139,7 +139,7 @@ class ActiveSelection extends Shape {
          }
       });
 
-      this.setSilent({
+      this.set({
          left: this.left += dx,
          top: this.top += dy,
       })
@@ -313,7 +313,7 @@ class ActiveSelection extends Shape {
             break;
       }
 
-      this.setSilent({
+      this.set({
          left: newBounds.left,
          top: newBounds.top,
          width: newBounds.width,
@@ -540,32 +540,28 @@ class ActiveSelection extends Shape {
    setCoords(): void {
       if (this.shapes.length === 0) return;
 
-      let newBox = new Box({
-         x1: Infinity,
-         x2: -Infinity,
-         y1: Infinity,
-         y2: -Infinity,
-      });
+      let minX = Infinity;
+      let minY = Infinity;
+      let maxX = -Infinity;
+      let maxY = -Infinity;
 
       this.shapes.forEach((s) => {
-         const inner = new Box({
-            x1: s.s.left,
-            x2: s.s.left + s.s.width,
-            y1: s.s.top,
-            y2: s.s.top + s.s.height,
-         });
-         if (s instanceof Ellipse) {
-            inner.x1 = inner.x1 - s.rx;
-            inner.y1 = inner.y1 - s.ry;
-            inner.x2 = inner.x1 + s.width;
-            inner.y2 = inner.y1 + s.height;
-         }
-         newBox = newBox.compareAndReturnSmall(inner);
+         const bounds = s.s.getBounds();
+         if (bounds.x < minX) minX = bounds.x;
+         if (bounds.y < minY) minY = bounds.y;
+         if (bounds.x + bounds.width > maxX) maxX = bounds.x + bounds.width;
+         if (bounds.y + bounds.height > maxY) maxY = bounds.y + bounds.height;
       });
-      this.left = newBox.x1 - this.padding;
-      this.top = newBox.y1 - this.padding;
-      this.width = newBox.x2 - newBox.x1 + this.padding * 2;
-      this.height = newBox.y2 - newBox.y1 + this.padding * 2;
+
+      this.left = minX - this.padding;
+      this.top = minY - this.padding;
+      this.width = maxX - minX + this.padding * 2;
+      this.height = maxY - minY + this.padding * 2;
+      
+      this.targetLeft = null;
+      this.targetTop = null;
+      this.targetWidth = null;
+      this.targetHeight = null;
    }
 
    // toObject(): Identity<Shape> {

@@ -271,12 +271,12 @@ class Ellipse extends Shape {
       switch (d) {
          case "t":
             if (current.y > old.y2) {
-               super.setSilent({
+               super.set({
                   top: old.y2,
                   height: this.adjustHeight(current.y - old.y2),
                });
             } else {
-               super.setSilent({
+               super.set({
                   top: current.y,
                   height: this.adjustHeight(old.y2 - current.y),
                });
@@ -284,12 +284,12 @@ class Ellipse extends Shape {
             break;
          case "b":
             if (current.y > old.y1) {
-               super.setSilent({
+               super.set({
                   top: old.y1,
                   height: this.adjustHeight(current.y - old.y1),
                });
             } else {
-               super.setSilent({
+               super.set({
                   top: current.y,
                   height: this.adjustHeight(old.y2 - current.y),
                });
@@ -297,12 +297,12 @@ class Ellipse extends Shape {
             break;
          case "l":
             if (current.x > old.x2) {
-               super.setSilent({
+               super.set({
                   left: old.x2,
                   width: current.x - old.x2,
                });
             } else {
-               super.setSilent({
+               super.set({
                   left: current.x,
                   width: old.x2 - current.x,
                });
@@ -310,7 +310,7 @@ class Ellipse extends Shape {
             break;
          case "r":
             if (current.x > old.x1) {
-               super.setSilent({
+               super.set({
                   left: old.x1,
                   width: current.x - old.x1,
                });
@@ -389,7 +389,7 @@ class Ellipse extends Shape {
             }
       }
 
-      super.setSilent({
+      super.set({
          rx: this.width / 2,
          ry: this.height / 2,
       })

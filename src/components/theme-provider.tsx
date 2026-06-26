@@ -26,9 +26,15 @@ function ThemeProvider({
    storageKey = "vite-ui-theme",
    ...props
 }: ThemeProviderProps) {
-   const [theme, setTheme] = useState<Theme>(
-      () => (localStorage.getItem(storageKey) as Theme) || defaultTheme,
-   );
+   const [theme, setTheme] = useState<Theme>(() => {
+      const stored = localStorage.getItem(storageKey);
+      if (stored) {
+         // Sanitize stored value: remove quotes and trim whitespace
+         const clean = stored.replace(/['"]/g, "").trim();
+         if (clean) return clean as Theme;
+      }
+      return defaultTheme;
+   });
 
    useEffect(() => {
       const root = window.document.documentElement;
@@ -44,7 +50,11 @@ function ThemeProvider({
          return;
       }
 
-      root.classList.add(theme);
+      // Safeguard against any remaining whitespace by taking only the first token
+      const cleanTheme = theme.toString().trim().split(/\s+/)[0];
+      if (cleanTheme) {
+         root.classList.add(cleanTheme);
+      }
    }, [theme]);
 
    const value = {

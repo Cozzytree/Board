@@ -1,5 +1,18 @@
 import Pointer from "./utils/point";
 
+const CURSOR_COLORS = [
+   "#f43f5e",
+   "#8b5cf6",
+   "#06b6d4",
+   "#f59e0b",
+   "#10b981",
+   "#ec4899",
+   "#3b82f6",
+   "#ef4444",
+   "#14b8a6",
+   "#a855f7",
+];
+
 const INDICATOR_COLOR = "#6965db"; // Excalidraw-like purple
 const LINE_CONNECTION_PADDING = 10;
 const SCALE_RATE = 0.15;
@@ -57,5 +70,6 @@ export {
    COLORS,
    FONT_SIZES,
    FONT_FAMILIES,
-   INDICATOR_COLOR
+   INDICATOR_COLOR,
+   CURSOR_COLORS
 };

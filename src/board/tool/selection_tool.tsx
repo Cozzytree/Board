@@ -442,7 +442,7 @@ class SelectionTool implements ToolInterface {
             newRotation = snapRotation(newRotation);
          }
 
-         this.rotatingShape.set({ rotate: newRotation });
+         this.rotatingShape.setSilent({ rotate: newRotation });
 
          this._board.renderImmediate();
          // this.draw(this.rotatingShape);
@@ -690,6 +690,7 @@ class SelectionTool implements ToolInterface {
       if (this.isRotating && this.rotatingShape) {
          eventCb({ e: { x: p.x, y: p.y, target: [this.rotatingShape] } });
          this.rotatingShape.mouseup({ e: { point: p } });
+         this.rotatingShape.set({ rotate: this.rotatingShape.rotate });
          this.isRotating = false;
          this.rotatingShape = null;
          this._board.setCursor("default");

@@ -14,7 +14,7 @@ import { getSessionByKey, endSession, type Session } from "@/lib/session-api";
 import { Loader2 } from "lucide-react";
 import { useTheme } from "@/components/theme-provider";
 import { getShapesByPage } from "@/lib/shape-api";
-import { RealTimeProvider, CursoeStateManager, useRealTime } from "@/components/realtime-provider";
+import { RealTimeProvider, CursorStateManager, useRealTime } from "@/components/realtime-provider";
 import { useYjsSync } from "@/board/useYjsSync";
 
 export const Route = createFileRoute("/sessions/$sessionKey")({
@@ -62,10 +62,28 @@ function SessionPage() {
 }
 
 function SessionCursorLayer() {
-  const { zoom, offset } = useBoard();
+  const { zoom, offset, activeShape, canvas } = useBoard();
+  const { provider } = useRealTime();
+
+  React.useEffect(() => {
+     if (!provider) return;
+     if (!activeShape) {
+         provider.awareness?.setLocalStateField("selection", []);
+         return;
+     }
+     if (activeShape.type === "selection") {
+         // It's a group of selected shapes
+         const ids = (activeShape as any).shapes.map((s: any) => s.ID());
+         provider.awareness?.setLocalStateField("selection", ids);
+     } else {
+         provider.awareness?.setLocalStateField("selection", [activeShape.ID()]);
+     }
+  }, [activeShape, provider]);
+
   return (
-    <CursoeStateManager 
+    <CursorStateManager 
       view={{ scl: zoom / 100, x: offset[0], y: offset[1] }} 
+      board={canvas}
     />
   );
 }
