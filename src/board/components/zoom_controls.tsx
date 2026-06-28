@@ -3,29 +3,25 @@ import { useBoard } from "../board-context";
 import { Button } from "@/components/ui/button";
 
 export function BoardZoomControls() {
-  const { zoom, handleZoom } = useBoard();
+   const { zoom, handleZoom } = useBoard();
 
-  return (
-    <div className="flex items-center gap-2">
-      <Button
-        onClick={() => {
-          handleZoom(true);
-        }}
-        variant={"secondary"}
-        size={"xs"}
-        className="cursor-pointer">
-        <PlusIcon />
-      </Button>
-      <span className="text-sm">{zoom.toFixed(0)} %</span>
-      <Button
-        onClick={() => {
-          handleZoom(false);
-        }}
-        variant={"secondary"}
-        size={"xs"}
-        className="cursor-pointer">
-        <MinusIcon />
-      </Button>
-    </div>
-  );
+   return (
+      <div className="flex bg-muted items-center gap-2 p-1 rounded-md border space-x-2">
+         <button
+            onClick={() => {
+               handleZoom(true);
+            }}
+            className="cursor-pointer">
+            <PlusIcon className="w-3.5 h-3.5"/>
+         </button>
+         <span className="text-xs">{zoom.toFixed(0)} %</span>
+         <button
+            onClick={() => {
+               handleZoom(false);
+            }}
+            className="cursor-pointer">
+            <MinusIcon className="w-3.5 h-3.5" />
+         </button>
+      </div>
+   );
 }

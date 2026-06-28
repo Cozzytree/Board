@@ -498,7 +498,7 @@ class ActiveSelection extends Shape {
                width: updateBox.x2 - updateBox.x1,
                height: updateBox.y2 - updateBox.y1
             });
-            
+
             // Explicitly clear animation targets so they don't instantly override our snapped bounds
             this.targetLeft = null;
             this.targetTop = null;
@@ -557,7 +557,7 @@ class ActiveSelection extends Shape {
       this.top = minY - this.padding;
       this.width = maxX - minX + this.padding * 2;
       this.height = maxY - minY + this.padding * 2;
-      
+
       this.targetLeft = null;
       this.targetTop = null;
       this.targetWidth = null;

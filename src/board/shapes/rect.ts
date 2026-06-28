@@ -222,12 +222,12 @@ class Rect extends Shape {
          }
          // We must translate to this.left, this.top since the Drawable is at 0,0
          context.translate(this.left, this.top);
-         
-         // Context switching! 
+
+         // Context switching!
          // We grab whichever canvas element owns the current `context` (main, overlay, or offscreen export).
          const rc = rough.canvas(context.canvas as HTMLCanvasElement);
          rc.draw(this.roughDrawable);
-         
+
          // Translate back so text renders at correct world coordinates
          context.translate(-this.left, -this.top);
       }

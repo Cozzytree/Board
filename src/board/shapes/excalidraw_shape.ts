@@ -151,9 +151,9 @@ class ExcalidrawShape extends Shape {
          if (el.angle) elTransform += ` rotate(${(el.angle * 180) / Math.PI})`;
          elTransform += ` translate(${el.x - cx}, ${el.y - cy})`;
 
-         let fill = el.backgroundColor;
+         let fill = (this.fill && this.fill !== "transparent" && this.fill !== "#00000000") ? this.fill : el.backgroundColor;
          if (!fill || fill === "transparent") fill = "none";
-         const stroke = this.stroke || "#000000";
+         const stroke = this.stroke || el.strokeColor || "#000000";
          const strokeWidth = this.strokeWidth || 1;
          
          let dash = "";
@@ -165,7 +165,7 @@ class ExcalidrawShape extends Shape {
          } else if (el.type === "text") {
             const fontSize = el?.fontSize || 20;
             const fontFamily = el?.fontFamily === 1 ? "'Virgil', sans-serif" : "system-ui, sans-serif";
-            const fontFill = el.fillStyle || stroke;
+            const fontFill = stroke;
             const textAnchor = el.textAlign === "center" ? "middle" : el.textAlign === "right" ? "end" : "start";
             
             const lines = (el.text || "").split("\n");

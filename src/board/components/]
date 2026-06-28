@@ -33,16 +33,9 @@ import {
    HashIcon,
    LockIcon,
    UnlockIcon,
-   PenLine,
-   Type,
-   Terminal,
-   CircleDotDashed,
-   CopyIcon,
-   PenIcon,
 } from "lucide-react";
 import { useBoard } from "../board-context";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { COLORS, FONT_SIZES, FONT_FAMILIES, strokeSize } from "../constants";
 import { cn } from "@/lib/utils";
 import { useState, useEffect } from "react";
@@ -54,7 +47,6 @@ import { Button } from "@/components/ui/button";
 import type { Board, Shape } from "../index";
 import { Input } from "@/components/ui/input";
 import { debounce } from "@/lib/utils";
-import { Label } from "@/components/ui/label";
 
 const EXCALIDRAW_COLORS = [
    "#1E1E1E",
@@ -68,50 +60,6 @@ const EXCALIDRAW_COLORS = [
    "#7A4E2D",
    "#FFFFFF",
 ];
-
-const generateShades = (hex: string) => {
-   const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-   if (!result) return [hex, hex, hex, hex, hex];
-   const r = parseInt(result[1], 16) / 255;
-   const g = parseInt(result[2], 16) / 255;
-   const b = parseInt(result[3], 16) / 255;
-   const max = Math.max(r, g, b), min = Math.min(r, g, b);
-   let h = 0, s = 0, l = (max + min) / 2;
-   if (max !== min) {
-      const d = max - min;
-      s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
-      switch (max) {
-         case r: h = (g - b) / d + (g < b ? 6 : 0); break;
-         case g: h = (b - r) / d + 2; break;
-         case b: h = (r - g) / d + 4; break;
-      }
-      h /= 6;
-   }
-   h = h * 360;
-   s = s * 100;
-   l = l * 100;
-
-   const hslToHex = (h: number, s: number, l: number) => {
-      l /= 100;
-      const a = s * Math.min(l, 1 - l) / 100;
-      const f = (n: number) => {
-         const k = (n + h / 30) % 12;
-         const color = l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
-         return Math.round(255 * color).toString(16).padStart(2, '0');
-      };
-      return `#${f(0)}${f(8)}${f(4)}`;
-   };
-
-   return [
-      hslToHex(h, s, Math.min(95, l + 30)),
-      hslToHex(h, s, Math.min(85, l + 15)),
-      hex,
-      hslToHex(h, s, Math.max(15, l - 15)),
-      hslToHex(h, s, Math.max(5, l - 30)),
-   ];
-};
-
-const COLOR_PALETTE = EXCALIDRAW_COLORS.map(generateShades);
 
 const THEME_DEFAULTS = {
    dark: { foreground: "#cccccc", background: "#181818" },
@@ -601,7 +549,7 @@ function StrokeSize({ debounceMs, className, standalone, icon, children }: Props
       <div className={className}>
          {strokeSize.map((s) => (
             <Button
-               variant={activeShape?.get("strokeWidth") === s ? "default" : "outline"}
+               variant={ activeShape?.get("strokeWidth") === s? "default" : "outline"}
                size={"xs"}
                key={s}
                className={cn(
@@ -665,9 +613,9 @@ function StrokeSize({ debounceMs, className, standalone, icon, children }: Props
    );
 }
 
-function StrokeOption({ debounceMs = 200, className, standalone = false, icon, mobile = false }: Props & { mobile?: boolean }) {
+function StrokeOption({ debounceMs, className, standalone = false }: Props) {
    const { activeShape, canvas, setActiveShape, update } = useBoard();
-   const [shade, setShade] = useState(0);
+
    const applyStroke = debounce((val: string) => {
       if (!activeShape) return;
 
@@ -684,94 +632,39 @@ function StrokeOption({ debounceMs = 200, className, standalone = false, icon, m
       update();
    }, debounceMs);
 
-   const content = () => {
-      const activeShade = generateShades(activeShape?.get("stroke") || "");
-      return (
-         <div className="flex flex-col w-32 space-y-4">
-            <div className="flex flex-col gap-1">
-               <span className="text-xs text-muted-foreground w-12">Colors</span>
-               <div className="grid grid-cols-5 gap-1"
-                  onClick={(e) => {
-                     const target = e.target as HTMLElement;
-                     if (!target) return;
-                     const attr = target.closest("[data-cc]")
-                     if (!attr) return;
-                     const c = attr.getAttribute("data-cc")
-                     if (c) {
-                        applyStroke(c);
-                     }
+   const content = () => (
+      <div className="space-y-3">
+         <div className="text-xs text-muted-foreground">Stroke</div>
+         <div className="grid grid-cols-10 gap-1.5">
+            {EXCALIDRAW_COLORS.map((c) => (
+               <button
+                  key={c}
+                  type="button"
+                  onClick={() => applyStroke(c)}
+                  style={{ background: c }}
+                  className={cn(
+                     "h-6 w-6 rounded-sm border border-border/70 transition-transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1",
+                     activeShape?.get("stroke") === c ? "ring-2 ring-primary ring-offset-1" : "",
+                  )}
+               />
+            ))}
+         </div>
+         <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground w-12">Custom</span>
+            <div className="relative h-6 w-6 rounded-md overflow-hidden border border-border/50 cursor-pointer hover:scale-110 transition-transform">
+               <input
+                  type="color"
+                  className="absolute inset-0 w-[150%] h-[150%] -top-1/4 -left-1/4 cursor-pointer p-0 border-0"
+                  value={activeShape?.get("stroke") || "#000000"}
+                  onChange={(e) => {
+                     if (!activeShape) return;
+                     applyStroke(e.target.value);
                   }}
-               >
-                  {COLOR_PALETTE.map((shades, colIndex) => {
-                     const c = shades[shade];
-                     return (
-                        <button
-                           data-cc={c}
-                           key={`${colIndex}-${shade}`}
-                           style={{ background: c }}
-                           title={c}
-                           className={cn(
-                              "h-5 w-5 border border-border/70 transition-transform hover:scale-110 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1",
-                              activeShape?.get("stroke") === c ? "ring-2 ring-primary ring-offset-1" : "",
-                           )}
-                        />
-                     );
-                  })}
-               </div>
-            </div>
-
-            <div
-               onClick={(e) => {
-                  const target = e.target as HTMLElement;
-                  if (!target) return;
-                  const attr = target.closest("[data-shade]")
-                  if (!attr) return;
-                  const c = Number(attr.getAttribute("data-shade"))
-                  if (!isNaN(c)) {
-                     setShade(c)
-                  }
-               }}
-               className="flex flex-col items-start gap-1">
-               <span className="text-xs text-muted-foreground w-12">Shades</span>
-               <div className="flex item-center gap-1">
-                  {[4, 3, 2, 1, 0].map((s) => {
-                     return (
-                        <button data-shade={s}>
-                           <div style={{ background: activeShade[s] }} className="w-5 h-5" />
-                        </button>
-                     )
-                  })}
-               </div>
-            </div>
-
-            <div className="flex flex-col items-start gap-1">
-               <span className="text-xs text-muted-foreground w-12">Hexcode</span>
-               <div className="flex items-center gap-2">
-                  <Input
-                     className="text-sm text-muted-foreground"
-                     type="text"
-                     defaultValue={activeShape?.get("stroke")}
-                  />
-                  <div className="relative h-6 w-6 rounded-md overflow-hidden border border-border/50 cursor-pointer hover:scale-110 transition-transform">
-                     <Label htmlFor="cst-c">
-                        <PenIcon width={13} />
-                     </Label>
-                     <input
-                        id="cst-c"
-                        type="color"
-                        className="hidden inset-0 w-[150%] h-[150%] -top-1/4 -left-1/4 cursor-pointer p-0 border-0"
-                        value={activeShape?.get("stroke") || "#000000"}
-                        onChange={(e) => {
-                           if (!activeShape) return;
-                           applyStroke(e.target.value);
-                        }}
-                     />
-                  </div>
-               </div>
+               />
             </div>
          </div>
-      )
-   }
+      </div>
+   )
 
    return (
       <>
@@ -780,50 +673,27 @@ function StrokeOption({ debounceMs = 200, className, standalone = false, icon, m
                {content()}
             </>
             :
-            <div className="w-full flex justify-between items-center">
-               {!mobile &&
-                  <div onClick={(e) => {
-                     const target = e.target as HTMLElement;
-                     if (!target) return;
-                     const attr = target.closest("[data-cc]")
-                     if (!attr) return;
-                     const c = attr.getAttribute("data-cc")
-                     if (c) {
-                        applyStroke(c);
-                     }
-                  }}
-                     className="flex items-center gap-0.5">
-                     {COLORS.slice(0, 4).map((c) =>
-                        <button data-cc={c}>
-                           <div className="w-5 h-5" style={{ background: c }} />
-                        </button>
-                     )}
-                  </div>
-               }
-               <Popover>
-                  <PopoverTrigger asChild>
-                     <button className={cn("relative")}>
-                        {icon ||
-                           <div
-                              className="bottom-1 right-1 w-6 h-6 rounded-sm border border-background"
-                              style={{ background: activeShape?.get("stroke") || "currentColor" }}
-                           />
-                        }
-                     </button>
-                  </PopoverTrigger>
-                  <PopoverContent className={cn("w-fit p-3", className)}>
-                     {content()}
-                  </PopoverContent>
-               </Popover>
-            </div>
+            <Popover>
+               <PopoverTrigger asChild>
+                  <Button variant={null} size="xs" className={cn("relative")}>
+                     <BrushIcon />
+                     <div
+                        className="absolute bottom-1 right-1 w-2 h-2 rounded-full border border-background"
+                        style={{ background: activeShape?.get("stroke") || "currentColor" }}
+                     />
+                  </Button>
+               </PopoverTrigger>
+               <PopoverContent className={cn("w-64 p-3", className)}>
+                  {content()}
+               </PopoverContent>
+            </Popover>
          }
       </>
    );
 }
 
-function FillOption({ debounceMs = 200, className, standalone = false, icon, mobile = false }: Props & { mobile?: boolean }) {
+function FillOption({ debounceMs, className, children, standalone = false, icon }: Props) {
    const { activeShape, canvas, setActiveShape, update } = useBoard();
-   const [shade, setShade] = useState(0);
 
    const applyFill = debounce((color: string) => {
       if (!activeShape) return;
@@ -841,159 +711,74 @@ function FillOption({ debounceMs = 200, className, standalone = false, icon, mob
       update();
    }, debounceMs);
 
-   const content = () => {
-      const activeShade = generateShades(activeShape?.get("fill") || "");
-      return (
-         <div className="flex flex-col w-32 space-y-4">
-            <div className="flex flex-col gap-1">
-               <span className="text-xs text-muted-foreground w-12">Colors</span>
-               <div className="grid grid-cols-5 gap-1"
-                  onClick={(e) => {
-                     const target = e.target as HTMLElement;
-                     if (!target) return;
-                     const attr = target.closest("[data-cc]")
-                     if (!attr) return;
-                     const c = attr.getAttribute("data-cc")
-                     if (c) {
-                        applyFill(c);
-                     }
-                  }}
-               >
-                  <button
-                     type="button"
-                     onClick={() => applyFill("#00000000")}
-                     className={cn(
-                        "h-5 w-5 rounded-sm border border-border flex items-center justify-center hover:bg-muted transition-colors relative overflow-hidden",
-                        activeShape?.get("fill") === "transparent" ||
-                           activeShape?.get("fill") === "#00000000" ||
-                           !activeShape?.get("fill")
-                           ? "ring-2 ring-primary ring-offset-1"
-                           : "",
-                     )}>
-                     <div className="absolute inset-0 bg-destructive/70 rotate-45 w-[1px] h-[200%] top-[-50%] left-1/2 -translate-x-1/2" />
-                  </button>
-                  {COLOR_PALETTE.map((shades, colIndex) => {
-                     const c = shades[shade];
-                     return (
-                        <button
-                           data-cc={c}
-                           key={`${colIndex}-${shade}`}
-                           style={{ background: c }}
-                           title={c}
-                           className={cn(
-                              "h-5 w-5 border border-border/70 transition-transform hover:scale-110 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1",
-                              activeShape?.get("fill") === c ? "ring-2 ring-primary ring-offset-1" : "",
-                           )}
-                        />
-                     );
-                  })}
-               </div>
-            </div>
-
-            <div
-               onClick={(e) => {
-                  const target = e.target as HTMLElement;
-                  if (!target) return;
-                  const attr = target.closest("[data-shade]")
-                  if (!attr) return;
-                  const c = Number(attr.getAttribute("data-shade"))
-                  if (!isNaN(c)) {
-                     setShade(c)
+   const content = (
+      <div className="space-y-3">
+         <div className="text-xs text-muted-foreground">Background</div>
+         <div className="grid grid-cols-10 gap-1.5">
+            <button
+               type="button"
+               onClick={() => applyFill("#00000000")}
+               className={cn(
+                  "h-6 w-6 rounded-sm border border-border flex items-center justify-center hover:bg-muted transition-colors relative overflow-hidden",
+                  activeShape?.get("fill") === "transparent" ||
+                     activeShape?.get("fill") === "#00000000" ||
+                     !activeShape?.get("fill")
+                     ? "ring-2 ring-primary ring-offset-1"
+                     : "",
+               )}>
+               <div className="absolute inset-0 bg-destructive/70 rotate-45 w-[1px] h-[200%] top-[-50%] left-1/2 -translate-x-1/2" />
+            </button>
+            {EXCALIDRAW_COLORS.map((c) => (
+               <button
+                  key={c}
+                  type="button"
+                  onClick={() => applyFill(c)}
+                  style={{ background: c }}
+                  className={cn(
+                     "h-6 w-6 rounded-sm border border-border/70 hover:scale-105 transition-transform focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1",
+                     activeShape?.get("fill") === c ? "ring-2 ring-primary ring-offset-1" : "",
+                  )}
+               />
+            ))}
+         </div>
+         <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground w-12">Custom</span>
+            <div className="relative h-6 w-6 rounded-md overflow-hidden border border-border/50 cursor-pointer hover:scale-110 transition-transform">
+               <input
+                  type="color"
+                  className="absolute inset-0 w-[150%] h-[150%] -top-1/4 -left-1/4 cursor-pointer p-0 border-0"
+                  value={
+                     activeShape?.get("fill") === "transparent"
+                        ? "#ffffff"
+                        : activeShape?.get("fill") || "#ffffff"
                   }
-               }}
-               className="flex flex-col items-start gap-1">
-               <span className="text-xs text-muted-foreground w-12">Shades</span>
-               <div className="flex item-center gap-1">
-                  {[4, 3, 2, 1, 0].map((s) => {
-                     return (
-                        <button data-shade={s} key={s}>
-                           <div style={{ background: activeShade[s] }} className="w-5 h-5" />
-                        </button>
-                     )
-                  })}
-               </div>
-            </div>
-
-            <div className="flex flex-col items-start gap-1">
-               <span className="text-xs text-muted-foreground w-12">Hexcode</span>
-               <div className="flex items-center gap-2">
-                  <Input
-                     className="text-sm text-muted-foreground"
-                     type="text"
-                     defaultValue={activeShape?.get("fill")}
-                  />
-                  <div className="relative h-6 w-6 rounded-md overflow-hidden border border-border/50 cursor-pointer hover:scale-110 transition-transform">
-                     <Label htmlFor="cst-fill-c">
-                        <PaintBucket width={13} />
-                     </Label>
-                     <input
-                        id="cst-fill-c"
-                        type="color"
-                        className="hidden inset-0 w-[150%] h-[150%] -top-1/4 -left-1/4 cursor-pointer p-0 border-0"
-                        value={
-                           activeShape?.get("fill") === "transparent"
-                              ? "#ffffff"
-                              : activeShape?.get("fill") || "#ffffff"
-                        }
-                        onChange={(e) => {
-                           if (!activeShape) return;
-                           applyFill(e.target.value);
-                        }}
-                     />
-                  </div>
-               </div>
+                  onChange={(e) => {
+                     if (!activeShape) return;
+                     applyFill(e.target.value);
+                  }}
+               />
             </div>
          </div>
-      )
-   }
+      </div>
+   );
 
    return (
-      <>
-         {standalone === true ?
+      <OptionWrapper
+         standalone={standalone}
+         icon={
             <>
-               {content()}
+               <PaintBucket />
+               <div
+                  className="absolute bottom-1 right-1 w-2 h-2 rounded-full border border-background"
+                  style={{ background: activeShape?.get("fill") || "transparent" }}
+               />
             </>
-            :
-            <div className="w-full flex items-center justify-between">
-               {!mobile &&
-                  <div onClick={(e) => {
-                     const target = e.target as HTMLElement;
-                     if (!target) return;
-                     const attr = target.closest("[data-cc]")
-                     if (!attr) return;
-                     const c = attr.getAttribute("data-cc")
-                     if (c) {
-                        applyFill(c);
-                     }
-                  }}
-                     className="flex items-center gap-0.5">
-                     {COLORS.slice(0, 4).map((c) =>
-                        <button data-cc={c} key={c}>
-                           <div className="w-5 h-5" style={{ background: c }} />
-                        </button>
-                     )}
-                  </div>
-               }
-               <Popover>
-                  <PopoverTrigger asChild>
-                     <button className={cn("relative")}>
-                        {icon ||
-                           <>
-                              <div
-                                 className="bottom-1 right-1 w-6 h-6 rounded-sm border border-background"
-                                 style={{ background: activeShape?.get("fill") || "transparent" }}
-                              />
-                           </>
-                        }
-                     </button>
-                  </PopoverTrigger>
-                  <PopoverContent className={cn("w-fit p-3", className)}>
-                     {content()}
-                  </PopoverContent>
-               </Popover>
-            </div>
          }
-      </>
+         children={children}
+         className={className}
+         contentClassName={cn("w-64 p-3 z-50", className)}
+         content={content}
+      />
    );
 }
 
@@ -1111,17 +896,18 @@ function FontSizes({ debounceMs = 200, className, standalone, icon, children }: 
    };
 
    const content = (
-      <div className={className}>
+      <div className="flex flex-col gap-1">
          {FONT_SIZES.map((f) => (
             <Button
                key={f.size}
                variant={null}
-               size={"sm"}
-               className={
-                  currentSize === f.size ? "bg-muted" : ""
-               }
+               className={cn(
+                  "justify-start h-6 w-full",
+                  currentSize === f.size ? "bg-muted" : "",
+               )}
                onClick={() => handleSizeChange(f.size)}>
-               <span className="text-[0.9em]">{f.label}</span>
+               <span className="text-xs mr-auto">{f.label}</span>
+               {currentSize === f.size && <CheckIcon className="h-3 w-3" />}
             </Button>
          ))}
          <div className="px-1 py-1">
@@ -1162,82 +948,56 @@ function FontSizes({ debounceMs = 200, className, standalone, icon, children }: 
    );
 }
 
-function FontFamilyOption({ debounceMs = 200, className }: Props) {
+function FontFamilyOption({ debounceMs = 200, className, standalone, icon, children }: Props) {
    const { activeShape, canvas, update } = useBoard();
    const handleUpdate = debounce(() => update(), debounceMs);
+   const [family, setFamily] = useState(
+      FONT_FAMILIES.find((f) => f.value === activeShape?.get("fontFamily")) || FONT_FAMILIES[0]
+   );
 
-   const handleSetFont = (fValue: string) => {
-      if (!activeShape || !canvas) return;
-      if (activeShape instanceof ActiveSelection) {
-         activeShape.shapes.forEach((s) => {
-            if (s.s) s.s.set("fontFamily", fValue);
-         });
-      }
-      activeShape.set("fontFamily", fValue);
-      canvas.render();
-      handleUpdate();
-   };
-
-   const mainFonts = FONT_FAMILIES.slice(0, 3);
-   const currentFont = activeShape?.get("fontFamily") || FONT_FAMILIES[0].value;
-
-   const getIconComponent = (iconName: string) => {
-      switch (iconName) {
-         case "PenLine": return <PenLine className="h-4 w-4" />;
-         case "Type": return <Type className="h-4 w-4" />;
-         case "Terminal": return <Terminal className="h-4 w-4" />;
-         case "Italic": return <ItalicIcon className="h-4 w-4" />;
-         default: return <Type className="h-4 w-4" />;
-      }
-   };
+   const content = (
+      <div className="flex flex-col gap-0.5">
+         {FONT_FAMILIES.map((f) => (
+            <Button
+               key={f.label}
+               variant={null}
+               className={cn(
+                  "justify-start h-6 w-full",
+                  activeShape?.get("fontFamily") === f.value ? "bg-muted" : "",
+               )}
+               style={{ fontFamily: f.value }}
+               onClick={() => {
+                  if (!activeShape || !canvas) return;
+                  if (activeShape instanceof ActiveSelection) {
+                     activeShape.shapes.forEach((s) => {
+                        if (s.s) s.s.set("fontFamily", f.value);
+                     });
+                  }
+                  activeShape.set("fontFamily", f.value);
+                  canvas.render();
+                  handleUpdate();
+                  setFamily(f);
+               }}>
+               <span className="text-xs mr-auto">{f.label}</span>
+               {activeShape?.get("fontFamily") === f.value && <CheckIcon className="h-3 w-3" />}
+            </Button>
+         ))}
+      </div>
+   );
 
    return (
-      <TooltipProvider>
-         <div className={cn("flex items-center gap-1", className)}>
-            {mainFonts.map((f) => (
-               <Tooltip key={f.value}>
-                  <TooltipTrigger asChild>
-                     <Button
-                        variant={currentFont === f.value ? "secondary" : "ghost"}
-                        size="sm"
-                        onClick={() => handleSetFont(f.value)}
-                     >
-                        {getIconComponent(f.iconName as string)}
-                     </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                     <p>{f.label}</p>
-                  </TooltipContent>
-               </Tooltip>
-            ))}
-
-            {/* Extra button for all options */}
-            <Popover>
-               <PopoverTrigger asChild>
-                  <Button variant="ghost" size="icon" className="rounded-sm">
-                     <ChevronDown width={10} />
-                  </Button>
-               </PopoverTrigger>
-               <PopoverContent className="w-48 p-1 z-[999]" sideOffset={5}>
-                  <div className="flex flex-col gap-0.5">
-                     {FONT_FAMILIES.map((f) => (
-                        <Button
-                           key={f.label}
-                           variant={currentFont === f.value ? "secondary" : "ghost"}
-                           className="justify-start h-8 w-full"
-                           style={{ fontFamily: f.value }}
-                           onClick={() => handleSetFont(f.value)}
-                        >
-                           {getIconComponent(f.iconName as string)}
-                           <span className="text-xs ml-2 mr-auto">{f.label}</span>
-                           {currentFont === f.value && <CheckIcon className="h-3 w-3" />}
-                        </Button>
-                     ))}
-                  </div>
-               </PopoverContent>
-            </Popover>
-         </div>
-      </TooltipProvider>
+      <OptionWrapper
+         standalone={standalone}
+         icon={
+            <span style={{ fontFamily: family.value }}>
+               {family.label}
+            </span>
+         }
+         children={children}
+         className={className}
+         contentClassName={cn("w-32 p-1", className)}
+         content={content}
+      />
    );
 }
 
@@ -1408,7 +1168,7 @@ function StrokeDash({ debounceMs = 200, className, standalone, icon, children }:
    const currentDash = activeShape?.get("dash").toString() || "0,0";
 
    const content = (
-      <div className={className}>
+      <div className="flex bg-muted/50 rounded-md p-0.5 border border-border/50">
          <Button
             variant={currentDash === "0,0" ? "secondary" : "ghost"}
             size="icon"
@@ -1422,13 +1182,6 @@ function StrokeDash({ debounceMs = 200, className, standalone, icon, children }:
             className="h-8 w-8"
             onClick={() => handledash([5, 5])}>
             <CircleDashed className="h-4 w-4" />
-         </Button>
-         <Button
-            variant={currentDash === "8,8" ? "secondary" : "ghost"}
-            size="icon"
-            className="h-8 w-8"
-            onClick={() => handledash([3, 3])}>
-            <CircleDotDashed />
          </Button>
       </div>
    );
@@ -1590,36 +1343,6 @@ function VerticalAlignOptions({ debounceMs = 200 }: { debounceMs?: number }) {
    );
 }
 
-function DuplicateOption({ className }: Props) {
-   const { activeShape, canvas } = useBoard();
-   if (!activeShape || !canvas) return null;
-
-   const handleClone = () => {
-      const clone = activeShape.clone();
-      clone.top += 10;
-      clone.left += 10;
-      canvas.add(clone);
-   }
-
-   return (
-      <Tooltip>
-         <TooltipTrigger asChild>
-            <Button
-               variant={"outline"}
-               size={"sm"}
-               className={cn("border-none", className)}
-               onClick={handleClone}
-            >
-               <CopyIcon className="w-3.5 h-3.5" />
-            </Button>
-         </TooltipTrigger>
-         <TooltipContent>
-            Duplicate
-         </TooltipContent>
-      </Tooltip>
-   )
-}
-
 function ZOrderButtons({ debounceMs = 200, className }: { debounceMs?: number, className?: string }) {
    const { activeShape, canvas, update } = useBoard();
    const handleUpdate = debounce(() => update(), debounceMs);
@@ -1627,32 +1350,32 @@ function ZOrderButtons({ debounceMs = 200, className }: { debounceMs?: number, c
    if (!activeShape || activeShape instanceof ActiveSelection) return null;
 
    return (
-      <div className={className}>
+      <div className={cn("flex bg-muted/50 rounded-md p-0.5 border border-border/50", className)}>
          <Button
-            variant="outline"
-            size="sm"
-            className="border-none"
+            variant="ghost"
+            size="icon"
+            className="h-6 w-6"
             onClick={() => { canvas?.bringToFront(activeShape as Shape); handleUpdate(); }}>
             <BringToFront className="h-3.5 w-3.5" />
          </Button>
          <Button
-            variant="outline"
-            size="sm"
-            className="border-none"
+            variant="ghost"
+            size="icon"
+            className="h-6 w-6"
             onClick={() => { canvas?.bringForward(activeShape as Shape); handleUpdate(); }}>
             <ChevronUp className="h-3.5 w-3.5" />
          </Button>
          <Button
-            variant="outline"
-            size="sm"
-            className="border-none"
+            variant="ghost"
+            size="icon"
+            className="h-6 w-6"
             onClick={() => { canvas?.sendBackward(activeShape as Shape); handleUpdate(); }}>
             <ChevronDown className="h-3.5 w-3.5" />
          </Button>
          <Button
-            variant="outline"
-            size="sm"
-            className="border-none"
+            variant="ghost"
+            size="icon"
+            className="h-6 w-6"
             onClick={() => { canvas?.sendToBack(activeShape as Shape); handleUpdate(); }}>
             <SendToBack className="h-3.5 w-3.5" />
          </Button>
@@ -1660,35 +1383,8 @@ function ZOrderButtons({ debounceMs = 200, className }: { debounceMs?: number, c
    );
 }
 
-function DeleteOption({ className }: Props) {
-   const { activeShape, canvas } = useBoard();
-   if (!activeShape || !canvas) return null;
-
-   const handleDelete = () => {
-      if (!activeShape || !canvas) return;
-      canvas.removeShape(activeShape);
-   };
-
-   return (
-      <Tooltip>
-         <TooltipTrigger asChild>
-            <div className={className}>
-               <Button variant="outline" size="sm" className="border-none" onClick={handleDelete}>
-                  <TrashIcon className="w-3.5 h-3.5" />
-               </Button>
-            </div>
-         </TooltipTrigger>
-         <TooltipContent>
-            Delete
-         </TooltipContent>
-      </Tooltip>
-   )
-}
-
 export {
    ShapeOptions as BoardShapeOptions,
-   DuplicateOption,
-   DeleteOption,
    StrokeDash,
    StrokeOption,
    StrokeSize,

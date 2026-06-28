@@ -8,7 +8,6 @@ import type {
    ToolInterface,
    CustomShapeDef,
    ShapeConstructor,
-   BoxInterface,
 } from "./types";
 import {
    SelectionTool,
@@ -596,7 +595,7 @@ class Board implements BoardInterface {
       const viewRight = viewLeft + this.cssWidth / view.scl;
       const viewBottom = viewTop + this.cssHeight / view.scl;
 
-      let localActiveShapeIds = new Set<string>();
+      const localActiveShapeIds = new Set<string>();
       if (this.activeShapes) {
          if (this.activeShapes.type === "selection") {
             (this.activeShapes as any).shapes?.forEach((item: any) => {
@@ -834,10 +833,19 @@ class Board implements BoardInterface {
          clientY,
          btn = 0;
 
-      if ("touches" in e && e.touches.length > 0) {
-         const t = e.touches[0];
-         clientX = t.clientX;
-         clientY = t.clientY;
+      if ("touches" in e) {
+         const touchEvent = e as TouchEvent;
+         const t = touchEvent.touches.length > 0 
+            ? touchEvent.touches[0] 
+            : (touchEvent.changedTouches && touchEvent.changedTouches.length > 0 ? touchEvent.changedTouches[0] : null);
+            
+         if (t) {
+            clientX = t.clientX;
+            clientY = t.clientY;
+         } else {
+            clientX = 0;
+            clientY = 0;
+         }
       } else {
          clientX = (e as MouseEvent).clientX;
          clientY = (e as MouseEvent).clientY;

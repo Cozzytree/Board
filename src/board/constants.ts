@@ -40,10 +40,10 @@ const FONT_SIZES = [
 ];
 
 const FONT_FAMILIES = [
-   { label: "Default", value: "system-ui" },
-   { label: "Comic", value: '"Comic Sans MS", "Comic Sans", cursive' },
-   { label: "Mono", value: 'monospace' },
-   { label: "Cursive", value: 'cursive' },
+   { label: "Handdrawn", value: '"Comic Sans MS", "Comic Sans", cursive', iconName: "PenLine" },
+   { label: "Normal", value: 'system-ui', iconName: "Type" },
+   { label: "Code", value: 'monospace', iconName: "Terminal" },
+   { label: "Cursive", value: 'cursive', iconName: "Italic" },
 ];
 
 const strokeSize = [2, 3, 5];

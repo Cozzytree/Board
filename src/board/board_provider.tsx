@@ -475,6 +475,29 @@ const BoardProvider = ({
       setMode({ m, sm });
    }, []);
 
+   const handleUndo = React.useCallback((board: Board) => {
+      if (undoStack.current.length > 1) { // Leave the very first state intact
+         isUndoing.current = true;
+         const currentState = undoStack.current.pop()!;
+         redoStack.current.push(currentState);
+         const prevState = undoStack.current[undoStack.current.length - 1];
+         restoreShapesFromData(board, prevState);
+         saveShapesToStorage(board);
+         isUndoing.current = false;
+      }
+   }, [])
+
+   const handleRedo = React.useCallback((board: Board) => {
+      if (redoStack.current.length > 0) {
+         isUndoing.current = true;
+         undoStack.current.push(serializeBoard(board));
+         const nextState = redoStack.current.pop()!;
+         restoreShapesFromData(board, nextState);
+         saveShapesToStorage(board);
+         isUndoing.current = false;
+      }
+   }, [])
+
    React.useLayoutEffect(() => {
       if (!canvasRef.current || !canvas2Ref.current) return;
 
@@ -591,37 +614,40 @@ const BoardProvider = ({
             e.preventDefault();
             if (e.shiftKey) {
                // Redo (Ctrl+Shift+Z)
-               if (redoStack.current.length > 0) {
-                  isUndoing.current = true;
-                  undoStack.current.push(serializeBoard(newBoard));
-                  const nextState = redoStack.current.pop()!;
-                  restoreShapesFromData(newBoard, nextState);
-                  saveShapesToStorage(newBoard);
-                  isUndoing.current = false;
-               }
+               handleRedo(newBoard);
+               // if (redoStack.current.length > 0) {
+               //    isUndoing.current = true;
+               //    undoStack.current.push(serializeBoard(newBoard));
+               //    const nextState = redoStack.current.pop()!;
+               //    restoreShapesFromData(newBoard, nextState);
+               //    saveShapesToStorage(newBoard);
+               //    isUndoing.current = false;
+               // }
             } else {
                // Undo (Ctrl+Z)
-               if (undoStack.current.length > 1) { // Leave the very first state intact
-                  isUndoing.current = true;
-                  const currentState = undoStack.current.pop()!;
-                  redoStack.current.push(currentState);
-                  const prevState = undoStack.current[undoStack.current.length - 1];
-                  restoreShapesFromData(newBoard, prevState);
-                  saveShapesToStorage(newBoard);
-                  isUndoing.current = false;
-               }
+               handleUndo(newBoard);
+               // if (undoStack.current.length > 1) { // Leave the very first state intact
+               //    isUndoing.current = true;
+               //    const currentState = undoStack.current.pop()!;
+               //    redoStack.current.push(currentState);
+               //    const prevState = undoStack.current[undoStack.current.length - 1];
+               //    restoreShapesFromData(newBoard, prevState);
+               //    saveShapesToStorage(newBoard);
+               //    isUndoing.current = false;
+               // }
             }
          } else if (e.ctrlKey && e.key === "y") {
             e.preventDefault();
             // Redo (Ctrl+Y)
-            if (redoStack.current.length > 0) {
-               isUndoing.current = true;
-               undoStack.current.push(serializeBoard(newBoard));
-               const nextState = redoStack.current.pop()!;
-               restoreShapesFromData(newBoard, nextState);
-               saveShapesToStorage(newBoard);
-               isUndoing.current = false;
-            }
+            handleRedo(newBoard);
+            // if (redoStack.current.length > 0) {
+            //    isUndoing.current = true;
+            //    undoStack.current.push(serializeBoard(newBoard));
+            //    const nextState = redoStack.current.pop()!;
+            //    restoreShapesFromData(newBoard, nextState);
+            //    saveShapesToStorage(newBoard);
+            //    isUndoing.current = false;
+            // }
          } else if (e.key === "Delete") {
             requestAnimationFrame(() => {
                if (onShapesChangedRef.current) {
@@ -895,6 +921,16 @@ const BoardProvider = ({
          <ContextMenu>
             <BoardContext.Provider
                value={{
+                  undoStack: undoStack.current,
+                  redoStack: redoStack.current,
+                  undo() {
+                     if (!borderRef.current) return;
+                     handleUndo(borderRef.current);
+                  },
+                  redo(){
+                     if (!borderRef.current) return;
+                     handleRedo(borderRef.current);
+                  },
                   stat: isStat,
                   setStat: (v) => {
                      setStat(v);
@@ -945,7 +981,7 @@ const BoardProvider = ({
                   <RemoteStateManager provider={provider} view={borderRef.current.view} />
                }
                <ContextMenuTrigger asChild>
-                  <div style={{ position: 'relative', width: width + "px", height: height + "px" }}>
+                  <div className="touch-none" style={{ position: 'relative', width: width + "px", height: height + "px" }}>
                      <canvas
                         ref={remoteCanvasRef}
                         id="board-remote-canvas"
@@ -997,7 +1033,7 @@ const BoardProvider = ({
                   Stats {isStat ? "off" : "on"}
                </ContextMenuItem>
             </ContextMenuContent>
-         </ContextMenu>
+         </ContextMenu >
       </>
    );
 };
@@ -1046,10 +1082,10 @@ function RemoteStateManager({ view, provider }: { provider: HocuspocusProvider, 
             }
 
             if (state?.selection && state.selection?.ids && state.selection.ids.length > 0) {
-                canvas.remoteSelections.set(clientId, {
-                    color: getColorForClient(clientId),
-                    shapeIds: state.selection.ids as string[],
-                });
+               canvas.remoteSelections.set(clientId, {
+                  color: getColorForClient(clientId),
+                  shapeIds: state.selection.ids as string[],
+               });
             } else {
                canvas.remoteSelections.delete(clientId);
             }

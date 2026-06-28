@@ -69,6 +69,7 @@ abstract class Shape implements ShapeProps {
    fontFamily: string;
    connections: ConnectionInterface;
    groupId: string | undefined;
+   _pendingConnections?: any[];
    zOrder: number;
 
    private eventListeners = new Map<ShapeEvent, Set<ShapeEventCallback>>();
@@ -171,7 +172,12 @@ abstract class Shape implements ShapeProps {
       this.verticalAlign = verticalAlign || "center";
       this.fontWeight = 500;
       this.textAlign = textAlign || "left";
-      this.connections = connections instanceof Connections ? connections : new Connections();
+      if (Array.isArray(connections)) {
+         this._pendingConnections = connections;
+         this.connections = new Connections();
+      } else {
+         this.connections = connections instanceof Connections ? connections : new Connections();
+      }
       this.id = id || uuidv4();
       this.selectionColor = selectionColor || HoveredColor;
       this.selectionStrokeWidth = selectionStrokeWidth || 1;
