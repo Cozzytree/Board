@@ -2,6 +2,7 @@ import { AlignOptions, BoldOption, DeleteOption, DuplicateOption, FillOption, Fi
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useBoard } from "@/lib";
 import { ScrollArea } from "./ui/scroll-area";
+import { AlignCenter, AlignVerticalSpaceAround } from "lucide-react";
 
 export default function ExcalidrawOptionsPanel() {
    const isMobile = useIsMobile();
@@ -12,27 +13,31 @@ export default function ExcalidrawOptionsPanel() {
 
    if (isMobile) {
       return (
-         <div className="absolute left-0 bottom-20 h-8 w-full px-4 z-[999] pointer-events-auto flex justify-center">
-            <div className="flex flex-row overflow-x-auto gap-2 p-2 max-w-full [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+         <div className="absolute left-0 bottom-15 h-8 w-full px-4 z-[999] pointer-events-auto flex justify-center">
+            <div className="flex justify-start overflow-x-auto gap-1 p-2 w-full [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                <StrokeOption debounceMs={debounceMs} className="z-[9999]" mobile />
-               <FillOption debounceMs={debounceMs} className="z-[9999]" mobile/>
+               <FillOption debounceMs={debounceMs} className="z-[9999]" mobile />
                <OpacityOption debounceMs={debounceMs} className="z-[9999]" />
-               <StrokeSize debounceMs={debounceMs} className="z-[9999] flex gap-1" />
-               <StrokeDash debounceMs={debounceMs} className="z-[9999]" />
-               <RoughnessOption debounceMs={debounceMs} className="z-[9999]" />
+               {activeShape.type !== "text" ? <>
+                  <StrokeSize debounceMs={debounceMs} className="z-[9999] flex gap-1" />
+                  <StrokeDash debounceMs={debounceMs} className="z-[9999]" />
+               </> : <></>}
+               <RoughnessOption debounceMs={debounceMs} className="z-[9999] w-fit" />
                <FillStyleOption debounceMs={debounceMs} className="z-[9999]" />
-               <FontFamilyOption debounceMs={debounceMs} className="z-[9999]" />
-               <FontSizes debounceMs={debounceMs} className="z-[9999]" />
-               <div className="flex items-center border rounded-md ml-2 mr-2">
-                  <BoldOption debounceMs={debounceMs} />
-                  <ItalicOption debounceMs={debounceMs} />
-               </div>
-               <AlignOptions debounceMs={debounceMs} />
-               <VerticalAlignOptions debounceMs={debounceMs} />
+               {activeShape?.text?.length ?
+                  <>
+                     <FontFamilyOption debounceMs={debounceMs} className="z-[9999]" standalone />
+                     <FontSizes debounceMs={debounceMs} className="z-[9999]" />
+                     <BoldOption debounceMs={debounceMs} />
+                     <ItalicOption debounceMs={debounceMs} />
+                     <AlignOptions debounceMs={debounceMs} icon={<AlignCenter />} />
+                     <VerticalAlignOptions debounceMs={debounceMs} icon={<AlignVerticalSpaceAround />} />
+                  </>
+                  :
+                  <></>
+               }
                <RotationOption debounceMs={debounceMs} className="z-[9999]" />
-               <div className="flex items-center border rounded-md ml-2">
-                  <ZOrderButtons debounceMs={debounceMs} />
-               </div>
+               <ZOrderButtons className="flex items-center gap-1.5" debounceMs={debounceMs} />
             </div>
          </div>
       );
@@ -40,11 +45,11 @@ export default function ExcalidrawOptionsPanel() {
 
    const Content = () => (
       <ScrollArea className="h-full p-4">
-         <div className="flex max-h-[80vh] flex-col gap-5 w-72 pointer-events-auto">
+         <div className="flex max-h-[80vh] flex-col gap-5 w-52 pointer-events-auto">
             <div className="flex flex-col gap-3">
                <div className="w-full flex flex-col justify-between items-start">
                   <span className="text-sm text-muted-foreground font-medium">Stroke</span>
-                  <StrokeOption debounceMs={debounceMs}/>
+                  <StrokeOption debounceMs={debounceMs} />
                </div>
                <div className="w-full flex flex-col justify-between items-start">
                   <span className="text-sm text-muted-foreground font-medium">Background</span>

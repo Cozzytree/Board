@@ -1,6 +1,5 @@
 import { ArrowLeft } from "lucide-react";
 import { useBoard } from "../board-context";
-import { Button } from "@/components/ui/button";
 
 export function BoardCenterButton() {
    const { offset, handleCenter } = useBoard();
@@ -11,9 +10,9 @@ export function BoardCenterButton() {
 
    return (
       <div className="w-fit h-fit">
-         <Button className="cursor-pointer" onClick={handleCenter} variant={"secondary"} size={"sm"}>
-            <ArrowLeft width={8} className="text-muted-foreground" /> <span className="hidden md:block text-xs">Back to center</span>
-         </Button>
+         <button className="cursor-pointer p-1 border text-muted-foreground rounded-md" onClick={handleCenter}>
+            <ArrowLeft className="text-muted-foreground w-4 h-4" /> <span className="hidden md:block text-xs">Back to center</span>
+         </button>
       </div>
    );
 }

@@ -153,9 +153,9 @@ export function LibrarySidebar({ className }:{ className?: string }) {
    return (
       <Sheet>
          <SheetTrigger asChild>
-            <Button variant="outline" size="icon" className="bg-background/80 backdrop-blur">
-               <Library className="h-4 w-4" />
-            </Button>
+            <button className="text-muted-foreground rounded-sm border p-1 backdrop-blur">
+               <Library className="h-4 md:h-6 w-4 md:w-6" />
+            </button>
          </SheetTrigger>
          <SheetContent className={cn("w-[300px] sm:w-[400px] overflow-y-auto", className)}>
             <SheetHeader>

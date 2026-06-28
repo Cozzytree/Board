@@ -18,6 +18,7 @@ import {
    LineTool,
    TextTool,
    Group,
+   FrameTool,
 } from "./index";
 import EraserTool from "./tool/eraser_tool";
 import ImageTool from "./tool/image_tool";
@@ -298,7 +299,7 @@ class Board implements BoardInterface {
       this.handleTouchStart = this.ontouchstart.bind(this);
 
       this.canvas.addEventListener("touchstart", this.handleTouchStart, { passive: false });
-      this.canvas.addEventListener("touchmove", this.handlePointerMove);
+      this.canvas.addEventListener("touchmove", this.handlePointerMove, { passive: false });
       this.canvas.addEventListener("touchend", this.handlePointerUp);
 
       this.canvas.addEventListener("click", this.handleClick);
@@ -734,6 +735,13 @@ class Board implements BoardInterface {
 
    private onmousemove(e: PointerEvent | MouseEvent | TouchEvent) {
       if (this.isLocked) return;
+      
+      if (typeof TouchEvent !== "undefined" && e instanceof TouchEvent) {
+         if (e.cancelable) {
+            e.preventDefault(); // Prevents pull-to-refresh and scroll takeover
+         }
+      }
+
       if (!this.throttlePointer) {
          this.throttledPointerMove(e);
          this.throttlePointer = true;
@@ -805,6 +813,8 @@ class Board implements BoardInterface {
          this.setTool(new EraserTool(this));
       } else if (m === "image") {
          this.setTool(new ImageTool(this, this.onImageUpload));
+      } else if (m === "frame") {
+         this.setTool(new FrameTool(this))
       }
 
       this.modes = { m, sm };

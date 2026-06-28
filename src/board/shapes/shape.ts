@@ -280,7 +280,6 @@ abstract class Shape implements ShapeProps {
       context.rotate(this.rotate);
       context.translate(-centerX, -centerY);
 
-      const indicatorColor = "#6965db"; // Excalidraw-like purple
       const handleSizePx = 8;
       const outlineWidthPx = 1;
       const handleBorderPx = 1;
@@ -295,10 +294,10 @@ abstract class Shape implements ShapeProps {
       context.closePath();
 
       const drawHandle = (cx: number, cy: number) => {
-         const size = handleSizePx / currentScale;
+         const size = (handleSizePx / currentScale) % 20;
          context.beginPath();
          context.fillStyle = this._board.background || "#ffffff";
-         context.strokeStyle = indicatorColor;
+         context.strokeStyle = INDICATOR_COLOR;
          context.lineWidth = handleBorderPx / currentScale;
          // Semi rounded dots
          context.roundRect(cx - size / 2, cy - size / 2, size, size, size * 0.5);

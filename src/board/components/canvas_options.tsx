@@ -3,7 +3,7 @@ import { useBoard } from "../board-context";
 import { Button } from "@/components/ui/button";
 import type { Theme } from "../board_provider";
 import { cn } from "@/lib/utils";
-import { useState, useRef, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription, DialogClose, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,7 +15,7 @@ const BACKGROUNDS = {
 };
 
 export default function CanvasOptions() {
-   const { setTheme, theme, canvas, activeShape, background, setBackground } = useBoard();
+   const { setTheme, theme, canvas, background, setBackground } = useBoard();
    const [filename, setFilename] = useState("untitled-board");
    const [isFileOpDialogOpen, setIsFileOpDialogOpen] = useState(false);
    const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
@@ -213,7 +213,7 @@ export default function CanvasOptions() {
    };
 
    return (
-      <div className="flex flex-col gap-4 min-w-[220px] p-2 font-sans">
+      <div className="flex flex-col gap-4 w-fit p-1 md:p-2 font-sans">
          {/* Hidden file input placed entirely OUTSIDE of any Radix Dialog to prevent body scroll-lock freezing */}
          {/* Canvas Settings */}
          <div className="flex flex-col gap-3">
@@ -249,13 +249,13 @@ export default function CanvasOptions() {
             {/* Background Color */}
             <div className="flex flex-col gap-2 px-1 mt-2">
                <span className="text-sm font-medium text-foreground">Background</span>
-               <div className="flex flex-wrap gap-1.5">
+               <div className="flex flex-wrap gap-1">
                   {BACKGROUNDS[resolvedTheme].map((color) => (
                      <button
                         key={color}
                         onClick={() => setBackground(color)}
                         className={cn(
-                           "w-6 h-6 rounded-md border border-border shadow-sm transition-all hover:scale-110",
+                           "w-6 h-6 rounded-sm border border-border shadow-sm transition-all hover:scale-110",
                            background === color && "ring-2 ring-primary ring-offset-1 ring-offset-background"
                         )}
                         style={{ backgroundColor: color }}

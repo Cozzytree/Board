@@ -1,12 +1,11 @@
 import { PlusIcon, MinusIcon } from "lucide-react";
 import { useBoard } from "../board-context";
-import { Button } from "@/components/ui/button";
 
 export function BoardZoomControls() {
    const { zoom, handleZoom } = useBoard();
 
    return (
-      <div className="flex bg-muted items-center gap-2 p-1 rounded-md border space-x-2">
+      <div className="flex bg-muted items-center gap-1 py-1.5 px-1 rounded-md border space-x-2">
          <button
             onClick={() => {
                handleZoom(true);

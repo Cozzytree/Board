@@ -19,6 +19,7 @@ import {
    type LucideIcon,
    Cloud,
    ImageIcon,
+   VectorSquare,
 } from "lucide-react";
 import { debounce } from "@/lib/utils";
 import * as React from "react";
@@ -201,7 +202,6 @@ const BoardProvider = ({
          return next;
       });
    }, []);
-   const [, setVersion] = React.useState(0);
    const [tools, setTools] = React.useState<
       {
          mode: modes;
@@ -273,6 +273,11 @@ const BoardProvider = ({
          I: ImageIcon,
          subMode: [],
       },
+      // {
+      //    mode: "frame",
+      //    I: VectorSquare,
+      //    subMode: []
+      // }
    ]);
    const [mode, setMode] = React.useState<{ m: modes; sm: submodes | null }>({
       m: "cursor",
@@ -960,9 +965,7 @@ const BoardProvider = ({
                   setSnap: (s) => {
                      setSnap(s);
                   },
-                  update: () => {
-                     setVersion((v) => v + 1);
-                  },
+                  update: () => {},
                   importLibrary,
 
                   // Composable UI state

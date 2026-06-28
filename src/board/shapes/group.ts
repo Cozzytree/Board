@@ -1,9 +1,10 @@
-import type { BoxInterface, Identity, Point, resizeDirection, ShapeProps } from "../types";
 import Box from "../utils/box";
 import { isDraggableWithRotation, resizeRect } from "../utils/resize";
 import { resizeWithRotation } from "../utils/resizeWithRotation";
 import { calcPointWithRotation } from "../utils/utilfunc";
 import Shape, { type DrawProps } from "./shape";
+import { INDICATOR_COLOR } from "../constants";
+import type { BoxInterface, Identity, Point, resizeDirection, ShapeEventData, ShapeProps } from "../types";
 
 export type GroupDropEvent = {
    shape: Shape;
@@ -21,12 +22,11 @@ class Group extends Shape {
    declare shapes: { s: Shape; oldProps: BoxInterface | undefined }[];
    title: string;
    onDropInto?: (event: GroupDropEvent) => void;
-   private _shapeCache: HTMLCanvasElement | null;
-   private _cacheHash: string = "";
+   private _tempShapes: { s: Shape; oldProps: BoxInterface | undefined }[] = [];
+   private _currentShapesIdSet: Set<string> = new Set();
 
    constructor(props: ShapeProps & Props) {
       super(props);
-      this._shapeCache = null;
       this.cachedLocalPath = null;
       this.title = props.title || "frame";
       this.shapes = props.shapes.map((s) => ({ s: s.s, oldProps: s.oldProps }));
@@ -51,6 +51,16 @@ class Group extends Shape {
       }
    }
 
+   mousedown(s: ShapeEventData): void {
+      ;
+      this._tempShapes = [];
+      this._currentShapesIdSet = new Set(this.shapes.map(s => s.s.ID()));
+   }
+
+   toSVG() {
+      return "";
+   }
+
    Resize(current: Point, old: BoxInterface, d: resizeDirection): Shape[] | void {
       const newBounds = resizeWithRotation({
          current,
@@ -61,12 +71,77 @@ class Group extends Shape {
          minHeight: 20,
       });
 
-      this.setTarget({
+      this.setSilent({
          left: newBounds.left,
          top: newBounds.top,
          width: newBounds.width,
          height: newBounds.height
       })
+
+      const outer = new Box({
+         x1: newBounds.left,
+         x2: newBounds.left + newBounds.width,
+         y1: newBounds.top,
+         y2: newBounds.top + newBounds.height,
+      });
+
+      const getRotatedBounds = (s: Shape) => {
+         if (!s.rotate) {
+            return new Box({
+               x1: Math.min(s.left, s.left + s.width),
+               x2: Math.max(s.left, s.left + s.width),
+               y1: Math.min(s.top, s.top + s.height),
+               y2: Math.max(s.top, s.top + s.height)
+            });
+         }
+         const cx = s.left + s.width / 2;
+         const cy = s.top + s.height / 2;
+         const w2 = Math.abs(s.width) / 2;
+         const h2 = Math.abs(s.height) / 2;
+         const cos = Math.cos(s.rotate);
+         const sin = Math.sin(s.rotate);
+
+         const corners = [
+            { x: -w2, y: -h2 }, { x: w2, y: -h2 },
+            { x: -w2, y: h2 }, { x: w2, y: h2 }
+         ];
+
+         let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+         for (const c of corners) {
+            const rx = cx + c.x * cos - c.y * sin;
+            const ry = cy + c.x * sin + c.y * cos;
+            if (rx < minX) minX = rx;
+            if (rx > maxX) maxX = rx;
+            if (ry < minY) minY = ry;
+            if (ry > maxY) maxY = ry;
+         }
+         return new Box({ x1: minX, x2: maxX, y1: minY, y2: maxY });
+      };
+
+      this._tempShapes = [];
+
+      this._board.shapeStore.forEach((shape) => {
+         if (shape.ID() === this.ID() || shape.type === "selection" || shape.type === "group") return false;
+
+         const inner = getRotatedBounds(shape);
+
+         const isAlreadyInGroup = this._currentShapesIdSet.has(shape.ID());
+
+         // If already in group, indicator shows if partially within (intersects)
+         // If not in group, indicator shows only if fully within (fullyContains)
+         if (isAlreadyInGroup) {
+            if (!outer.intersects(inner)) return false;
+         } else {
+            if (!outer.fullyContains(inner)) return false;
+         }
+
+         this._tempShapes.push({
+            s: shape,
+            oldProps: inner,
+         });
+
+         return false;
+      });
 
       // Do not resize child shapes. Only the group frame changes.
       return [];
@@ -75,18 +150,19 @@ class Group extends Shape {
    mouseup(s: ShapeEventData): void {
       super.mouseup(s);
 
-      // Group bounds
-      const gLeft = this.left;
-      const gTop = this.top;
-      const gRight = this.left + this.width;
-      const gBottom = this.top + this.height;
+      let newShapes: { s: Shape; oldProps: BoxInterface }[] = [];
 
-      const newShapes: { s: Shape; oldProps: BoxInterface }[] = [];
+      const outer = new Box({
+         x1: this.left,
+         y1: this.top,
+         x2: this.left + this.width,
+         y2: this.top + this.height
+      })
 
       // Scan EVERY shape on the board
       this._board?.shapeStore.forEach((shape) => {
-         // Ignore this group itself, and ignore selections
-         if (shape.ID() === this.ID() || shape.type === "selection") {
+         // Ignore this group itself, selections, and other groups to prevent cyclic recursion
+         if (shape.ID() === this.ID() || shape.type === "selection" || shape.type === "group") {
             return false;
          }
 
@@ -95,16 +171,14 @@ class Group extends Shape {
             return false;
          }
 
-         const sLeft = shape.left;
-         const sTop = shape.top;
-         const sRight = shape.left + shape.width;
-         const sBottom = shape.top + shape.height;
+         const inner = new Box({
+            x1: shape.left,
+            y1: shape.top,
+            x2: shape.left + shape.width,
+            y2: shape.top + shape.height
+         })
 
-         // Check if the shape is fully inside the group box
-         const isInside = sLeft >= gLeft && sTop >= gTop && sRight <= gRight && sBottom <= gBottom;
-
-         if (isInside) {
-            shape.groupId = this.ID();
+         if (outer.fullyContains(inner)) {
             newShapes.push({
                s: shape,
                oldProps: {
@@ -114,6 +188,7 @@ class Group extends Shape {
                   y2: shape.top + shape.height,
                },
             });
+            shape.groupId = this.ID();
          } else if (shape.groupId === this.ID()) {
             // Shape was in this group but popped out
             shape.groupId = undefined;
@@ -123,6 +198,7 @@ class Group extends Shape {
       });
 
       this.shapes = newShapes;
+      this._tempShapes = [];
    }
 
    clone(): Shape {
@@ -170,16 +246,23 @@ class Group extends Shape {
    dragging(prev: Point, current: Point) {
       const dx = current.x - prev.x;
       const dy = current.y - prev.y;
-      const affected: Shape[] = [];
-      this.shapes.forEach(({ s }) => {
-         const moved = s.dragging(prev, current);
-         if (moved?.length) affected.push(...moved);
-         affected.push(s);
+
+      this.shapes.forEach((s) => {
+         // guard just incase if it calls itself
+         if (s?.s && this.ID() != s?.s.ID()) {
+            s.s.setSilent({
+               left: s.s.left + dx,
+               top: s.s.top + dy
+            });
+         }
       });
-      this.dragTarget(dx, dy)
-      const conns = super.dragging(prev, current);
-      if (conns?.length) affected.push(...conns);
-      return affected;
+
+      this.set({
+         left: this.left += dx,
+         top: this.top += dy,
+      })
+
+      return this.shapes.map((s) => s.s);
    }
 
    containsPoint(p: Point): boolean {
@@ -249,49 +332,7 @@ class Group extends Shape {
       return obj;
    }
 
-   private getCacheHash(): string {
-      let hash = "";
-      for (let i = 0; i < this.shapes.length; i++) {
-         const s = this.shapes[i].s;
-         hash += `${s.type}:${s.left - this.left},${s.top - this.top},${s.width},${s.height},${s.rotate},${s.scale},${s.stroke},${s.strokeWidth},${s.fill},${s.opacity},${s.text},${s.fontSize},${s.dash?.join("-")}|`;
-         if (s.type === 'path' || s.type === 'line' || s.type === 'freedraw') {
-            if ((s as any).points) {
-               hash += (s as any).points.length + "pts|";
-            }
-         }
-      }
-      return hash;
-   }
-
    draw({ ctx, resize = false, addStyles = true }: DrawProps): void {
-      const currentHash = this.getCacheHash();
-      const cachePadding = 40; // generous padding for strokes
-      
-      if (this._shapeCache === null || this._cacheHash !== currentHash) {
-         this._shapeCache = document.createElement("canvas");
-         
-         const pixelRatio = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1;
-         const cacheScale = pixelRatio * 2; // Cache at 2x resolution to stay sharp
-         
-         const cWidth = this.width + cachePadding * 2;
-         const cHeight = this.height + cachePadding * 2;
-         
-         this._shapeCache.width = cWidth * cacheScale;
-         this._shapeCache.height = cHeight * cacheScale;
-         
-         const cacheCtx = this._shapeCache.getContext("2d");
-         if (cacheCtx) {
-            cacheCtx.scale(cacheScale, cacheScale);
-            // Translate such that (this.left, this.top) is at (cachePadding, cachePadding)
-            cacheCtx.translate(cachePadding - this.left, cachePadding - this.top);
-            
-            this.shapes.forEach((s) => {
-               s?.s.draw({ ctx: cacheCtx, resize: false, addStyles });
-            });
-         }
-         this._cacheHash = currentHash;
-      }
-
       const context = ctx || this.ctx;
       const currentScale = context.getTransform().a;
       const centerX = this.left + this.width / 2;
@@ -303,15 +344,29 @@ class Group extends Shape {
          context.globalAlpha = this.selectionAlpha;
       }
       
-      context.drawImage(
-         this._shapeCache,
-         this.left - cachePadding,
-         this.top - cachePadding,
-         this.width + cachePadding * 2,
-         this.height + cachePadding * 2
-      );
-      
+      this.shapes.forEach(({ s }) => {
+         s.draw({ ctx: context, resize: false, addStyles });
+      });
+
       if (resize) {
+         context.restore();
+      }
+
+      if (resize) {
+         context.save();
+         this._tempShapes.forEach(({ oldProps }) => {
+            if (!oldProps) return;
+            const x = oldProps.x1 - 4;
+            const y = oldProps.y1 - 4;
+            const w = (oldProps.x2 - oldProps.x1) + 8;
+            const h = (oldProps.y2 - oldProps.y1) + 8;
+
+            context.beginPath();
+            context.strokeStyle = INDICATOR_COLOR;
+            context.lineWidth = 2 / currentScale; // Match outlineWidthPx in active_selection
+            context.setLineDash([4 / currentScale, 4 / currentScale]);
+            context.strokeRect(x, y, w, h);
+         });
          context.restore();
       }
 
@@ -333,9 +388,10 @@ class Group extends Shape {
          context.strokeStyle = this.stroke;
          context.lineWidth = 1.5 / currentScale;
          // context.setLineDash([6 / currentScale, 3 / currentScale]);
-         context.globalAlpha = 0.5;
+         // context.globalAlpha = 0.5;
       }
 
+      context.beginPath();
       context.rect(
          this.left - this.padding,
          this.top - this.padding,
@@ -343,6 +399,19 @@ class Group extends Shape {
          this.height + (this.padding << 1),
       );
       context.stroke();
+
+      if (this.title) {
+         context.font = `bold ${14 / currentScale}px ${this.fontFamily || "system-ui"}`;
+         context.fillStyle = this.stroke;
+         context.textAlign = "left";
+         context.textBaseline = "bottom";
+         context.fillText(
+            this.title,
+            this.left - this.padding,
+            this.top - this.padding - 4 / currentScale
+         );
+      }
+
       context.restore();
    }
 }

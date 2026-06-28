@@ -26,8 +26,10 @@ import SvgShape from "./shapes/svg_shape";
 import ExcalidrawShape from "./shapes/excalidraw_shape";
 import ImageShape from "./shapes/image_shape";
 import Group from "./shapes/group";
+import FrameTool from "./tool/frame_tool";
 
 export {
+   FrameTool,
    Pointer,
    Shape,
    Path,

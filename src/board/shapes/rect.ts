@@ -136,7 +136,7 @@ class Rect extends Shape {
    draw({ addStyles = true, ctx, resize = false }: DrawProps): void {
       const context = ctx || this.ctx;
 
-      const r = Math.min(this.rx || 0, this.ry || 0, this.width / 2, this.height / 2);
+      // const r = Math.min(this.rx || 0, this.ry || 0, this.width / 2, this.height / 2);
 
       context.save();
 

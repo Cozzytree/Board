@@ -71,7 +71,7 @@ export function snapShape({
 
    board.shapeStore.forEach((target) => {
       // Skip self
-      if (shape.ID() === target.ID()) return false;
+      if (shape.ID() === target.ID() || shape.groupId) return false;
       // Skip shapes inside the selection
       if (target.connections.forEach((c) => c.s.ID() === shape.ID())) return false;
 
@@ -254,7 +254,7 @@ export function snapResize({
 
    if (direction.includes("t")) sourceH.push({ value: sTop, prop: "top" });
    if (direction.includes("b")) sourceH.push({ value: sBottom, prop: "bottom" });
-   
+
    if (direction.includes("l")) sourceV.push({ value: sLeft, prop: "left" });
    if (direction.includes("r")) sourceV.push({ value: sRight, prop: "right" });
 
@@ -264,7 +264,7 @@ export function snapResize({
    const viewH = board.canvas.height / board.view.scl;
 
    board.shapeStore.forEach((target) => {
-      if (shape.ID() === target.ID()) return false;
+      if (shape.ID() === target.ID() || shape.groupId) return false;
       if (target.connections.forEach((c) => c.s.ID() === shape.ID())) return false;
 
       if (
@@ -335,7 +335,7 @@ export function snapResize({
    if (hCandidates.length > 0) {
       hCandidates.sort((a, b) => a.distance - b.distance);
       const best = hCandidates[0];
-      
+
       if (best.sourceEdge === "top") {
          const delta = best.snappedPos - sTop;
          snappedBounds.top += delta;
@@ -355,7 +355,7 @@ export function snapResize({
    if (vCandidates.length > 0) {
       vCandidates.sort((a, b) => a.distance - b.distance);
       const best = vCandidates[0];
-      
+
       if (best.sourceEdge === "left") {
          const delta = best.snappedPos - sLeft;
          snappedBounds.left += delta;

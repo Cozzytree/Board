@@ -240,7 +240,7 @@ class ActiveSelection extends Shape {
       context.closePath();
 
       const drawHandle = (cx: number, cy: number) => {
-         const size = handleSizePx / currentScale;
+         const size = (handleSizePx / currentScale) % 20;
          context.beginPath();
          context.setLineDash([]);
          context.fillStyle = this._board.background || "#ffffff";

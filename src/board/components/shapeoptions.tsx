@@ -338,14 +338,12 @@ function OptionWrapper({
    icon,
    children,
    className,
-   contentClassName,
    content,
 }: {
    standalone?: boolean;
    icon?: React.ReactNode;
    children?: React.ReactNode;
    className?: string;
-   contentClassName?: string;
    content: React.ReactNode;
 }) {
    if (standalone) return <>{content}</>;
@@ -358,7 +356,7 @@ function OptionWrapper({
                </Button>
             )}
          </PopoverTrigger>
-         <PopoverContent sideOffset={5}>
+         <PopoverContent side="top" sideOffset={5} className="w-fit p-1 md:p-2">
             {content}
          </PopoverContent>
       </Popover>
@@ -526,7 +524,7 @@ function OpacityOption({ debounceMs, className, standalone = false, children, ic
    return (
       <OptionWrapper
          standalone={standalone}
-         icon={<Square opacity={0.5} />}
+         icon={icon || <Square opacity={0.5} />}
          children={children}
          className={className}
          content={content}
@@ -579,7 +577,7 @@ function ArrowOption() {
    );
 }
 
-function StrokeSize({ debounceMs, className, standalone, icon, children }: Props) {
+function StrokeSize({ debounceMs = 50, className, standalone, icon, children }: Props) {
    const { activeShape, canvas, setActiveShape, update } = useBoard();
 
    const handleStrokeSize = debounce((n: number) => {
@@ -598,52 +596,57 @@ function StrokeSize({ debounceMs, className, standalone, icon, children }: Props
    }, debounceMs)
 
    const content = (
-      <div className={className}>
-         {strokeSize.map((s) => (
-            <Button
-               variant={activeShape?.get("strokeWidth") === s ? "default" : "outline"}
-               size={"xs"}
-               key={s}
-               className={cn(
-                  "flex items-center cursor-pointer h-8 rounded-sm",
-                  activeShape?.get("strokeWidth") === s ? "bg-muted" : "",
-               )}
-               onClick={() => {
-                  handleStrokeSize(s);
-               }}>
-               <div className="bg-foreground w-4" style={{ height: s }} />
-            </Button>
-         ))}
+      <div className={"flex flex-col gap-2"}>
+         <div className="flex gap-1">
+            {strokeSize.map((s) => (
+               <button
+                  key={s}
+                  className={cn(
+                     "flex items-center cursor-pointer h-8 rounded-sm",
+                     activeShape?.get("strokeWidth") === s ? "bg-muted" : "",
+                  )}
+                  onClick={() => {
+                     handleStrokeSize(s);
+                  }}>
+                  <div className="bg-foreground w-4" style={{ height: s }} />
+               </button>
+            ))}
+         </div>
 
-         <Input
-            onBlur={(e) => {
-               if (!activeShape) return;
-               const num = parseInt(e.target.value);
-               // Manual event simulation for helperEvent or direct logic
-               if (activeShape instanceof ActiveSelection) {
-                  activeShape.shapes.forEach((sh) => {
-                     if (sh.s) sh.s.set("strokeWidth", num);
-                  });
-               }
-               activeShape.set("strokeWidth", num);
-               const ac = canvas?.getActiveShapes();
-               if (ac) setActiveShape(ac);
-               canvas?.render();
-               update();
-
-            }}
-            onKeyDown={(e) => {
-               if (e.key === 'Enter') {
-                  const num = parseInt(e.currentTarget.value);
-                  if (!isNaN(num) && num > 0) {
-                     (num);
+         <div className="flex flex-col gap-1">
+            <span className="text-sm text-muted-foreground">
+               Custom
+            </span>
+            <Input
+               onBlur={(e) => {
+                  if (!activeShape) return;
+                  const num = parseInt(e.target.value);
+                  // Manual event simulation for helperEvent or direct logic
+                  if (activeShape instanceof ActiveSelection) {
+                     activeShape.shapes.forEach((sh) => {
+                        if (sh.s) sh.s.set("strokeWidth", num);
+                     });
                   }
-                  handleStrokeSize(num);
-               }
-            }}
-            type="number"
-            defaultValue={Number(activeShape?.get("strokeWidth") || 0)}
-         />
+                  activeShape.set("strokeWidth", num);
+                  const ac = canvas?.getActiveShapes();
+                  if (ac) setActiveShape(ac);
+                  canvas?.render();
+                  update();
+
+               }}
+               onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                     const num = parseInt(e.currentTarget.value);
+                     if (!isNaN(num) && num > 0) {
+                        (num);
+                     }
+                     handleStrokeSize(num);
+                  }
+               }}
+               type="number"
+               defaultValue={Number(activeShape?.get("strokeWidth") || 0)}
+            />
+         </div>
       </div>
    );
 
@@ -651,6 +654,7 @@ function StrokeSize({ debounceMs, className, standalone, icon, children }: Props
       <OptionWrapper
          standalone={standalone}
          icon={
+            icon ||
             <Minus
                style={{
                   transform: `scaleY(${Math.min(Math.max((activeShape?.get("strokeWidth") || 1) * 0.5, 1), 3)})`,
@@ -659,7 +663,6 @@ function StrokeSize({ debounceMs, className, standalone, icon, children }: Props
          }
          children={children}
          className={className}
-         contentClassName={cn("w-fit p-2", className)}
          content={content}
       />
    );
@@ -780,7 +783,7 @@ function StrokeOption({ debounceMs = 200, className, standalone = false, icon, m
                {content()}
             </>
             :
-            <div className="w-full flex justify-between items-center">
+            <div className="w-fit flex justify-between items-center">
                {!mobile &&
                   <div onClick={(e) => {
                      const target = e.target as HTMLElement;
@@ -801,8 +804,8 @@ function StrokeOption({ debounceMs = 200, className, standalone = false, icon, m
                   </div>
                }
                <Popover>
-                  <PopoverTrigger asChild>
-                     <button className={cn("relative")}>
+                  <PopoverTrigger asChild className="w-fit">
+                     <button className={"relative w-fit"}>
                         {icon ||
                            <div
                               className="bottom-1 right-1 w-6 h-6 rounded-sm border border-background"
@@ -844,7 +847,7 @@ function FillOption({ debounceMs = 200, className, standalone = false, icon, mob
    const content = () => {
       const activeShade = generateShades(activeShape?.get("fill") || "");
       return (
-         <div className="flex flex-col w-32 space-y-4">
+         <div className="flex flex-col w-fit space-y-4">
             <div className="flex flex-col gap-1">
                <span className="text-xs text-muted-foreground w-12">Colors</span>
                <div className="grid grid-cols-5 gap-1"
@@ -954,7 +957,7 @@ function FillOption({ debounceMs = 200, className, standalone = false, icon, mob
                {content()}
             </>
             :
-            <div className="w-full flex items-center justify-between">
+            <div className="w-fit flex items-center justify-between">
                {!mobile &&
                   <div onClick={(e) => {
                      const target = e.target as HTMLElement;
@@ -976,11 +979,11 @@ function FillOption({ debounceMs = 200, className, standalone = false, icon, mob
                }
                <Popover>
                   <PopoverTrigger asChild>
-                     <button className={cn("relative")}>
+                     <button className={"relative w-6 h-6 border rounded-sm"}>
                         {icon ||
                            <>
                               <div
-                                 className="bottom-1 right-1 w-6 h-6 rounded-sm border border-background"
+                                 className=""
                                  style={{ background: activeShape?.get("fill") || "transparent" }}
                               />
                            </>
@@ -1025,7 +1028,7 @@ function ItalicOption({ debounceMs = 200 }: { debounceMs?: number }) {
    );
 }
 
-function AlignOptions({ debounceMs = 200 }: { debounceMs?: number }) {
+function AlignOptions({ debounceMs = 100, standalone, icon, children, className }: Props) {
    const { activeShape, canvas, update } = useBoard();
    const handleUpdate = debounce(() => update(), debounceMs);
 
@@ -1042,8 +1045,7 @@ function AlignOptions({ debounceMs = 200 }: { debounceMs?: number }) {
    };
 
    const currentAlign = (activeShape?.get("textAlign") as textAlign) || "center";
-
-   return (
+   const content = () => (
       <div className="flex bg-muted/50 rounded-md p-0.5 border border-border/50">
          <Button
             variant={currentAlign === "left" ? "secondary" : "ghost"}
@@ -1067,6 +1069,16 @@ function AlignOptions({ debounceMs = 200 }: { debounceMs?: number }) {
             <AlignRightIcon className={cn("h-3.5 w-3.5")} />
          </Button>
       </div>
+   )
+
+   return (
+      <OptionWrapper
+         content={content()}
+         children={children}
+         className={className}
+         standalone={standalone}
+         icon={icon}
+      />
    );
 }
 
@@ -1162,7 +1174,7 @@ function FontSizes({ debounceMs = 200, className, standalone, icon, children }: 
    );
 }
 
-function FontFamilyOption({ debounceMs = 200, className }: Props) {
+function FontFamilyOption({ debounceMs = 200, className, standalone }: Props) {
    const { activeShape, canvas, update } = useBoard();
    const handleUpdate = debounce(() => update(), debounceMs);
 
@@ -1194,22 +1206,26 @@ function FontFamilyOption({ debounceMs = 200, className }: Props) {
    return (
       <TooltipProvider>
          <div className={cn("flex items-center gap-1", className)}>
-            {mainFonts.map((f) => (
-               <Tooltip key={f.value}>
-                  <TooltipTrigger asChild>
-                     <Button
-                        variant={currentFont === f.value ? "secondary" : "ghost"}
-                        size="sm"
-                        onClick={() => handleSetFont(f.value)}
-                     >
-                        {getIconComponent(f.iconName as string)}
-                     </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                     <p>{f.label}</p>
-                  </TooltipContent>
-               </Tooltip>
-            ))}
+            {!standalone &&
+               <>
+                  {mainFonts.map((f) => (
+                     <Tooltip key={f.value}>
+                        <TooltipTrigger asChild>
+                           <Button
+                              variant={currentFont === f.value ? "secondary" : "ghost"}
+                              size="sm"
+                              onClick={() => handleSetFont(f.value)}
+                           >
+                              {getIconComponent(f.iconName as string)}
+                           </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                           <p>{f.label}</p>
+                        </TooltipContent>
+                     </Tooltip>
+                  ))}
+               </>
+            }
 
             {/* Extra button for all options */}
             <Popover>
@@ -1241,7 +1257,7 @@ function FontFamilyOption({ debounceMs = 200, className }: Props) {
    );
 }
 
-function RoughnessOption({ debounceMs, className, standalone, icon, children }: Props) {
+function RoughnessOption({ debounceMs = 100, className, standalone, children }: Props) {
    const { activeShape, canvas, update } = useBoard();
 
    // Provide a fallback of 1 (Artist) if roughness isn't explicitly set yet
@@ -1452,8 +1468,7 @@ function StrokeDash({ debounceMs = 200, className, standalone, icon, children }:
 }
 
 function RotationOption({ debounceMs = 200, className, standalone, icon, children }: Props) {
-   const { activeShape, canvas, update } = useBoard();
-   const handleUpdate = debounce(() => update(), debounceMs);
+   const { activeShape, canvas } = useBoard();
 
    const getRotation = () => {
       if (!activeShape) return 0;
@@ -1476,8 +1491,8 @@ function RotationOption({ debounceMs = 200, className, standalone, icon, childre
                type="range"
                min="0"
                max="360"
-               value={localRotation}
-               onChange={(e) => {
+               defaultValue={localRotation}
+               onChange={debounce((e) => {
                   if (!activeShape || !canvas) return;
                   const deg = Number(e.target.value);
                   setLocalRotation(deg);
@@ -1493,8 +1508,7 @@ function RotationOption({ debounceMs = 200, className, standalone, icon, childre
                   activeShape.set("rotate", rad);
                   activeShape.setCoords();
                   canvas.render();
-                  handleUpdate();
-               }}
+               }, debounceMs)}
                className="flex-1"
             />
             <span className="text-xs w-8 text-right">{localRotation}°</span>
@@ -1506,7 +1520,7 @@ function RotationOption({ debounceMs = 200, className, standalone, icon, childre
                   variant="outline"
                   size="xs"
                   className="h-6 text-[10px]"
-                  onClick={() => {
+                  onClick={debounce(() => {
                      if (!activeShape || !canvas) return;
                      const rad = (deg * Math.PI) / 180;
                      if (activeShape instanceof ActiveSelection) {
@@ -1518,13 +1532,12 @@ function RotationOption({ debounceMs = 200, className, standalone, icon, childre
                      activeShape.setCoords();
                      canvas.render();
                      setLocalRotation(deg);
-                     handleUpdate();
-                  }}>
+                  }, debounceMs)} >
                   {deg}°
                </Button>
             ))}
          </div>
-      </div>
+      </div >
    );
 
    return (
@@ -1544,7 +1557,7 @@ function RotationOption({ debounceMs = 200, className, standalone, icon, childre
    );
 }
 
-function VerticalAlignOptions({ debounceMs = 200 }: { debounceMs?: number }) {
+function VerticalAlignOptions({ debounceMs = 50, children, className, icon, standalone }: Props) {
    const { activeShape, canvas, update } = useBoard();
    const handleUpdate = debounce(() => update(), debounceMs);
 
@@ -1563,7 +1576,7 @@ function VerticalAlignOptions({ debounceMs = 200 }: { debounceMs?: number }) {
    const currentAlign =
       (activeShape?.get("verticalAlign") as "top" | "center" | "bottom") || "center";
 
-   return (
+   const content = (
       <div className="flex bg-muted/50 rounded-md p-0.5 border border-border/50">
          <Button
             variant={currentAlign === "top" ? "secondary" : "ghost"}
@@ -1588,6 +1601,15 @@ function VerticalAlignOptions({ debounceMs = 200 }: { debounceMs?: number }) {
          </Button>
       </div>
    );
+   return (
+      <OptionWrapper
+         content={content}
+         children={children}
+         className={className}
+         icon={icon}
+         standalone={standalone}
+      />
+   )
 }
 
 function DuplicateOption({ className }: Props) {
@@ -1628,34 +1650,26 @@ function ZOrderButtons({ debounceMs = 200, className }: { debounceMs?: number, c
 
    return (
       <div className={className}>
-         <Button
-            variant="outline"
-            size="sm"
-            className="border-none"
+         <button
+            className="border rounded-sm p-1"
             onClick={() => { canvas?.bringToFront(activeShape as Shape); handleUpdate(); }}>
-            <BringToFront className="h-3.5 w-3.5" />
-         </Button>
-         <Button
-            variant="outline"
-            size="sm"
-            className="border-none"
+            <BringToFront className="h-4 w-4" />
+         </button>
+         <button
+            className="border rounded-sm p-1"
             onClick={() => { canvas?.bringForward(activeShape as Shape); handleUpdate(); }}>
-            <ChevronUp className="h-3.5 w-3.5" />
-         </Button>
-         <Button
-            variant="outline"
-            size="sm"
-            className="border-none"
+            <ChevronUp className="h-4 w-4" />
+         </button>
+         <button
+            className="border rounded-sm p-1"
             onClick={() => { canvas?.sendBackward(activeShape as Shape); handleUpdate(); }}>
-            <ChevronDown className="h-3.5 w-3.5" />
-         </Button>
-         <Button
-            variant="outline"
-            size="sm"
-            className="border-none"
+            <ChevronDown className="h-4 w-4" />
+         </button>
+         <button
+            className="border rounded-sm p-1"
             onClick={() => { canvas?.sendToBack(activeShape as Shape); handleUpdate(); }}>
-            <SendToBack className="h-3.5 w-3.5" />
-         </Button>
+            <SendToBack className="h-4 w-4" />
+         </button>
       </div>
    );
 }

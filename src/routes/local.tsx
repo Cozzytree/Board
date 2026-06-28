@@ -1,6 +1,5 @@
 import { BoardProvider } from "@/board/board_provider";
 import { BoardToolbar } from "@/board/components/toolbar";
-import { BoardShapeOptions } from "@/board/components/shapeoptions";
 import { BoardZoomControls } from "@/board/components/zoom_controls";
 import { BoardCenterButton } from "@/board/components/center_button";
 import { BoardLibrarySidebar } from "@/board/components/library_sidebar";
@@ -10,9 +9,9 @@ import React from "react";
 import { useTheme } from "@/components/theme-provider";
 import { StatsForNerds } from "@/board/components/stat";
 import CanvasOptions from "@/board/components/canvas_options";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { MenuIcon } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import ExcalidrawOptionsPanel from "@/components/excalidraw-style-options";
 
 export const Route = createFileRoute("/local")({
    component: LocalBoardPage,
@@ -48,7 +47,7 @@ function LocalBoardPage() {
 
 /** Separated so it can call useBoard() inside the provider tree */
 function BoardUI() {
-   const { isMinimal, activeShape } = useBoard();
+   const { isMinimal } = useBoard();
 
    return (
       <>
@@ -68,7 +67,6 @@ function BoardUI() {
                   return;
                }
 
-               console.log("Loading file:", file.name);
                const reader = new FileReader();
                reader.onload = (evt) => {
                   try {
@@ -93,41 +91,41 @@ function BoardUI() {
          <div className="pointer-events-auto z-50 fixed left-1/2 -translate-x-1/2 bottom-4 flex justify-center max-w-[95vw] overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
             {!isMinimal && <BoardToolbar />}
          </div>
-         {!isMinimal &&
-            <div className="absolute top-5 right-5 z-50">
-               <BoardLibrarySidebar className="z-[999]" />
-            </div>
-         }
 
-         <div className="absolute z-[999] top-4 right-16">
-            <BoardCenterButton />
+         <div className="w-full flex justify-between items-center z-[99] px-5 fixed top-0 left-0 h-10">
+            <Popover>
+               <PopoverTrigger className="bg-muted px-1 rounded-sm">
+                  <MenuIcon width={15} className="text-muted-foreground" />
+               </PopoverTrigger>
+               <PopoverContent
+                  align="end"
+                  className="p-1"
+                  onInteractOutside={(e) => {
+                     if (e.type === "focusoutside") {
+                        e.preventDefault();
+                     }
+                  }}
+               >
+                  <CanvasOptions />
+               </PopoverContent>
+            </Popover>
+            <div className="flex items-center gap-2">
+               <div className="">
+                  <BoardCenterButton />
+               </div>
+               {!isMinimal &&
+                  <div>
+                     <BoardLibrarySidebar className="z-[999]" />
+                  </div>
+               }
+            </div>
          </div>
 
-         <Popover>
-            <PopoverTrigger className="absolute bg-muted z-[999] px-1 rounded-sm left-4 top-5">
-               <MenuIcon width={15} className="text-muted-foreground" />
-            </PopoverTrigger>
-            <PopoverContent
-               align="end"
-               onInteractOutside={(e) => {
-                  if (e.type === "focusoutside") {
-                     e.preventDefault();
-                  }
-               }}
-            >
-               <CanvasOptions />
-            </PopoverContent>
-         </Popover>
-
-         <div className="absolute z-[999] bottom-2 left-2 hidden md:flex">
+        <div className="absolute z-[999] bottom-2 left-2">
             <BoardZoomControls />
          </div>
-         {!isMinimal && activeShape && (
-            <div className="absolute z-[999] top-4 left-1/2 -translate-x-1/2 max-w-[90vw] md:max-w-none overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
-               <BoardShapeOptions />
-            </div>
-         )}
-         <StatsForNerds className="bg-background fixed z-[999] top-20 right-5" />
+         <StatsForNerds className="backdrop-blur fixed z-[999] top-10 md:top-15 right-2 md:right-5" />
+         <ExcalidrawOptionsPanel />
       </>
    );
 }

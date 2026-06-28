@@ -145,7 +145,7 @@ export interface BoardInterface {
    registerSvgIcon(name: string, svgString: string): boolean;
 }
 
-export type modes = "cursor" | "shape" | "line" | "draw" | "text" | "eraser" | "image";
+export type modes = "cursor" | "shape" | "line" | "draw" | "text" | "eraser" | "image" | "frame";
 
 export type submodeline = "line:straight" | "line:anchor" | "line:curve";
 export type submodecursor = "grab" | "free";

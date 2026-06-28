@@ -68,7 +68,7 @@ export function StatsForNerds({ className }: ClassProps) {
    }
 
    return (
-      <div className={cn("bg-background shadow-xl border rounded-lg p-3 md:p-4 w-48 md:w-64 pointer-events-auto", className)}>
+      <div className={cn("shadow-xl border rounded-lg p-3 md:p-4 w-42 md:w-64 pointer-events-auto", className)}>
          <div className="flex justify-between items-center mb-3 md:mb-4">
             <h3 className="text-xs md:text-sm font-semibold text-gray-800 dark:text-gray-200">Stats for nerds</h3>
             <button onClick={() => setStat(false)} className="text-gray-500 hover:text-gray-700 p-1 rounded-md hover:bg-gray-100 transition-colors">

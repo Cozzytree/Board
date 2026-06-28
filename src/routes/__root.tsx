@@ -2,6 +2,7 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { QueryClientProvider, type QueryClient } from "@tanstack/react-query";
 import { createRootRouteWithContext, useRouteContext } from "@tanstack/react-router";
 import { Outlet } from "@tanstack/react-router";
+import { TooltipProvider } from "@/components/ui/tooltip"
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
   component: RootComponent,
@@ -12,9 +13,11 @@ function RootComponent() {
   return (
     <QueryClientProvider client={context.queryClient}>
       <ThemeProvider defaultTheme="dark" storageKey="border">
-        <div className="w-full">
-          <Outlet />
-        </div>
+         <TooltipProvider>
+            <div className="w-full">
+                <Outlet />
+            </div>
+         </TooltipProvider>
       </ThemeProvider>
     </QueryClientProvider>
   );
