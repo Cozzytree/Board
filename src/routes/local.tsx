@@ -8,8 +8,9 @@ import React, { Suspense } from "react";
 import { useTheme } from "@/components/theme-provider";
 import { StatsForNerds } from "@/board/components/stat";
 import CanvasOptions from "@/board/components/canvas_options";
-import { MenuIcon } from "lucide-react";
+import { MenuIcon, RedoIcon, UndoIcon } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Button } from "@/components/ui/button";
 const BoardProvider = React.lazy(() =>
    import("@/board/board_provider").then((m) => ({
       default: m.BoardProvider
@@ -55,7 +56,7 @@ function LocalBoardPage() {
 
 /** Separated so it can call useBoard() inside the provider tree */
 function BoardUI() {
-   const { isMinimal } = useBoard();
+   const { isMinimal, undo, redo, undoStack, redoStack } = useBoard();
 
    return (
       <>
@@ -96,7 +97,7 @@ function BoardUI() {
             }}
          />
 
-         <div className="pointer-events-auto z-50 fixed left-1/2 -translate-x-1/2 bottom-4 flex justify-center max-w-[95vw] overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+         <div className="pointer-events-auto z-50 fixed right-0 md:left-1/2 -translate-x-1/2 bottom-4 flex justify-center max-w-[95vw] overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
             {!isMinimal && <BoardToolbar />}
          </div>
 
@@ -129,8 +130,35 @@ function BoardUI() {
             </div>
          </div>
 
-         <div className="absolute z-[999] bottom-2 left-2">
+         <div className="absolute z-[999] bottom-2 left-2 flex items-center gap-2">
             <BoardZoomControls />
+            <Button
+               onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  undo();
+               }}
+               onPointerDown={(e) => e.stopPropagation()}
+               onPointerUp={(e) => e.stopPropagation()}
+               disabled={undoStack.length <= 1}
+               variant={"outline"} size="xs"
+               className="border-none">
+               <UndoIcon />
+            </Button>
+            <Button
+               onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  redo();
+               }}
+               onPointerDown={(e) => e.stopPropagation()}
+               onPointerUp={(e) => e.stopPropagation()}
+               disabled={redoStack.length === 0}
+               variant={"outline"}
+               size="xs"
+               className="border-none">
+               <RedoIcon />
+            </Button>
          </div>
          <StatsForNerds className="backdrop-blur fixed z-[999] top-10 md:top-15 right-2 md:right-5" />
          <Suspense fallback={null}>

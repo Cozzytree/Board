@@ -181,7 +181,7 @@ abstract class Shape implements ShapeProps {
       this.id = id || uuidv4();
       this.selectionColor = selectionColor || HoveredColor;
       this.selectionStrokeWidth = selectionStrokeWidth || 1;
-      this.selectionAlpha = selectionAlpha || 0.4;
+      this.selectionAlpha = selectionAlpha || 0.8;
       this.selectionDash = selectionDash || [0, 0];
       this.selectionFill = selectionFill || "#20202050";
       this.italic = italic || false;

@@ -13,7 +13,9 @@ export function BoardZoomControls() {
             className="cursor-pointer">
             <PlusIcon className="w-3.5 h-3.5"/>
          </button>
-         <span className="text-xs">{zoom.toFixed(0)} %</span>
+         <span className="text-xs" onClick={() => {
+         }}
+         >{zoom.toFixed(0)} %</span>
          <button
             onClick={() => {
                handleZoom(false);

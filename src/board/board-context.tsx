@@ -46,8 +46,12 @@ export type ContextProps = {
    width: number;
    height: number;
 
+   snapGrid: boolean,
+   setSnapGrid: (v: boolean) => void;
+
    undoStack: Record<string, any>[][],
    redoStack: Record<string, any>[][],
+   historyVersion: number,
    undo: () => void,
    redo: () => void
 };

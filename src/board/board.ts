@@ -27,6 +27,7 @@ type view_t = { x: number; y: number; scl: number };
 import { INDICATOR_COLOR } from "./constants";
 
 type BoardProps = {
+   snapGrid?: boolean;
    indicatorColor: string;
    scrollEase?: number;
    initialShapes: any[];
@@ -53,6 +54,7 @@ type BoardProps = {
 type EventCallback = (e: EventData) => void;
 
 class Board implements BoardInterface {
+   snapGrid: boolean;
    indicatorColor: string;
    onZoomCallback: (n: view_t) => void;
    onScroll: (view: view_t) => void;
@@ -232,11 +234,13 @@ class Board implements BoardInterface {
       onScroll,
       customShapes = [],
       onImageUpload,
-   isLocked = false,
-   indicatorColor
-}: BoardProps) {
-   this.indicatorColor = indicatorColor || INDICATOR_COLOR;
-   this.isLocked = isLocked;
+      isLocked = false,
+      snapGrid = false,
+      indicatorColor
+   }: BoardProps) {
+      this.snapGrid = snapGrid,
+         this.indicatorColor = indicatorColor || INDICATOR_COLOR;
+      this.isLocked = isLocked;
       this.scrollEase = scrollEase ?? 0.5;
       this.customShapes = new Map();
       customShapes.forEach((s) => {
@@ -303,7 +307,8 @@ class Board implements BoardInterface {
       this.canvas.addEventListener("click", this.handleClick);
       this.canvas.addEventListener("pointerdown", this.handlePointerDown);
       document.addEventListener("pointermove", this.handlePointerMove);
-      this.canvas.addEventListener("pointerup", this.handlePointerUp);
+      // this.canvas.addEventListener("pointerup", this.handlePointerUp);
+      document.addEventListener("pointerup", this.handlePointerUp);
       this.canvas.addEventListener("dblclick", this.handleDoubleClick);
       window.addEventListener("wheel", this.handleWheel, { passive: false });
 
@@ -580,7 +585,7 @@ class Board implements BoardInterface {
 
    async renderRemoteSelectionsAsync() {
       if (!this.ctxRemote) return;
-      
+
       // Yield to macrotask/microtask to avoid blocking main thread
       await new Promise((resolve) => requestAnimationFrame(resolve));
 
@@ -588,7 +593,7 @@ class Board implements BoardInterface {
       this.ctxRemote.clearRect(0, 0, this.cssWidth, this.cssHeight);
 
       const { view, ctxRemote } = this;
-      
+
       const viewLeft = -view.x / view.scl;
       const viewTop = -view.y / view.scl;
       const viewRight = viewLeft + this.cssWidth / view.scl;
@@ -620,7 +625,7 @@ class Board implements BoardInterface {
 
          for (const id of shapeIds) {
             if (localActiveShapeIds.has(id)) continue;
-            
+
             const shape = this.shapeStore.get(id);
             if (!shape) continue;
             foundAny = true;
@@ -656,6 +661,72 @@ class Board implements BoardInterface {
       ctxRemote.restore();
    }
 
+   private drawGrid(ctx: CanvasRenderingContext2D, view: { x: number, y: number, scl: number }, viewLeft: number, viewTop: number, viewRight: number, viewBottom: number) {
+      const baseGridSizeX = 20;
+      const baseGridSizeY = 20;
+      let scaleMultiplier = 1;
+      if (view.scl < 0.5) scaleMultiplier = 2;
+      if (view.scl < 0.25) scaleMultiplier = 4;
+      if (view.scl < 0.1) scaleMultiplier = 8;
+
+      const gridSizeX = baseGridSizeX * scaleMultiplier;
+      const gridSizeY = baseGridSizeY * scaleMultiplier;
+      const majorGridX = gridSizeX * 6; // 6 subdivisions horizontally
+      const majorGridY = gridSizeY * 5; // 5 subdivisions vertically
+
+      const startX = Math.floor(viewLeft / gridSizeX) * gridSizeX;
+      const startY = Math.floor(viewTop / gridSizeY) * gridSizeY;
+
+      ctx.save();
+      ctx.translate(view.x, view.y);
+      ctx.scale(view.scl, view.scl);
+
+      ctx.strokeStyle = this.foreground;
+
+      // Minor grid (dashed lines)
+      ctx.beginPath();
+      ctx.lineWidth = 1 / view.scl;
+      ctx.globalAlpha = 0.15;
+      ctx.setLineDash([4 / view.scl, 4 / view.scl]);
+
+      for (let x = startX; x < viewRight; x += gridSizeX) {
+         const modX = Math.abs(x % majorGridX);
+         const isMajor = modX < 0.1 || Math.abs(modX - majorGridX) < 0.1;
+         if (isMajor) continue;
+         ctx.moveTo(x, viewTop);
+         ctx.lineTo(x, viewBottom);
+      }
+      for (let y = startY; y < viewBottom; y += gridSizeY) {
+         const modY = Math.abs(y % majorGridY);
+         const isMajor = modY < 0.1 || Math.abs(modY - majorGridY) < 0.1;
+         if (isMajor) continue;
+         ctx.moveTo(viewLeft, y);
+         ctx.lineTo(viewRight, y);
+      }
+      ctx.stroke();
+
+      // Major grid (solid lines)
+      ctx.beginPath();
+      ctx.lineWidth = (1 / view.scl) % 2;
+      ctx.globalAlpha = 0.25;
+      ctx.setLineDash([]); // solid
+
+      const startMajorX = Math.floor(viewLeft / majorGridX) * majorGridX;
+      const startMajorY = Math.floor(viewTop / majorGridY) * majorGridY;
+
+      for (let x = startMajorX; x < viewRight; x += majorGridX) {
+         ctx.moveTo(x, viewTop);
+         ctx.lineTo(x, viewBottom);
+      }
+      for (let y = startMajorY; y < viewBottom; y += majorGridY) {
+         ctx.moveTo(viewLeft, y);
+         ctx.lineTo(viewRight, y);
+      }
+      ctx.stroke();
+
+      ctx.restore();
+   }
+
    /** Internal: actual draw logic */
    private _drawFrame() {
       this.syncCanvasResolution();
@@ -672,6 +743,10 @@ class Board implements BoardInterface {
       const viewTop = -view.y / view.scl;
       const viewRight = viewLeft + this.cssWidth / view.scl;
       const viewBottom = viewTop + this.cssHeight / view.scl;
+
+      if (this.snapGrid) {
+         this.drawGrid(ctx, view, viewLeft, viewTop, viewRight, viewBottom);
+      }
 
       ctx.save();
       ctx.translate(view.x, view.y);
@@ -733,7 +808,7 @@ class Board implements BoardInterface {
 
    private onmousemove(e: PointerEvent | MouseEvent | TouchEvent) {
       if (this.isLocked) return;
-      
+
       if (typeof TouchEvent !== "undefined" && e instanceof TouchEvent) {
          if (e.cancelable) {
             e.preventDefault(); // Prevents pull-to-refresh and scroll takeover
@@ -843,10 +918,10 @@ class Board implements BoardInterface {
 
       if ("touches" in e) {
          const touchEvent = e as TouchEvent;
-         const t = touchEvent.touches.length > 0 
-            ? touchEvent.touches[0] 
+         const t = touchEvent.touches.length > 0
+            ? touchEvent.touches[0]
             : (touchEvent.changedTouches && touchEvent.changedTouches.length > 0 ? touchEvent.changedTouches[0] : null);
-            
+
          if (t) {
             clientX = t.clientX;
             clientY = t.clientY;
@@ -900,7 +975,8 @@ class Board implements BoardInterface {
       this.canvas.removeEventListener("pointerdown", this.handlePointerDown);
       // this.canvas.removeEventListener("pointermove", this.handlePointerMove);
       document.removeEventListener("pointermove", this.handlePointerMove);
-      this.canvas.removeEventListener("pointerup", this.handlePointerUp);
+      // this.canvas.removeEventListener("pointerup", this.handlePointerUp);
+      document.removeEventListener("pointerup", this.handlePointerUp);
       window.removeEventListener("wheel", this.handleWheel);
       if (this.currentTool) {
          this.currentTool.cleanUp();
@@ -933,18 +1009,20 @@ class Board implements BoardInterface {
 
    private onWheel(e: WheelEvent | Event) {
       const target = e.target as HTMLElement;
-      if (target.tagName !== "CANVAS") return;
 
 
       if (this.isLocked) return;
-      e.preventDefault();
       // Calculate cursor position in original CSS pixels relative to top-left of canvas
       const rawX = (e as WheelEvent).offsetX;
       const rawY = (e as WheelEvent).offsetY;
 
       if (!(e as WheelEvent).ctrlKey) {
+         if (target.tagName !== "CANVAS") return;
          this.view.y = (e as WheelEvent).deltaY > 0 ? this.view.y - 80 : this.view.y + 80;
       } else {
+         e.preventDefault();
+
+         if (target.tagName !== "CANVAS") return;
          // this.evt.dscl = e.deltaY > 0 ? 8 / 10 : 10 / 8;
          const dscl = (e as WheelEvent).deltaY > 0 ? 8 / 10 : 10 / 8;
 

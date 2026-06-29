@@ -783,7 +783,7 @@ function StrokeOption({ debounceMs = 200, className, standalone = false, icon, m
                {content()}
             </>
             :
-            <div className="w-fit flex justify-between items-center">
+            <div className={cn("w-fit flex justify-between items-center", className)}>
                {!mobile &&
                   <div onClick={(e) => {
                      const target = e.target as HTMLElement;
@@ -814,7 +814,7 @@ function StrokeOption({ debounceMs = 200, className, standalone = false, icon, m
                         }
                      </button>
                   </PopoverTrigger>
-                  <PopoverContent className={cn("w-fit p-3", className)}>
+                  <PopoverContent className={"w-fit p-3"}>
                      {content()}
                   </PopoverContent>
                </Popover>
@@ -847,7 +847,7 @@ function FillOption({ debounceMs = 200, className, standalone = false, icon, mob
    const content = () => {
       const activeShade = generateShades(activeShape?.get("fill") || "");
       return (
-         <div className="flex flex-col w-fit space-y-4">
+         <div className="flex flex-col w-32 space-y-4">
             <div className="flex flex-col gap-1">
                <span className="text-xs text-muted-foreground w-12">Colors</span>
                <div className="grid grid-cols-5 gap-1"
@@ -957,7 +957,7 @@ function FillOption({ debounceMs = 200, className, standalone = false, icon, mob
                {content()}
             </>
             :
-            <div className="w-fit flex items-center justify-between">
+            <div className={cn("w-fit flex justify-between items-center", className)}>
                {!mobile &&
                   <div onClick={(e) => {
                      const target = e.target as HTMLElement;
@@ -978,19 +978,17 @@ function FillOption({ debounceMs = 200, className, standalone = false, icon, mob
                   </div>
                }
                <Popover>
-                  <PopoverTrigger asChild>
-                     <button className={"relative w-6 h-6 border rounded-sm"}>
+                  <PopoverTrigger asChild className="w-fit">
+                     <button className={"relative w-fit"}>
                         {icon ||
-                           <>
-                              <div
-                                 className=""
-                                 style={{ background: activeShape?.get("fill") || "transparent" }}
-                              />
-                           </>
+                           <div
+                              className="bottom-1 right-1 w-6 h-6 rounded-sm border border-background"
+                              style={{ background: activeShape?.get("fill") || "currentColor" }}
+                           />
                         }
                      </button>
                   </PopoverTrigger>
-                  <PopoverContent className={cn("w-fit p-3", className)}>
+                  <PopoverContent className={"w-fit p-3"}>
                      {content()}
                   </PopoverContent>
                </Popover>

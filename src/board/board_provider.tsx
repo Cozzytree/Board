@@ -20,6 +20,7 @@ import {
    type LucideIcon,
    Cloud,
    ImageIcon,
+   CheckIcon,
 } from "lucide-react";
 import { debounce } from "@/lib/utils";
 import Board from "./board.ts";
@@ -144,6 +145,13 @@ const BoardProvider = ({
       const val = localStorage.getItem(STAT_STORAGE_KEY);
       return Boolean(val) || false;
    });
+   const [snapGrid, setSnapGrid] = React.useState(() => {
+      try {
+         return localStorage.getItem("grid_snap") === "true"
+      } catch {
+         return false;
+      }
+   });
    const [offset, setOffset] = React.useState<[number, number]>([0, 0]);
    const [zoom, setZoom] = React.useState(100);
    const [activeShape, setActiveShape] = React.useState<Shape | null>(null);
@@ -170,6 +178,19 @@ const BoardProvider = ({
          } catch (err) {
             console.error(err);
          }
+         setSnapGrid(() => false);
+         return next;
+      });
+   }, []);
+   const handleSetGridSnap = React.useCallback((v: boolean | ((prev: boolean) => boolean)) => {
+      setSnapState((prev) => {
+         const next = typeof v === "function" ? v(prev) : v;
+         try {
+            localStorage.setItem("grid_snap", String(next));
+         } catch (err) {
+            console.error(err);
+         }
+         setSnapState(() => false);
          return next;
       });
    }, []);
@@ -291,6 +312,7 @@ const BoardProvider = ({
    const undoStack = React.useRef<Record<string, any>[][]>([]);
    const redoStack = React.useRef<Record<string, any>[][]>([]);
    const isUndoing = React.useRef(false);
+   const [historyVersion, setHistoryVersion] = React.useState(0);
 
    const serializeBoard = React.useCallback((board: Board) => {
       const shapes: Record<string, any>[] = [];
@@ -323,6 +345,7 @@ const BoardProvider = ({
          undoStack.current.shift();
       }
       redoStack.current = [];
+      setHistoryVersion((v) => v + 1);
    }, [serializeBoard]);
 
    const restoreShapesFromData = React.useCallback((board: Board, data: Record<string, any>[]) => {
@@ -489,19 +512,21 @@ const BoardProvider = ({
          restoreShapesFromData(board, prevState);
          saveShapesToStorage(board);
          isUndoing.current = false;
+         setHistoryVersion((v) => v + 1);
       }
-   }, [])
+   }, [restoreShapesFromData])
 
    const handleRedo = React.useCallback((board: Board) => {
       if (redoStack.current.length > 0) {
          isUndoing.current = true;
-         undoStack.current.push(serializeBoard(board));
          const nextState = redoStack.current.pop()!;
+         undoStack.current.push(nextState);
          restoreShapesFromData(board, nextState);
          saveShapesToStorage(board);
          isUndoing.current = false;
+         setHistoryVersion((v) => v + 1);
       }
-   }, [])
+   }, [restoreShapesFromData])
 
    React.useLayoutEffect(() => {
       if (!canvasRef.current || !canvas2Ref.current) return;
@@ -509,6 +534,7 @@ const BoardProvider = ({
       const debouncedSaveViewToStorage = debounce((board: Board) => saveViewToStorage(board), 200);
 
       const newBoard = new Board({
+         snapGrid,
          scrollEase: 1,
          isLocked: isLockedCanvas,
          initialShapes: initialShapes || [],
@@ -696,7 +722,8 @@ const BoardProvider = ({
       borderRef.current.hoverEffect = isHover;
       borderRef.current.foreground = foreground;
       borderRef.current.background = background;
-   }, [isSnap, isHover, foreground, background]);
+      borderRef.current.snapGrid = snapGrid;
+   }, [isSnap, isHover, foreground, background, snapGrid]);
 
    const handleModeChange = React.useCallback((m: modes, sm: submodes | null) => {
       if (!borderRef.current) return;
@@ -926,13 +953,16 @@ const BoardProvider = ({
          <ContextMenu>
             <BoardContext.Provider
                value={{
+                  snapGrid,
+                  setSnapGrid: handleSetGridSnap,
                   undoStack: undoStack.current,
                   redoStack: redoStack.current,
+                  historyVersion,
                   undo() {
                      if (!borderRef.current) return;
                      handleUndo(borderRef.current);
                   },
-                  redo(){
+                  redo() {
                      if (!borderRef.current) return;
                      handleRedo(borderRef.current);
                   },
@@ -965,7 +995,7 @@ const BoardProvider = ({
                   setSnap: (s) => {
                      setSnap(s);
                   },
-                  update: () => {},
+                  update: () => { },
                   importLibrary,
 
                   // Composable UI state
@@ -1007,15 +1037,23 @@ const BoardProvider = ({
             <ContextMenuContent>
                <ContextMenuItem
                   onClick={() => {
+                     setSnapGrid(v => !v);
+                     // borderRef.current?.renderImmediate();
+                  }}
+               >
+                  {snapGrid && <CheckIcon />} Toggle grid
+               </ContextMenuItem>
+               <ContextMenuItem
+                  onClick={() => {
                      setSnap(() => !isSnap);
                   }}>
-                  snap {isSnap ? "off" : "on"}
+                  {isSnap && <CheckIcon />}  snap {isSnap ? "off" : "on"}
                </ContextMenuItem>
                <ContextMenuItem
                   onClick={() => {
                      setMinimal((prev) => !prev);
                   }}>
-                  {isMinimal ? "show UI" : "minimal mode"}
+                  {isMinimal && <CheckIcon />} Minimal mode
                </ContextMenuItem>
                <ContextMenuItem
                   onClick={() => {
@@ -1033,7 +1071,7 @@ const BoardProvider = ({
                   setStat(!isStat);
                   saveStatStateToLocalStorage(!isStat);
                }}>
-                  Stats {isStat ? "off" : "on"}
+                  {isStat && <CheckIcon />} Stats
                </ContextMenuItem>
             </ContextMenuContent>
          </ContextMenu >

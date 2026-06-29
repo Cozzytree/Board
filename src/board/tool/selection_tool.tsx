@@ -463,7 +463,21 @@ class SelectionTool implements ToolInterface {
          let snapLines: Shape[] = [];
 
          // Check for snap
-         if (this._board.snap && this.draggedShape.type !== "selection") {
+         if (this._board.snapGrid && this.draggedShape.type !== "selection") {
+            const GRID_SIZE = 20;
+            const snappedX = Math.round(this.unsnappedPos.x / GRID_SIZE) * GRID_SIZE;
+            const snappedY = Math.round(this.unsnappedPos.y / GRID_SIZE) * GRID_SIZE;
+
+            const effectiveDeltaX = snappedX - this.draggedShape.left;
+            const effectiveDeltaY = snappedY - this.draggedShape.top;
+
+            const targetPoint = new Pointer({
+               x: this.lastPoint.x + effectiveDeltaX,
+               y: this.lastPoint.y + effectiveDeltaY,
+            });
+
+            shapes = this.draggedShape.dragging(new Pointer(this.lastPoint), targetPoint);
+         } else if (this._board.snap && this.draggedShape.type !== "selection") {
             const {
                lines,
                x: snappedX,
@@ -517,7 +531,43 @@ class SelectionTool implements ToolInterface {
 
          let snapLines: Shape[] = [];
 
-         if (this._board.snap && this.resizableShape.s.type !== "selection") {
+         if (this._board.snapGrid && this.resizableShape.s.type !== "selection") {
+            const GRID_SIZE = 20;
+            const s = this.resizableShape.s;
+            const oldShapeWidth = s.width || 1;
+            const oldShapeHeight = s.height || 1;
+
+            let newLeft = s.left;
+            let newTop = s.top;
+            let newRight = s.left + s.width;
+            let newBottom = s.top + s.height;
+
+            const d = this.resizableShape.d;
+            if (d.includes("l")) newLeft = Math.round(newLeft / GRID_SIZE) * GRID_SIZE;
+            if (d.includes("r")) newRight = Math.round(newRight / GRID_SIZE) * GRID_SIZE;
+            if (d.includes("t")) newTop = Math.round(newTop / GRID_SIZE) * GRID_SIZE;
+            if (d.includes("b")) newBottom = Math.round(newBottom / GRID_SIZE) * GRID_SIZE;
+
+            const snappedBounds = {
+               left: newLeft,
+               top: newTop,
+               width: newRight - newLeft,
+               height: newBottom - newTop,
+            };
+
+            if (s.type === "ellipse") {
+               s.rx = snappedBounds.width / 2;
+               s.ry = snappedBounds.height / 2;
+            } else if (s instanceof Path || s instanceof Line) {
+               const scaleX = snappedBounds.width / oldShapeWidth;
+               const scaleY = snappedBounds.height / oldShapeHeight;
+               s.points.forEach((pt) => {
+                  pt.x *= scaleX;
+                  pt.y *= scaleY;
+               });
+            }
+            s.setSilent(snappedBounds);
+         } else if (this._board.snap && this.resizableShape.s.type !== "selection") {
             const oldShapeWidth = this.resizableShape.s.width || 1;
             const oldShapeHeight = this.resizableShape.s.height || 1;
 

@@ -10,8 +10,8 @@ export function BoardCenterButton() {
 
    return (
       <div className="w-fit h-fit">
-         <button className="cursor-pointer p-1 border text-muted-foreground rounded-md" onClick={handleCenter}>
-            <ArrowLeft className="text-muted-foreground w-4 h-4" /> <span className="hidden md:block text-xs">Back to center</span>
+         <button className="flex gap-2 cursor-pointer p-1 border text-muted-foreground rounded-md" onClick={handleCenter}>
+            <ArrowLeft className="text-muted-foreground w-3 h-4" /> <span className="hidden md:block text-xs">Back to center</span>
          </button>
       </div>
    );
