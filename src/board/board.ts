@@ -9,17 +9,15 @@ import type {
    CustomShapeDef,
    ShapeConstructor,
 } from "./types";
-import {
-   SelectionTool,
-   Shape,
-   ActiveSelection,
-   ShapeTool,
-   DrawTool,
-   LineTool,
-   TextTool,
-   Group,
-   FrameTool,
-} from "./index";
+import SelectionTool from "./tool/selection_tool.tsx";
+import DrawTool from "./tool/draw_tool.tsx";
+import TextTool from "./tool/text_tool.ts";
+import LineTool from "./tool/line_tool.ts";
+import FrameTool from "./tool/frame_tool.tsx";
+import ShapeTool from "./tool/shape_tool.tsx";
+import Shape from "./shapes/shape.ts";
+import ActiveSelection from "./shapes/active_selection.tsx";
+import Group from "./shapes/group.ts";
 import EraserTool from "./tool/eraser_tool";
 import ImageTool from "./tool/image_tool";
 import { parseSvgToShapeProps } from "./utils/svg_parser";

@@ -363,7 +363,7 @@ function OptionWrapper({
    );
 }
 
-function ShapeOptions({ debounceMs = 200 }: Props) {
+function ShapeOptions({ debounceMs = 50, className }: Props) {
    const { activeShape, canvas, setActiveShape, update } = useBoard();
    const isMobile = useIsMobile();
 

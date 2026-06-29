@@ -1,4 +1,6 @@
-import { Box, Group, Shape } from "@/lib";
+import Box from "../utils/box";
+import Group from "../shapes/group";
+import Shape from "../shapes/shape.ts"
 import type Board from "../board";
 import type { EventData, ToolCallback, ToolEventData, ToolInterface } from "../types";
 

@@ -1,6 +1,6 @@
 import { AlignOptions, BoldOption, DeleteOption, DuplicateOption, FillOption, FillStyleOption, FontFamilyOption, FontSizes, ItalicOption, OpacityOption, RotationOption, RoughnessOption, StrokeDash, StrokeOption, StrokeSize, VerticalAlignOptions, ZOrderButtons } from "@/board/components/shapeoptions";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { useBoard } from "@/lib";
+import { useBoard } from "@/board/board-context";
 import { ScrollArea } from "./ui/scroll-area";
 import { AlignCenter, AlignVerticalSpaceAround } from "lucide-react";
 

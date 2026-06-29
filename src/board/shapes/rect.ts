@@ -1,4 +1,6 @@
-import { Box, Pointer, Shape } from "../index";
+import Shape from "../shapes/shape.ts"
+import Box from "../utils/box.ts"
+import Pointer from "../utils/point.ts"
 import type { BoxInterface, Point, resizeDirection, ShapeEventData, ShapeProps } from "../types";
 import { resizeRect, isDraggableWithRotation } from "../utils/resize";
 import { resizeWithRotation } from "../utils/resizeWithRotation";

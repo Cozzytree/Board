@@ -1,11 +1,15 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import React, { useRef } from "react";
+import React, { Suspense, useRef } from "react";
 import { Paintbrush, Users, ArrowRight, Zap, Globe, Shield, LogIn, UserPlus, LogOut, ChevronDown, FileText } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { useSession, signOut } from "@/lib/auth-client";
-import { BoardProvider } from "@/board/board_provider";
 import type { ShapeProps } from "@/board/types";
 import { useTheme } from "@/components/theme-provider";
+const BoardProvider = React.lazy(() =>
+   import("@/board/board_provider").then((m) => ({
+      default: m.BoardProvider
+   }))
+)
 
 const DEMO_SHAPES: ShapeProps[] = [
    { type: "rect", left: 80, top: 40, width: 220, height: 100, stroke: "#b4befe", fill: "#1e1e2e", strokeWidth: 3 },
@@ -94,14 +98,16 @@ function Index() {
 
             {/* Canvas Demo */}
             <div ref={containerRef} className="relative w-full h-[600px] rounded-2xl border border-[#313244] bg-[#181825] overflow-hidden shadow-2xl relative opacity-80 mix-blend-screen cursor-crosshair">
-               <BoardProvider
-                  container={containerRef}
-                  width={1200}
-                  height={600}
-                  theme={theme}
-                  skipLocalStorage={true} 
-                  initialShapes={DEMO_SHAPES as any} 
-               />
+               <Suspense fallback={null}>
+                  <BoardProvider
+                     container={containerRef}
+                     width={1200}
+                     height={600}
+                     theme={theme}
+                     skipLocalStorage={true}
+                     initialShapes={DEMO_SHAPES as any}
+                  />
+               </Suspense>
             </div>
 
             {/* Action cards */}

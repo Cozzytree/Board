@@ -1,17 +1,23 @@
-import { BoardProvider } from "@/board/board_provider";
 import { BoardToolbar } from "@/board/components/toolbar";
 import { BoardZoomControls } from "@/board/components/zoom_controls";
 import { BoardCenterButton } from "@/board/components/center_button";
 import { BoardLibrarySidebar } from "@/board/components/library_sidebar";
 import { useBoard } from "@/board/board-context";
 import { createFileRoute } from "@tanstack/react-router";
-import React from "react";
+import React, { Suspense } from "react";
 import { useTheme } from "@/components/theme-provider";
 import { StatsForNerds } from "@/board/components/stat";
 import CanvasOptions from "@/board/components/canvas_options";
 import { MenuIcon } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import ExcalidrawOptionsPanel from "@/components/excalidraw-style-options";
+const BoardProvider = React.lazy(() =>
+   import("@/board/board_provider").then((m) => ({
+      default: m.BoardProvider
+   }))
+)
+const ExcalidrawOptionsPanel = React.lazy(() =>
+   import("../../src/components/excalidraw-style-options")
+);
 
 export const Route = createFileRoute("/local")({
    component: LocalBoardPage,
@@ -32,16 +38,18 @@ function LocalBoardPage() {
    }, [handleWindow]);
 
    return (
-      <div className="w-full h-full">
-         <BoardProvider
-            onThemeChange={(t) => {
-               if (t.theme)
-                  setTheme(t.theme);
-            }}
-            theme={theme} width={width} height={height}>
-            <BoardUI />
-         </BoardProvider>
-      </div>
+      <Suspense fallback={null}>
+         <div className="w-full h-full">
+            <BoardProvider
+               onThemeChange={(t) => {
+                  if (t.theme)
+                     setTheme(t.theme);
+               }}
+               theme={theme} width={width} height={height}>
+               <BoardUI />
+            </BoardProvider>
+         </div>
+      </Suspense>
    );
 }
 
@@ -121,11 +129,13 @@ function BoardUI() {
             </div>
          </div>
 
-        <div className="absolute z-[999] bottom-2 left-2">
+         <div className="absolute z-[999] bottom-2 left-2">
             <BoardZoomControls />
          </div>
          <StatsForNerds className="backdrop-blur fixed z-[999] top-10 md:top-15 right-2 md:right-5" />
-         <ExcalidrawOptionsPanel />
+         <Suspense fallback={null}>
+            <ExcalidrawOptionsPanel />
+         </Suspense>
       </>
    );
 }

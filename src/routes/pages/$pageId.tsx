@@ -1,7 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import React, { Suspense } from "react";
 import { Loader2, MenuIcon, RedoIcon, UndoIcon } from "lucide-react";
-import { BoardProvider } from "@/board/board_provider";
 import { BoardToolbar } from "@/board/components/toolbar";
 import {
    StrokeDash,
@@ -37,7 +36,14 @@ import { StatsForNerds } from "@/board/components/stat";
 import CanvasOptions from "@/board/components/canvas_options";
 import { Popover, PopoverContent } from "@/components/ui/popover";
 import { PopoverTrigger } from "@radix-ui/react-popover";
-import ExcalidrawOptionsPanel from "@/components/excalidraw-style-options";
+const ExcalidrawOptionsPanel = React.lazy(() =>
+   import("@/components/excalidraw-style-options")
+);
+const BoardProvider = React.lazy(() =>
+   import("@/board/board_provider").then((m) => ({
+      default: m.BoardProvider
+   }))
+)
 
 export const Route = createFileRoute("/pages/$pageId")({
    component: PageCanvas,
@@ -142,7 +148,11 @@ function PageCanvas() {
 
    return (
       <div ref={containerRef} className="w-full h-screen overflow-hidden relative">
-         <Suspense fallback={<div>Loading component...</div>}>
+         <Suspense fallback={
+            <div className="w-full h-full flex items-center justify-center">
+               <Loader2 className="animate-spin" />
+            </div>
+         }>
             <BoardProvider
                key={pageId}
                canvasLock={page.isLocked}
@@ -158,29 +168,37 @@ function PageCanvas() {
                      setTheme(t.theme);
                }}
             >
-               <header className="w-full bg-background h-fit absolute top-0 left-0 z-[99] border-b">
-                  <div className="w-full flex items-center justify-between py-1.5 px-3">
-                     <div className="flex items-center gap-2">
-                        <Popover>
-                           <PopoverTrigger className="border px-1 rounded hover:bg-muted text-muted-foreground">
-                              <MenuIcon width={13} />
-                           </PopoverTrigger>
-                           <PopoverContent align="start" className="z-[9999]">
-                              <CanvasOptions />
-                           </PopoverContent>
-                        </Popover>
-                        <span className="text-sm">
-                           {page?.title}
-                        </span>
-                     </div>
-                     <LibrarySidebar className="z-[99999]" />
-                  </div>
-               </header>
-               <BoardUI />
+               <PageContent title={page?.title} />
             </BoardProvider>
          </Suspense>
       </div>
    );
+}
+
+function PageContent({ title }: { title: string }) {
+   return (
+      <>
+         <header className="w-full bg-background h-fit absolute top-0 left-0 z-[99] border-b">
+            <div className="w-full flex items-center justify-between py-1.5 px-3">
+               <div className="flex items-center gap-2">
+                  <Popover>
+                     <PopoverTrigger className="border px-1 rounded hover:bg-muted text-muted-foreground">
+                        <MenuIcon width={13} />
+                     </PopoverTrigger>
+                     <PopoverContent align="start" className="z-[9999]">
+                        <CanvasOptions />
+                     </PopoverContent>
+                  </Popover>
+                  <span className="text-sm">
+                     {title}
+                  </span>
+               </div>
+               <LibrarySidebar className="z-[99999]" />
+            </div>
+         </header>
+         <BoardUI />
+      </>
+   )
 }
 
 function BoardUI() {
@@ -220,7 +238,9 @@ function BoardUI() {
             <StatsForNerds />
          </div>
 
-         <ExcalidrawOptionsPanel />
+         <Suspense fallback={null}>
+            <ExcalidrawOptionsPanel />
+         </Suspense>
       </>
    );
 }

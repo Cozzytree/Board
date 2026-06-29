@@ -19,7 +19,6 @@ export const Route = createFileRoute("/room/$roomId")({
 
 const THROTTLE_MS = 100;
 let lastShapeUpdate = 0;
-let lastCursorUpdate = 0;
 
 function RoomPage() {
    const { roomId } = Route.useParams();

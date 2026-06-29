@@ -1,3 +1,4 @@
+import * as React from "react";
 import {
    BoxIcon,
    CircleIcon,
@@ -19,11 +20,12 @@ import {
    type LucideIcon,
    Cloud,
    ImageIcon,
-   VectorSquare,
 } from "lucide-react";
 import { debounce } from "@/lib/utils";
-import * as React from "react";
-import { ActiveSelection, Board, Box, Rect, Shape } from "./index";
+import Board from "./board.ts";
+import Rect from "./shapes/rect.ts";
+import Shape from "./shapes/shape.ts";
+import ActiveSelection from "./shapes/active_selection.tsx"
 import type { modes, submodes, CustomShapeDef, EventData, ShapeProps } from "./types";
 import { generateShapeByShapeType } from "./utils/utilfunc";
 import { saveLibraryItems } from "./utils/library_db";
@@ -88,7 +90,6 @@ const BoardProvider = ({
    onShapesChanged,
    onBoardReady,
    skipLocalStorage = false,
-   onCursorMove,
    onDeleteShape,
    onThemeChange,
    initialShapes,
@@ -99,7 +100,6 @@ const BoardProvider = ({
    canvasLock?: boolean;
    initialShapes?: ShapeProps[];
    container?: React.RefObject<HTMLElement | null>;
-   onCursorMove?: (e: EventData) => void;
    theme?: Theme;
    width?: number;
    height?: number;
