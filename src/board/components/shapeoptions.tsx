@@ -496,7 +496,7 @@ function ShapeOptions({ debounceMs = 50, className }: Props) {
    );
 }
 
-function OpacityOption({ debounceMs, className, standalone = false, children, icon }: Props) {
+function OpacityOption({ debounceMs = 100, className, standalone = false, children, icon }: Props) {
    const { activeShape, canvas } = useBoard();
 
    const handleSetOpacity = debounce((v: number) => {
@@ -1166,7 +1166,6 @@ function FontSizes({ debounceMs = 200, className, standalone, icon, children }: 
          icon={<span className="text-xs px-1">{displayLabel}</span>}
          children={children}
          className={className}
-         contentClassName={cn("w-32 p-1", className)}
          content={content}
       />
    );
@@ -1324,7 +1323,6 @@ function RoughnessOption({ debounceMs = 100, className, standalone, children }: 
          }
          children={children}
          className={className}
-         contentClassName={cn("w-auto p-2", className)}
          content={content}
       />
    );
@@ -1395,7 +1393,6 @@ function FillStyleOption({ debounceMs = 200, className, standalone, icon, childr
          }
          children={children}
          className={className}
-         contentClassName={cn("w-auto p-2", className)}
          content={content}
       />
    );
@@ -1459,7 +1456,6 @@ function StrokeDash({ debounceMs = 200, className, standalone, icon, children }:
          }
          children={children}
          className={className}
-         contentClassName={cn("w-fit p-1", className)}
          content={content}
       />
    );
@@ -1549,7 +1545,6 @@ function RotationOption({ debounceMs = 200, className, standalone, icon, childre
          }
          children={children}
          className={className}
-         contentClassName={cn("w-40 p-2", className)}
          content={content}
       />
    );

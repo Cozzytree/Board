@@ -21,6 +21,7 @@ import {
    Cloud,
    ImageIcon,
    CheckIcon,
+   VectorSquareIcon,
 } from "lucide-react";
 import { debounce } from "@/lib/utils";
 import Board from "./board.ts";
@@ -183,7 +184,7 @@ const BoardProvider = ({
       });
    }, []);
    const handleSetGridSnap = React.useCallback((v: boolean | ((prev: boolean) => boolean)) => {
-      setSnapState((prev) => {
+      setSnapGrid((prev) => {
          const next = typeof v === "function" ? v(prev) : v;
          try {
             localStorage.setItem("grid_snap", String(next));
@@ -294,11 +295,11 @@ const BoardProvider = ({
          I: ImageIcon,
          subMode: [],
       },
-      // {
-      //    mode: "frame",
-      //    I: VectorSquare,
-      //    subMode: []
-      // }
+      {
+         mode: "frame",
+         I: VectorSquareIcon,
+         subMode: []
+      }
    ]);
    const [mode, setMode] = React.useState<{ m: modes; sm: submodes | null }>({
       m: "cursor",
@@ -1037,7 +1038,7 @@ const BoardProvider = ({
             <ContextMenuContent>
                <ContextMenuItem
                   onClick={() => {
-                     setSnapGrid(v => !v);
+                     handleSetGridSnap(v => !v);
                      // borderRef.current?.renderImmediate();
                   }}
                >

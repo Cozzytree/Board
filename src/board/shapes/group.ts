@@ -58,7 +58,35 @@ class Group extends Shape {
    }
 
    toSVG() {
-      return "";
+      const cx = this.left + this.width / 2;
+      const cy = this.top + this.height / 2;
+      
+      let transformStr = "";
+      if (this.rotate !== 0 || this.flipX || this.flipY || this.scale !== 1) {
+         transformStr = `transform="`;
+         if (this.rotate !== 0) {
+            transformStr += `rotate(${(this.rotate * 180) / Math.PI} ${cx} ${cy}) `;
+         }
+         if (this.flipX || this.flipY || this.scale !== 1) {
+            transformStr += `translate(${cx} ${cy}) scale(${this.flipX ? -this.scale : this.scale}, ${this.flipY ? -this.scale : this.scale}) translate(${-cx} ${-cy})`;
+         }
+         transformStr += `"`;
+      }
+
+      const strokeStr = this.stroke === "transparent" ? "none" : this.stroke;
+      const rectSvg = `<rect x="${this.left - this.padding}" y="${this.top - this.padding}" width="${this.width + this.padding * 2}" height="${this.height + this.padding * 2}" fill="none" stroke="${strokeStr}" stroke-width="1.5" ${transformStr} />`;
+      
+      let titleSvg = "";
+      if (this.title) {
+         titleSvg = `<text x="${this.left - this.padding}" y="${this.top - this.padding - 4}" font-family="${this.fontFamily || "system-ui"}" font-size="14" font-weight="bold" fill="${strokeStr}" text-anchor="start" ${transformStr}>${this.title}</text>`;
+      }
+
+      const clipId = `clip_${this.ID()}`;
+      const clipSvg = `<clipPath id="${clipId}"><rect x="${this.left}" y="${this.top}" width="${this.width}" height="${this.height}" ${transformStr} /></clipPath>`;
+      
+      const childrenSvg = this.shapes.map(s => s.s.toSVG()).join('\n    ');
+
+      return `<g>\n  ${clipSvg}\n  ${rectSvg}\n  ${titleSvg}\n  <g clip-path="url(#${clipId})">\n    ${childrenSvg}\n  </g>\n</g>`;
    }
 
    Resize(current: Point, old: BoxInterface, d: resizeDirection): Shape[] | void {
@@ -178,20 +206,39 @@ class Group extends Shape {
             y2: shape.top + shape.height
          })
 
-         if (outer.fullyContains(inner)) {
-            newShapes.push({
-               s: shape,
-               oldProps: {
-                  x1: shape.left,
-                  y1: shape.top,
-                  x2: shape.left + shape.width,
-                  y2: shape.top + shape.height,
-               },
-            });
-            shape.groupId = this.ID();
-         } else if (shape.groupId === this.ID()) {
-            // Shape was in this group but popped out
-            shape.groupId = undefined;
+         const isAlreadyInGroup = shape.groupId === this.ID();
+
+         if (isAlreadyInGroup) {
+            // Shape was already a member — keep it UNLESS completely outside
+            if (outer.intersects(inner)) {
+               newShapes.push({
+                  s: shape,
+                  oldProps: {
+                     x1: shape.left,
+                     y1: shape.top,
+                     x2: shape.left + shape.width,
+                     y2: shape.top + shape.height,
+                  },
+               });
+               shape.groupId = this.ID();
+            } else {
+               // Completely outside the frame — eject
+               shape.groupId = undefined;
+            }
+         } else {
+            // New shape — must be fully contained to join
+            if (outer.fullyContains(inner)) {
+               newShapes.push({
+                  s: shape,
+                  oldProps: {
+                     x1: shape.left,
+                     y1: shape.top,
+                     x2: shape.left + shape.width,
+                     y2: shape.top + shape.height,
+                  },
+               });
+               shape.groupId = this.ID();
+            }
          }
 
          return false; // continue loop
@@ -232,8 +279,43 @@ class Group extends Shape {
       return null;
    }
 
+   isTitleHovered(p: Point): boolean {
+      if (!this.title) return false;
+      const titleHeight = 20;
+      // Approximate title width or use group width.
+      // Excalidraw titles sit at left-aligned above the box. 
+      // We draw it at `left - padding`, `top - padding - 4/scl`.
+      // We will define the hitbox width as the same as the group width for ease of clicking.
+      const titleWidth = this.width; 
+
+      const cx = this.left + this.width / 2;
+      const cy = this.top + this.height / 2;
+      
+      const cos = Math.cos(-this.rotate);
+      const sin = Math.sin(-this.rotate);
+      const dx = p.x - cx;
+      const dy = p.y - cy;
+      const localX = dx * cos - dy * sin;
+      const localY = dx * sin + dy * cos;
+
+      // Unrotated title bounding box relative to group center
+      // Title left edge matches group left edge
+      const localTitleLeft = -this.width / 2 - this.padding;
+      // Title bottom edge is just above group top edge
+      const localTitleBottom = -this.height / 2 - this.padding;
+      const localTitleTop = localTitleBottom - titleHeight;
+      const localTitleRight = localTitleLeft + titleWidth;
+
+      return (
+         localX >= localTitleLeft &&
+         localX <= localTitleRight &&
+         localY >= localTitleTop &&
+         localY <= localTitleBottom
+      );
+   }
+
    IsDraggable(p: Point): boolean {
-      return isDraggableWithRotation({
+      return this.isTitleHovered(p) || isDraggableWithRotation({
          point: p,
          left: this.left,
          top: this.top,
@@ -338,39 +420,7 @@ class Group extends Shape {
       const centerX = this.left + this.width / 2;
       const centerY = this.top + this.height / 2;
 
-      // Draw cached children
-      if (resize) {
-         context.save();
-         context.globalAlpha = this.selectionAlpha;
-      }
-      
-      this.shapes.forEach(({ s }) => {
-         s.draw({ ctx: context, resize: false, addStyles });
-      });
-
-      if (resize) {
-         context.restore();
-      }
-
-      if (resize) {
-         context.save();
-         this._tempShapes.forEach(({ oldProps }) => {
-            if (!oldProps) return;
-            const x = oldProps.x1 - 4;
-            const y = oldProps.y1 - 4;
-            const w = (oldProps.x2 - oldProps.x1) + 8;
-            const h = (oldProps.y2 - oldProps.y1) + 8;
-
-            context.beginPath();
-            context.strokeStyle = INDICATOR_COLOR;
-            context.lineWidth = 2 / currentScale; // Match outlineWidthPx in active_selection
-            context.setLineDash([4 / currentScale, 4 / currentScale]);
-            context.strokeRect(x, y, w, h);
-         });
-         context.restore();
-      }
-
-      // Draw group border
+      // ── 1. Draw group border + title FIRST (unclipped) ──
       context.save();
       context.translate(centerX, centerY);
       context.rotate(this.rotate);
@@ -380,15 +430,9 @@ class Group extends Shape {
          context.globalAlpha = this.selectionAlpha;
          context.strokeStyle = this.selectionColor;
          context.lineWidth = this.selectionStrokeWidth;
-         // context.setLineDash([
-         //   this.selectionDash[0] / currentScale,
-         //   this.selectionDash[1] / currentScale,
-         // ]);
       } else {
          context.strokeStyle = this.stroke;
          context.lineWidth = 1.5 / currentScale;
-         // context.setLineDash([6 / currentScale, 3 / currentScale]);
-         // context.globalAlpha = 0.5;
       }
 
       context.beginPath();
@@ -401,7 +445,7 @@ class Group extends Shape {
       context.stroke();
 
       if (this.title) {
-         context.font = `bold ${14 / currentScale}px ${this.fontFamily || "system-ui"}`;
+         context.font = `bold ${(14 / currentScale) % 23}px ${this.fontFamily || "system-ui"}`;
          context.fillStyle = this.stroke;
          context.textAlign = "left";
          context.textBaseline = "bottom";
@@ -411,8 +455,50 @@ class Group extends Shape {
             this.top - this.padding - 4 / currentScale
          );
       }
-
       context.restore();
+
+      // ── 2. Draw children CLIPPED to group bounds ──
+      context.save();
+      // Apply rotation so clip rect aligns with the (possibly rotated) group
+      context.translate(centerX, centerY);
+      context.rotate(this.rotate);
+      context.translate(-centerX, -centerY);
+      context.beginPath();
+      context.rect(this.left, this.top, this.width, this.height);
+      context.clip();
+      // Undo the rotation so children draw in world space
+      context.translate(centerX, centerY);
+      context.rotate(-this.rotate);
+      context.translate(-centerX, -centerY);
+
+      if (resize) {
+         context.globalAlpha = this.selectionAlpha;
+      }
+
+      this.shapes.forEach(({ s }) => {
+         s.draw({ ctx: context, resize: false, addStyles });
+      });
+
+      context.restore(); // removes clip + alpha + rotation
+
+      // ── 3. Draw resize indicators (unclipped) ──
+      if (resize) {
+         context.save();
+         this._tempShapes.forEach(({ oldProps }) => {
+            if (!oldProps) return;
+            const x = oldProps.x1 - 4;
+            const y = oldProps.y1 - 4;
+            const w = (oldProps.x2 - oldProps.x1) + 8;
+            const h = (oldProps.y2 - oldProps.y1) + 8;
+
+            context.beginPath();
+            context.strokeStyle = INDICATOR_COLOR;
+            context.lineWidth = 2 / currentScale;
+            context.setLineDash([4 / currentScale, 4 / currentScale]);
+            context.strokeRect(x, y, w, h);
+         });
+         context.restore();
+      }
    }
 }
 

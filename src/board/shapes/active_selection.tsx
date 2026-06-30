@@ -136,6 +136,15 @@ class ActiveSelection extends Shape {
                left: s.s.left + dx,
                top: s.s.top + dy
             });
+            // If this shape is a Group, also move its inner children
+            if (s.s instanceof Group) {
+               s.s.shapes.forEach(({ s: child }) => {
+                  child.setSilent({
+                     left: child.left + dx,
+                     top: child.top + dy
+                  });
+               });
+            }
          }
       });
 
@@ -372,19 +381,28 @@ class ActiveSelection extends Shape {
          };
 
          this._board.shapeStore.forEach((shape) => {
-            if (shape.ID() === this.ID() || shape.type === "selection") return false;
+            if (shape.ID() === this.ID() || shape.type === "selection" || shape.groupId) return false;
 
             const inner = getRotatedBounds(shape);
 
             if (!outer.intersects(inner)) return false;
 
             selected.push(shape);
-            selectedShapes.push({
+            const activeShapeInfo: ActiveSelectionShape = {
                s: shape,
                oldProps: inner,
                originalFlipX: shape.flipX,
                originalFlipY: shape.flipY,
-            });
+            };
+            if (shape instanceof Group) {
+               activeShapeInfo.childOldProps = shape.shapes.map(({ s: child }) => new Box({
+                  x1: child.left,
+                  y1: child.top,
+                  x2: child.left + child.width,
+                  y2: child.top + child.height,
+               }));
+            }
+            selectedShapes.push(activeShapeInfo);
 
             return false;
          });
@@ -438,6 +456,41 @@ class ActiveSelection extends Shape {
                flipX: groupFlipX ? !s.originalFlipX : s.originalFlipX,
                flipY: groupFlipY ? !s.originalFlipY : s.originalFlipY,
             });
+
+            // If this shape is a Group, proportionally reposition its inner children
+            if (s.s instanceof Group && s.childOldProps) {
+               const childScaleX = newWidthS / (s.oldProps.x2 - s.oldProps.x1);
+               const childScaleY = newHeightS / (s.oldProps.y2 - s.oldProps.y1);
+               
+               s.s.shapes.forEach(({ s: child }, i) => {
+                  const childOld = s.childOldProps![i];
+                  if (!childOld) return;
+                  
+                  // Child's position relative to the old group origin
+                  const relX = childOld.x1 - s.oldProps!.x1;
+                  const relY = childOld.y1 - s.oldProps!.y1;
+
+                  const newChildWidth = (childOld.x2 - childOld.x1) * childScaleX;
+                  const newChildHeight = (childOld.y2 - childOld.y1) * childScaleY;
+
+                  let newChildLeft = newLeft + relX * childScaleX;
+                  let newChildTop = newTop + relY * childScaleY;
+
+                  if (groupFlipX) {
+                     newChildLeft = newLeft + newWidthS - (relX * childScaleX) - newChildWidth;
+                  }
+                  if (groupFlipY) {
+                     newChildTop = newTop + newHeightS - (relY * childScaleY) - newChildHeight;
+                  }
+
+                  child.setSilent({
+                     left: newChildLeft,
+                     top: newChildTop,
+                     width: newChildWidth,
+                     height: newChildHeight,
+                  });
+               });
+            }
          });
          return this.shapes.map((s) => s.s);
       }

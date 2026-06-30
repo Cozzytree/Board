@@ -243,6 +243,14 @@ class SelectionTool implements ToolInterface {
                      });
                      s.originalFlipX = s.s.flipX;
                      s.originalFlipY = s.s.flipY;
+                     if (s.s instanceof Group) {
+                        s.childOldProps = s.s.shapes.map(({ s: child }) => new Box({
+                           x1: child.left,
+                           y1: child.top,
+                           x2: child.left + child.width,
+                           y2: child.top + child.height,
+                        }));
+                     }
                   });
                }
                // fire mouse down for the shape
@@ -804,8 +812,12 @@ class SelectionTool implements ToolInterface {
          } else {
             // Regular drop: check if dropped into any group
             this._board.shapeStore.forEach((s) => {
-               if (s instanceof Group && s.ID() !== dropped.ID() && s.containsPoint(dropCenter)) {
-                  s.addShape(dropped); // sets dropped.groupId, shape stays in shapeStore
+               if (s instanceof Group && s.ID() !== dropped.ID()) {
+                  const groupBox = new Box({ x1: s.left, y1: s.top, x2: s.left + s.width, y2: s.top + s.height });
+                  const shapeBox = new Box({ x1: dropped.left, y1: dropped.top, x2: dropped.left + dropped.width, y2: dropped.top + dropped.height });
+                  if (groupBox.fullyContains(shapeBox)) {
+                     s.addShape(dropped);
+                  }
                }
                return false;
             });
@@ -826,7 +838,7 @@ class SelectionTool implements ToolInterface {
       this.clearOverlay();
    }
 
-   private tryStartTextEdit(_: Point): boolean {
+   private tryStartTextEdit(p: Point): boolean {
       if (this.isDragging || !this.isTextEditale || this.hasSelectionStarted) {
          return false;
       }
@@ -852,107 +864,144 @@ class SelectionTool implements ToolInterface {
       const div = document.createElement("div");
       div.setAttribute("id", textAreaId);
       div.style.position = "absolute";
-      div.style.left = rect.left + this.textEdit.left * this._board.view.scl + this._board.view.x + "px";
-      div.style.top = rect.top + this.textEdit.top * this._board.view.scl + this._board.view.y + "px";
-      div.style.width = this.textEdit.width * this._board.view.scl + "px";
-      div.style.height = this.textEdit.height * this._board.view.scl + "px";
       div.style.zIndex = "1000";
       
-      div.style.display = "flex";
-      // Text alignment logic for container
-      div.style.alignItems = this.textEdit.verticalAlign === "top" ? "flex-start" : this.textEdit.verticalAlign === "bottom" ? "flex-end" : "center";
-      div.style.justifyContent = this.textEdit.textAlign === "left" ? "flex-start" : this.textEdit.textAlign === "right" ? "flex-end" : "center";
+      const isGroupTitle = active instanceof Group && active.isTitleHovered(p);
 
-      const scale = this._board.view.scl;
-      const editorFontSize = this.textEdit.fontSize * scale;
-
-      // Create textarea
-      const textarea = document.createElement("textarea");
-      textarea.setAttribute("data-board-text-edit", "true");
-      
-      const originalText = this.textEdit.text || "";
-      textarea.value = originalText;
-      
-      textarea.spellcheck = true;
-      textarea.autocomplete = "off";
-      textarea.setAttribute("autocapitalize", "sentences");
-      textarea.setAttribute("inputmode", "text");
-      
-      textarea.style.margin = "0px";
-      textarea.style.padding = `${(this.textEdit.padding || 8) * scale}px`;
-      textarea.style.border = "none";
-      textarea.style.outline = "none";
-      textarea.style.resize = "none";
-      textarea.style.overflow = "hidden";
-      textarea.style.background = "transparent";
-      textarea.style.color = this.textEdit.stroke;
-      textarea.style.fontFamily = (this.textEdit as any).fontFamily || "system-ui, sans-serif";
-      textarea.style.fontWeight = this.textEdit.fontWeight + "";
-      textarea.style.fontSize = `${editorFontSize}px`;
-      textarea.style.lineHeight = `${editorFontSize * 1.2}px`;
-      
-      // Crucial part for wrapping text in shape bounds
-      textarea.style.whiteSpace = "pre-wrap"; 
-      textarea.style.wordBreak = "break-word";
-      textarea.style.boxSizing = "border-box";
-      textarea.style.caretColor = this.textEdit.stroke;
-      textarea.style.textAlign = this.textEdit.textAlign || "center";
-      
-      // Textarea will fit its content, but never exceed parent div's width
-      textarea.style.width = "fit-content";
-      textarea.style.maxWidth = "100%";
-
-      if (this.textEdit.italic) {
-         textarea.style.fontStyle = "italic";
+      if (isGroupTitle) {
+         div.style.left = rect.left + (this.textEdit.left - this.textEdit.padding) * this._board.view.scl + this._board.view.x + "px";
+         div.style.top = rect.top + (this.textEdit.top - this.textEdit.padding - 20) * this._board.view.scl + this._board.view.y + "px";
+         // Make width large enough to accommodate typing without wrapping
+         div.style.width = "400px";
+         div.style.height = 20 * this._board.view.scl + "px";
+         div.style.display = "flex";
+         div.style.alignItems = "center";
+         div.style.justifyContent = "flex-start";
+      } else {
+         div.style.left = rect.left + this.textEdit.left * this._board.view.scl + this._board.view.x + "px";
+         div.style.top = rect.top + this.textEdit.top * this._board.view.scl + this._board.view.y + "px";
+         div.style.width = this.textEdit.width * this._board.view.scl + "px";
+         div.style.height = this.textEdit.height * this._board.view.scl + "px";
+         
+         div.style.display = "flex";
+         // Text alignment logic for container
+         div.style.alignItems = this.textEdit.verticalAlign === "top" ? "flex-start" : this.textEdit.verticalAlign === "bottom" ? "flex-end" : "center";
+         div.style.justifyContent = this.textEdit.textAlign === "left" ? "flex-start" : this.textEdit.textAlign === "right" ? "flex-end" : "center";
       }
 
-      div.append(textarea);
+      const scale = this._board.view.scl;
+      const editorFontSize = isGroupTitle ? 14 * scale : this.textEdit.fontSize * scale;
+
+      // Create input/textarea
+      const inputEl = isGroupTitle ? document.createElement("input") : document.createElement("textarea");
+      inputEl.setAttribute("data-board-text-edit", "true");
+      
+      const originalText = isGroupTitle ? (this.textEdit as Group).title : this.textEdit.text || "";
+      inputEl.value = originalText;
+      
+      inputEl.spellcheck = true;
+      inputEl.autocomplete = "off";
+      inputEl.setAttribute("autocapitalize", "sentences");
+      inputEl.setAttribute("inputmode", "text");
+      
+      inputEl.style.margin = "0px";
+      inputEl.style.padding = isGroupTitle ? "0px" : `${(this.textEdit.padding || 8) * scale}px`;
+      inputEl.style.border = "none";
+      inputEl.style.outline = "none";
+      inputEl.style.background = "transparent";
+      inputEl.style.color = this.textEdit.stroke;
+      inputEl.style.fontFamily = (this.textEdit as any).fontFamily || "system-ui, sans-serif";
+      inputEl.style.fontWeight = isGroupTitle ? "bold" : this.textEdit.fontWeight + "";
+      inputEl.style.fontSize = `${editorFontSize}px`;
+      inputEl.style.lineHeight = `${editorFontSize * 1.2}px`;
+      inputEl.style.caretColor = this.textEdit.stroke;
+      
+      if (!isGroupTitle) {
+         const textarea = inputEl as HTMLTextAreaElement;
+         textarea.style.resize = "none";
+         textarea.style.overflow = "hidden";
+         
+         // Crucial part for wrapping text in shape bounds
+         textarea.style.whiteSpace = "pre-wrap"; 
+         textarea.style.wordBreak = "break-word";
+         textarea.style.boxSizing = "border-box";
+         textarea.style.textAlign = this.textEdit.textAlign || "center";
+         
+         // Textarea will fit its content, but never exceed parent div's width
+         textarea.style.width = "fit-content";
+         textarea.style.maxWidth = "100%";
+      } else {
+         inputEl.style.width = "100%";
+      }
+
+      if (this.textEdit.italic) {
+         inputEl.style.fontStyle = "italic";
+      }
+
+      div.append(inputEl);
       document.body.append(div);
 
       // Hide the text from the shape but keep the shape itself visible
-      this.textEdit.setSilent({ text: "" });
+      if (isGroupTitle) {
+         (this.textEdit as Group).title = "";
+      } else {
+         this.textEdit.setSilent({ text: "" });
+      }
       this._board.render(); // Redraws main canvas immediately (shape is drawn without text)
 
-      const checkResize = debounce(() => {
-         if (!this.textEdit) return;
+      let autoSizeTextareaHeight: () => void = () => {};
+
+      if (!isGroupTitle) {
+         const textarea = inputEl as HTMLTextAreaElement;
+         const checkResize = debounce(() => {
+            if (!this.textEdit) return;
+            
+            // In a pre-wrap textarea, width wraps naturally, but we need to track height
+            const requiredHeight = textarea.scrollHeight;
+            const currentHeightScaled = this.textEdit.height * scale;
+
+            // If the textarea height exceeds the shape height, we resize the shape
+            if (requiredHeight > currentHeightScaled) {
+               const newHeightUnscaled = requiredHeight / scale;
+               this.textEdit.setSilent({ height: newHeightUnscaled });
+               div.style.height = `${requiredHeight}px`; // Update the container div too
+               this._board.render(); // Redraw main canvas
+            }
+         }, 50);
+
+         autoSizeTextareaHeight = () => {
+            // Reset height to let scrollHeight shrink if lines are deleted
+            textarea.style.height = "0px";
+            const scrollHeight = textarea.scrollHeight;
+            textarea.style.height = scrollHeight + "px";
+            checkResize();
+         };
          
-         // In a pre-wrap textarea, width wraps naturally, but we need to track height
-         const requiredHeight = textarea.scrollHeight;
-         const currentHeightScaled = this.textEdit.height * scale;
-
-         // If the textarea height exceeds the shape height, we resize the shape
-         if (requiredHeight > currentHeightScaled) {
-            const newHeightUnscaled = requiredHeight / scale;
-            this.textEdit.setSilent({ height: newHeightUnscaled });
-            div.style.height = `${requiredHeight}px`; // Update the container div too
-            this._board.render(); // Redraw main canvas
-         }
-      }, 50);
-
-      const autoSizeTextareaHeight = () => {
-         // Reset height to let scrollHeight shrink if lines are deleted
-         textarea.style.height = "0px";
-         const scrollHeight = textarea.scrollHeight;
-         textarea.style.height = scrollHeight + "px";
-         checkResize();
-      };
-
-      // Initial size
-      autoSizeTextareaHeight();
+         // Initial size
+         autoSizeTextareaHeight();
+         textarea.addEventListener("input", autoSizeTextareaHeight);
+      }
 
       // Focus the textarea
       requestAnimationFrame(() => {
-         textarea.focus();
-         textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+         inputEl.focus();
+         if (inputEl instanceof HTMLTextAreaElement || inputEl instanceof HTMLInputElement) {
+             inputEl.setSelectionRange(inputEl.value.length, inputEl.value.length);
+         }
       });
 
-      textarea.addEventListener("input", autoSizeTextareaHeight);
 
       const commitAndClose = () => {
-         const value = textarea.value;
+         const value = inputEl.value;
          if (this.textEdit) {
-            this.textEdit.setSilent({ text: value }); // Set silently first
-            this.textEdit.set("text", value); // Commit text officially to history
+            if (isGroupTitle) {
+               (this.textEdit as Group).title = value; // restore immediately without history push for now, though history push could be added.
+               this.textEdit.setSilent({ title: value });
+               this.textEdit.set("title", value);
+            } else {
+               this.textEdit.setSilent({ text: value }); // Set silently first
+               this.textEdit.set("text", value); // Commit text officially to history
+            }
             this.textEdit = null;
          }
          this.isInput = false;
@@ -966,13 +1015,16 @@ class SelectionTool implements ToolInterface {
          if (e.key === "Escape") {
             e.preventDefault();
             commitAndClose();
-         } else if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+         } else if (isGroupTitle && e.key === "Enter") {
+            e.preventDefault();
+            commitAndClose();
+         } else if (!isGroupTitle && (e.metaKey || e.ctrlKey) && e.key === "Enter") {
             e.preventDefault();
             commitAndClose();
          }
       };
-      textarea.addEventListener("keydown", handleKeyDown);
-      textarea.addEventListener("blur", () => {
+      inputEl.addEventListener("keydown", handleKeyDown);
+      inputEl.addEventListener("blur", () => {
          commitAndClose();
       })
 
@@ -980,7 +1032,7 @@ class SelectionTool implements ToolInterface {
       const handleBlur = () => {
          commitAndClose();
       };
-      textarea.addEventListener("blur", handleBlur);
+      inputEl.addEventListener("blur", handleBlur);
 
       this._board.discardActiveShapes();
 

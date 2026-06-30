@@ -1,7 +1,7 @@
 import "./index.css";
 import "./board/assets/index.css";
 
-e// xport { BoardProvider } from "./board/board_provider";
+// xport { BoardProvider } from "./board/board_provider";
 // export { useBoard } from "./board/board-context";
 // export type { ContextProps } from "./board/board-context";
 // export * from "./board/index";
