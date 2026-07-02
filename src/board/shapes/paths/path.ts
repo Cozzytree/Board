@@ -21,13 +21,13 @@ class Path extends Shape {
    _cachedPath: Path2D | null = null;
    _cachedScale: number = 0;
    _cachedPointsLen: number = 0;
-   private lastRoughness: number | undefined = undefined;
-   private lastFillStyle: string | undefined = undefined;
-   private lastStroke: string | undefined = undefined;
-   private lastFill: string | undefined = undefined;
-   private lastStrokeWidth: number | undefined = undefined;
-   private lastDash0: number | undefined = undefined;
-   private lastDash1: number | undefined = undefined;
+   protected lastRoughness: number | undefined = undefined;
+   protected lastFillStyle: string | undefined = undefined;
+   protected lastStroke: string | undefined = undefined;
+   protected lastFill: string | undefined = undefined;
+   protected lastStrokeWidth: number | undefined = undefined;
+   protected lastDash0: number | undefined = undefined;
+   protected lastDash1: number | undefined = undefined;
 
    constructor(props: ShapeProps & PathProps) {
       super(props);

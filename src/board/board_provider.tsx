@@ -42,6 +42,7 @@ import CloudShape from "./shapes/paths/cloud_shape";
 import { BoardContext, useBoard } from "./board-context";
 import type { HocuspocusProvider } from "@hocuspocus/provider";
 import { CURSOR_COLORS } from "./constants";
+import { TooltipProvider } from "@/components/ui/tooltip.tsx";
 
 const isEditingText = (e: KeyboardEvent) => {
    const target = e.target as HTMLElement;
@@ -116,7 +117,7 @@ const BoardProvider = ({
    /** When true, skips loading/saving from localStorage (used for room mode where sync is external). */
    skipLocalStorage?: boolean;
    onThemeChange?: (settings: {
-      theme?: "dark" | "light";
+      theme?: Theme;
       background?: string;
       foreground?: string;
    }) => void;
@@ -124,7 +125,7 @@ const BoardProvider = ({
    const [boardTheme, setBoardThemeState] = React.useState<"dark" | "light">(
       theme === "dark" || theme === "system" ? "dark" : "light",
    );
-   const [isLockedCanvas, setIsLockedCanvas] = React.useState(canvasLock);
+   const [isLockedCanvas] = React.useState(canvasLock);
    const [background, setBackground] = React.useState(boardTheme === "dark" ? "#181818" : "#efefef");
    const [foreground, setForeground] = React.useState(boardTheme === "dark" ? "#cccccc" : "#202020");
    React.useEffect(() => {
@@ -137,8 +138,8 @@ const BoardProvider = ({
       }
    }, [boardTheme]);
 
-   const handleThemeChange = React.useCallback((newTheme: "dark" | "light") => {
-      setBoardThemeState(newTheme);
+   const handleThemeChange = React.useCallback((newTheme: Theme) => {
+      setBoardThemeState(newTheme as any);
       onThemeChange?.({ theme: newTheme, background, foreground })
    }, []);
 
@@ -929,6 +930,7 @@ const BoardProvider = ({
          await saveLibraryItems({
             elements: [],
             id: item.id,
+            status: "published",
          });
       } catch (err) {
          console.error("Failed to save board library item locally", err);
@@ -950,7 +952,7 @@ const BoardProvider = ({
    }, []);
 
    return (
-      <>
+      <TooltipProvider>
          <ContextMenu>
             <BoardContext.Provider
                value={{
@@ -1076,7 +1078,7 @@ const BoardProvider = ({
                </ContextMenuItem>
             </ContextMenuContent>
          </ContextMenu >
-      </>
+      </TooltipProvider>
    );
 };
 

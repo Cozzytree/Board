@@ -1,4 +1,4 @@
-import type { ShapeProps } from "@/lib";
+import type { ShapeProps } from "@/board/types";
 
 const API_BASE = "http://localhost:3000";
 

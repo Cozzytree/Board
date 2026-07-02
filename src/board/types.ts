@@ -78,6 +78,7 @@ export type ShapeProps = {
    selectionColor?: string;
    selectionStrokeWidth?: number;
    fontSize?: number;
+   fontWeight?: string | number;
    fontFamily?: string;
    verticalAlign?: "top" | "center" | "bottom";
    textAlign?: textAlign;

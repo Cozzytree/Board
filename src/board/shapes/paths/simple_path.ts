@@ -1,6 +1,7 @@
 import type { Point, ShapeProps } from "@/board/types";
 import Path, { type PathProps } from "./path";
 import type Shape from "../shape";
+import type { DrawProps } from "../shape";
 import getStroke from "perfect-freehand";
 import { isDraggableWithRotation } from "@/board/utils/resize";
 import rough from "roughjs";
@@ -10,12 +11,7 @@ import type { Drawable } from "roughjs/bin/core";
 // left + width - this.left + p.x (flipped)
 
 class SimplePath extends Path {
-   private roughDrawable: Drawable | null = null;
-   private lastRoughness: number | undefined = undefined;
-   private lastStroke: string | undefined = undefined;
-   private lastStrokeWidth: number | undefined = undefined;
-   private lastDash0: number | undefined = undefined;
-   private lastDash1: number | undefined = undefined;
+   private simpleRoughDrawable: Drawable | null = null;
 
    constructor(props: ShapeProps & PathProps) {
       super({ ...props });
@@ -87,7 +83,7 @@ class SimplePath extends Path {
       const dash1 = this.dash?.[1] || 0;
 
       if (
-         (!this._cachedPath && !this.roughDrawable) ||
+         (!this._cachedPath && !this.simpleRoughDrawable) ||
          this._cachedScale !== currentScale ||
          this._cachedPointsLen !== this.points.length ||
          currentRoughness !== this.lastRoughness ||
@@ -131,10 +127,10 @@ class SimplePath extends Path {
             };
             if (dash0 > 0 || dash1 > 0) roughOptions.strokeLineDash = [dash0, dash1];
             
-            this.roughDrawable = generator.curve(transformedPointsForRough, roughOptions);
+            this.simpleRoughDrawable = generator.curve(transformedPointsForRough, roughOptions);
             this._cachedPath = null;
          } else {
-            this.roughDrawable = null;
+            this.simpleRoughDrawable = null;
             // Get smooth stroke outline from perfect-freehand
             const stroke = getStroke(transformedPointsForPerfect, {
                size: (resize ? 3 : this.strokeWidth) / currentScale,
@@ -174,9 +170,9 @@ class SimplePath extends Path {
       context.translate(this.left, this.top);
       context.globalAlpha = this.opacity;
 
-      if (this.roughDrawable && !resize) {
+      if (this.simpleRoughDrawable && !resize) {
          const rc = rough.canvas(context.canvas as HTMLCanvasElement);
-         rc.draw(this.roughDrawable);
+         rc.draw(this.simpleRoughDrawable);
       } else if (this._cachedPath) {
          // Fill the stroke path with the stroke color
          context.fillStyle = resize ? "#808080" : this.stroke;

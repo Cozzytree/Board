@@ -121,7 +121,7 @@ class ExcalidrawShape extends Shape {
 
    clone(): Shape {
       const p = this.cloneProps();
-      return new ExcalidrawShape({ ...p, elements: this.elements, originalBoundingBox: this.originalBoundingBox });
+      return new ExcalidrawShape({ ...p, elements: this.elements, originalBoundingBox: this.originalBoundingBox } as any);
    }
 
    toSVG(): string {

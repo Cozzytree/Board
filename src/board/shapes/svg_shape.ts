@@ -67,6 +67,14 @@ class SvgShape extends Shape {
     super.mouseup(s);
   }
 
+  toSVG(): string {
+    return ""; // Basic implementation to satisfy Shape
+  }
+
+  isTextEditable(): boolean {
+    return false;
+  }
+
   IsDraggable(p: Point): boolean {
     return isDraggableWithRotation({
       point: p,

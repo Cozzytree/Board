@@ -56,6 +56,10 @@ abstract class Line extends Shape {
 
    private establishConnection(_: Point) { }
 
+   toSVG(): string {
+      return ""; // TODO: Implement full SVG export for Lines
+   }
+
    mousedown(s: ShapeEventData): void {
       this.establishConnection(s.e.point);
       super.mousedown(s);

@@ -6,9 +6,11 @@
     "emitDeclarationOnly": true,
     "declarationMap": true,
     "outDir": "./dist/types",
+    "rootDir": "./src",
     "noUnusedLocals": false,
     "noUnusedParameters": false,
     "noUncheckedSideEffectImports": false
   },
-  "include": ["src/lib.ts", "src/vite-env.d.ts", "src/board/**/*", "src/components/**/*", "src/hooks/**/*", "src/lib/**/*"]
+  "include": ["src/lib.ts", "src/vite-env.d.ts", "src/board/**/*", "src/components/**/*", "src/hooks/**/*", "src/lib/**/*"],
+  "exclude": ["src/lib/auth-client.ts"]
 }

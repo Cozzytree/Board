@@ -127,6 +127,16 @@ class ShapeStoreArr<T extends ShapeInterface & ActiveSeletionProps> {
       this.shapes[index].SetIndex(zOrder);
       return true;
    }
+
+   declare private copy: any[];
+
+   set insertCopy(items: any[]) {
+      this.copy = items;
+   }
+
+   get getLastCopy(): any[] {
+      return this.copy || [];
+   }
 }
 
 export default ShapeStoreArr;

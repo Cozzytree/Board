@@ -121,7 +121,7 @@ export function CursorStateManager({ view, board }: { view: { x: number, y: numb
          if (board) {
             // Remove any clients that disconnected or removed selection
             for (const [clientId] of board.remoteSelections.entries()) {
-               if (!states.has(clientId)) {
+               if (!states?.has(clientId)) {
                   board.remoteSelections.delete(clientId);
                }
             }

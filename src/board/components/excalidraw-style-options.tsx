@@ -1,8 +1,9 @@
 import { AlignOptions, BoldOption, DeleteOption, DuplicateOption, FillOption, FillStyleOption, FontFamilyOption, FontSizes, ItalicOption, OpacityOption, RotationOption, RoughnessOption, StrokeDash, StrokeOption, StrokeSize, VerticalAlignOptions, ZOrderButtons } from "@/board/components/shapeoptions";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useBoard } from "@/board/board-context";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { AlignCenter, AlignVerticalSpaceAround, Layers3Icon } from "lucide-react";
-import { Popover, PopoverContent, PopoverTrigger } from "../components/ui/popover.tsx";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 export default function ExcalidrawOptionsPanel() {
    const isMobile = useIsMobile();
@@ -51,7 +52,7 @@ export default function ExcalidrawOptionsPanel() {
    }
 
    const Content = () => (
-      <div className="h-full p-4 overflow-y-auto">
+      <ScrollArea className="h-full p-4">
          <div className="flex max-h-[80vh] flex-col gap-5 w-52 pointer-events-auto">
             <div className="flex flex-col gap-3">
                <div className="w-full flex flex-col justify-between items-start">
@@ -129,7 +130,7 @@ export default function ExcalidrawOptionsPanel() {
                </div>
             </div>
          </div>
-      </div>
+      </ScrollArea>
    );
 
    return (

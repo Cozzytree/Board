@@ -1,7 +1,7 @@
 {
   "name": "@dhrubojyotiboro/board",
   "private": false,
-  "version": "0.1.1",
+  "version": "0.1.32",
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
@@ -28,7 +28,7 @@
     "build": "tsc && vite build",
     "build:app": "tsc && vite build",
     "build:lib": "rm -rf dist && vite build --config vite.lib.config.ts && tsc -p tsconfig.lib.json",
-    "prepublishOnly": "pnpm run build:lib",
+    "prepublishOnly": "bun run build:lib",
     "lint": "eslint .",
     "preview": "vite preview"
   },

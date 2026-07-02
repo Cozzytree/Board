@@ -28,7 +28,7 @@ import { INDICATOR_COLOR } from "./constants";
 
 type BoardProps = {
    snapGrid?: boolean;
-   indicatorColor: string;
+   indicatorColor?: string;
    scrollEase?: number;
    initialShapes: any[];
    container?: HTMLElement;

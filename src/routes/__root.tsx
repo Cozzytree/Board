@@ -2,23 +2,20 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { QueryClientProvider, type QueryClient } from "@tanstack/react-query";
 import { createRootRouteWithContext, useRouteContext } from "@tanstack/react-router";
 import { Outlet } from "@tanstack/react-router";
-import { TooltipProvider } from "@/components/ui/tooltip"
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
-  component: RootComponent,
+   component: RootComponent,
 });
 
 function RootComponent() {
-  const context = useRouteContext({ from: Route.id });
-  return (
-    <QueryClientProvider client={context.queryClient}>
-      <ThemeProvider defaultTheme="dark" storageKey="border">
-         <TooltipProvider>
+   const context = useRouteContext({ from: Route.id });
+   return (
+      <QueryClientProvider client={context.queryClient}>
+         <ThemeProvider defaultTheme="dark" storageKey="border">
             <div className="w-full">
-                <Outlet />
+               <Outlet />
             </div>
-         </TooltipProvider>
-      </ThemeProvider>
-    </QueryClientProvider>
-  );
+         </ThemeProvider>
+      </QueryClientProvider>
+   );
 }

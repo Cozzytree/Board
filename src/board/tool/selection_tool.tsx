@@ -3,7 +3,6 @@ import { HoveredColor } from "../constants";
 import { ActiveSelection, Box, Line, Path, Pointer, Group, Rect } from "../index";
 import { Text } from "../index.ts";
 import Shape from "../shapes/shape";
-import type { HistoryType } from "../shapes/shape_store";
 import type {
    EventData,
    Identity,
@@ -61,6 +60,7 @@ class SelectionTool implements ToolInterface {
    private sourceGroup: Group | null = null;
 
    private isTouchGesture: boolean = false;
+   private wasPinching: boolean = false;
    private touchStartDist: number = 0;
    private touchStartMidpoint: { x: number; y: number } = { x: 0, y: 0 };
    private touchStartView: { x: number; y: number; scl: number } | null = null;
@@ -77,6 +77,7 @@ class SelectionTool implements ToolInterface {
    touchStart(e: TouchEvent) {
       if (e.touches.length < 2) return;
       this.isTouchGesture = true;
+      this.wasPinching = true;
       const t0 = e.touches[0],
          t1 = e.touches[1];
       this.touchStartDist = Math.hypot(t1.clientX - t0.clientX, t1.clientY - t0.clientY);
@@ -113,6 +114,11 @@ class SelectionTool implements ToolInterface {
       if (e.touches.length < 2) {
          this.isTouchGesture = false;
          this.touchStartView = null;
+         
+         // Prevent pointerup from triggering a tap for the next 100ms
+         setTimeout(() => {
+            this.wasPinching = false;
+         }, 100);
       }
    }
 
@@ -130,7 +136,7 @@ class SelectionTool implements ToolInterface {
             const textarea = el.querySelector("textarea") || (el.tagName === "TEXTAREA" ? el : null) as HTMLTextAreaElement | null;
             if (textarea && this.textEdit) {
                const value = textarea.value;
-               const originalOpacity = this.textEdit.opacity; // or just assume 1 if it's visible normally
+               const originalOpacity = this.textEdit.opacity;
                // Try to restore opacity if it was hidden, though commitAndClose in tryStartTextEdit handles this.
                // We will just force commit here.
                this.textEdit.setSilent({ text: value, opacity: 1 });
@@ -310,8 +316,6 @@ class SelectionTool implements ToolInterface {
                         x2: child.s.left + child.s.width,
                         y2: child.s.top + child.s.height,
                      });
-                     child.originalFlipX = child.s.flipX;
-                     child.originalFlipY = child.s.flipY;
                   });
                }
                return;
@@ -564,8 +568,8 @@ class SelectionTool implements ToolInterface {
             };
 
             if (s.type === "ellipse") {
-               s.rx = snappedBounds.width / 2;
-               s.ry = snappedBounds.height / 2;
+               (s as any).rx = snappedBounds.width / 2;
+               (s as any).ry = snappedBounds.height / 2;
             } else if (s instanceof Path || s instanceof Line) {
                const scaleX = snappedBounds.width / oldShapeWidth;
                const scaleY = snappedBounds.height / oldShapeHeight;
@@ -595,8 +599,8 @@ class SelectionTool implements ToolInterface {
 
             const s = this.resizableShape.s;
             if (s.type === "ellipse") {
-               s.rx = snappedBounds.width / 2;
-               s.ry = snappedBounds.height / 2;
+               (s as any).rx = snappedBounds.width / 2;
+               (s as any).ry = snappedBounds.height / 2;
             } else if (s instanceof Path || s instanceof Line) {
                const scaleX = snappedBounds.width / oldShapeWidth;
                const scaleY = snappedBounds.height / oldShapeHeight;
@@ -755,6 +759,13 @@ class SelectionTool implements ToolInterface {
          this._board.render();
          this.clearOverlay();
          return;
+      }
+
+      // Intercept text edit if we were just pinching
+      if (this.wasPinching) {
+         this.wasPinching = false; // Reset the flag immediately to be safe
+         eventCb({ e: { x: p.x, y: p.y, target: null } });
+         return; 
       }
 
       if (this.tryStartTextEdit(p)) {
@@ -1010,7 +1021,8 @@ class SelectionTool implements ToolInterface {
       };
 
       // Handle Escape/Enter keys
-      const handleKeyDown = (e: KeyboardEvent) => {
+      const handleKeyDown = (evt: Event) => {
+         const e = evt as KeyboardEvent;
          e.stopPropagation();
          if (e.key === "Escape") {
             e.preventDefault();
@@ -1059,7 +1071,7 @@ class SelectionTool implements ToolInterface {
       context.restore();
    }
 
-   dblClick({ p }: ToolEventData): void {
+   dblClick({ p, e }: ToolEventData): void {
       const active = this._board.getActiveShapes();
       if (active) {
          const a = active;
@@ -1068,7 +1080,7 @@ class SelectionTool implements ToolInterface {
          }
       } else {
          this._board.setMode = { m: "text", sm: null, originUi: true }
-         this._board.currentTool?.onClick({ p });
+         this._board.currentTool?.onClick({ p, e });
       }
    }
 

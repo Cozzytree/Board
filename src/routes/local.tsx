@@ -11,6 +11,7 @@ import CanvasOptions from "@/board/components/canvas_options";
 import { MenuIcon, RedoIcon, UndoIcon } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
+import ShapeOptions from "@/board/components/shapeoptions";
 const BoardProvider = React.lazy(() =>
    import("@/board/board_provider").then((m) => ({
       default: m.BoardProvider

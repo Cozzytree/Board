@@ -29,6 +29,7 @@ function ExcalidrawPreview({ elements }: { elements: LibraryItem[] }) {
          left: 0,
          top: 0,
          ctx: ctx,
+         _board: {} as any,
       });
 
       const padding = 8;

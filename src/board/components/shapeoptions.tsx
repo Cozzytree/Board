@@ -173,14 +173,14 @@ function remapShapeColorsForTheme(
    });
 }
 
-function LockShape({ as, canvas }: { as: Shape, canvas: Board }) {
+function LockShape({ as }: { as: Shape, canvas: Board }) {
    return (
       <Button
          onClick={() => {
-            as.set("locked", !as.locked);
+            as.set("locked", !as?.locked);
          }}
          variant={"ghost"} size={"sm"}>
-         {as.locked ? <LockIcon /> : <UnlockIcon />}
+         {as?.locked ? <LockIcon /> : <UnlockIcon />}
       </Button>
    )
 }
@@ -1101,7 +1101,7 @@ function BoldOption({ debounceMs = 200 }: { debounceMs?: number }) {
    );
 }
 
-function FontSizes({ debounceMs = 200, className, standalone, icon, children }: Props) {
+function FontSizes({ debounceMs = 200, className, standalone, children }: Props) {
    const { activeShape, canvas, update } = useBoard();
    const handleUpdate = debounce(() => update(), debounceMs);
    const currentSize = activeShape?.get("fontSize");
@@ -1328,7 +1328,7 @@ function RoughnessOption({ debounceMs = 100, className, standalone, children }: 
    );
 }
 
-function FillStyleOption({ debounceMs = 200, className, standalone, icon, children }: Props) {
+function FillStyleOption({ debounceMs = 200, className, standalone, children }: Props) {
    const { activeShape, canvas, update } = useBoard();
    const activeFillStyle = activeShape?.get("fillStyle") ?? "hachure";
    const handleUpdate = debounce(() => update(), debounceMs);
@@ -1398,7 +1398,7 @@ function FillStyleOption({ debounceMs = 200, className, standalone, icon, childr
    );
 }
 
-function StrokeDash({ debounceMs = 200, className, standalone, icon, children }: Props) {
+function StrokeDash({ debounceMs = 200, className, standalone, children }: Props) {
    const { setActiveShape, activeShape, canvas, update } = useBoard();
    const [, setS] = useState(activeShape?.get("dash").toString() || "");
    const handleUpdate = debounce(() => update(), debounceMs);
@@ -1461,7 +1461,7 @@ function StrokeDash({ debounceMs = 200, className, standalone, icon, children }:
    );
 }
 
-function RotationOption({ debounceMs = 200, className, standalone, icon, children }: Props) {
+function RotationOption({ debounceMs = 200, className, standalone, children }: Props) {
    const { activeShape, canvas } = useBoard();
 
    const getRotation = () => {
