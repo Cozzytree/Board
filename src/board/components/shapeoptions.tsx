@@ -582,7 +582,8 @@ function StrokeSize({ debounceMs = 50, className, standalone, icon, children }: 
    const { activeShape, canvas, setActiveShape, update } = useBoard();
 
    const handleStrokeSize = debounce((n: number) => {
-      if (!activeShape) return;
+      if (canvas) canvas.defaultShapeProps.strokeWidth = n;
+      if (!activeShape) { update(); return; }
       // Manual event simulation for helperEvent or direct logic
       if (activeShape instanceof ActiveSelection) {
          activeShape.shapes.forEach((sh) => {
@@ -604,7 +605,7 @@ function StrokeSize({ debounceMs = 50, className, standalone, icon, children }: 
                   key={s}
                   className={cn(
                      "flex items-center cursor-pointer h-8 rounded-sm",
-                     activeShape?.get("strokeWidth") === s ? "bg-muted" : "",
+                     (activeShape ? activeShape.get("strokeWidth") : (canvas?.defaultShapeProps.strokeWidth || 2)) === s ? "bg-muted" : "",
                   )}
                   onClick={() => {
                      handleStrokeSize(s);
@@ -645,7 +646,7 @@ function StrokeSize({ debounceMs = 50, className, standalone, icon, children }: 
                   }
                }}
                type="number"
-               defaultValue={Number(activeShape?.get("strokeWidth") || 0)}
+               defaultValue={Number(activeShape ? activeShape.get("strokeWidth") : (canvas?.defaultShapeProps.strokeWidth || 2))}
             />
          </div>
       </div>
@@ -658,7 +659,7 @@ function StrokeSize({ debounceMs = 50, className, standalone, icon, children }: 
             icon ||
             <Minus
                style={{
-                  transform: `scaleY(${Math.min(Math.max((activeShape?.get("strokeWidth") || 1) * 0.5, 1), 3)})`,
+                  transform: `scaleY(${Math.min(Math.max(((activeShape ? activeShape.get("strokeWidth") : canvas?.defaultShapeProps.strokeWidth) || 1) * 0.5, 1), 3)})`,
                }}
             />
          }
@@ -673,7 +674,8 @@ function StrokeOption({ debounceMs = 200, className, standalone = false, icon, m
    const { activeShape, canvas, setActiveShape, update } = useBoard();
    const [shade, setShade] = useState(0);
    const applyStroke = debounce((val: string) => {
-      if (!activeShape) return;
+      if (canvas) canvas.defaultShapeProps.stroke = val;
+      if (!activeShape) { update(); return; }
 
       if (activeShape instanceof ActiveSelection) {
          activeShape.shapes.forEach((s) => {
@@ -689,7 +691,7 @@ function StrokeOption({ debounceMs = 200, className, standalone = false, icon, m
    }, debounceMs);
 
    const content = () => {
-      const activeShade = generateShades(activeShape?.get("stroke") || "");
+      const activeShade = generateShades((activeShape ? activeShape.get("stroke") : canvas?.defaultShapeProps.stroke) || "");
       return (
          <div className="flex flex-col w-32 space-y-4">
             <div className="flex flex-col gap-1">
@@ -716,7 +718,7 @@ function StrokeOption({ debounceMs = 200, className, standalone = false, icon, m
                            title={c}
                            className={cn(
                               "h-5 w-5 border border-border/70 transition-transform hover:scale-110 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1",
-                              activeShape?.get("stroke") === c ? "ring-2 ring-primary ring-offset-1" : "",
+                              (activeShape ? activeShape.get("stroke") : canvas?.defaultShapeProps.stroke) === c ? "ring-2 ring-primary ring-offset-1" : "",
                            )}
                         />
                      );
@@ -754,7 +756,7 @@ function StrokeOption({ debounceMs = 200, className, standalone = false, icon, m
                   <Input
                      className="text-sm text-muted-foreground"
                      type="text"
-                     defaultValue={activeShape?.get("stroke")}
+                     defaultValue={activeShape ? activeShape.get("stroke") : canvas?.defaultShapeProps.stroke}
                   />
                   <div className="relative h-6 w-6 rounded-md overflow-hidden border border-border/50 cursor-pointer hover:scale-110 transition-transform">
                      <Label htmlFor="cst-c">
@@ -764,7 +766,7 @@ function StrokeOption({ debounceMs = 200, className, standalone = false, icon, m
                         id="cst-c"
                         type="color"
                         className="hidden inset-0 w-[150%] h-[150%] -top-1/4 -left-1/4 cursor-pointer p-0 border-0"
-                        value={activeShape?.get("stroke") || "#000000"}
+                        value={(activeShape ? activeShape.get("stroke") : canvas?.defaultShapeProps.stroke) || "#000000"}
                         onChange={(e) => {
                            if (!activeShape) return;
                            applyStroke(e.target.value);
@@ -810,7 +812,7 @@ function StrokeOption({ debounceMs = 200, className, standalone = false, icon, m
                         {icon ||
                            <div
                               className="bottom-1 right-1 w-6 h-6 rounded-sm border border-background"
-                              style={{ background: activeShape?.get("stroke") || "currentColor" }}
+                              style={{ background: (activeShape ? activeShape.get("stroke") : canvas?.defaultShapeProps.stroke) || "currentColor" }}
                            />
                         }
                      </button>
@@ -830,7 +832,8 @@ function FillOption({ debounceMs = 200, className, standalone = false, icon, mob
    const [shade, setShade] = useState(0);
 
    const applyFill = debounce((color: string) => {
-      if (!activeShape) return;
+      if (canvas) canvas.defaultShapeProps.fill = color;
+      if (!activeShape) { update(); return; }
       if (activeShape instanceof ActiveSelection) {
          activeShape.shapes.forEach((s) => {
             if (s.s) s.s.set("fill", color);
@@ -846,7 +849,7 @@ function FillOption({ debounceMs = 200, className, standalone = false, icon, mob
    }, debounceMs);
 
    const content = () => {
-      const activeShade = generateShades(activeShape?.get("fill") || "");
+      const activeShade = generateShades((activeShape ? activeShape.get("fill") : canvas?.defaultShapeProps.fill) || "");
       return (
          <div className="flex flex-col w-32 space-y-4">
             <div className="flex flex-col gap-1">
@@ -868,9 +871,9 @@ function FillOption({ debounceMs = 200, className, standalone = false, icon, mob
                      onClick={() => applyFill("#00000000")}
                      className={cn(
                         "h-5 w-5 rounded-sm border border-border flex items-center justify-center hover:bg-muted transition-colors relative overflow-hidden",
-                        activeShape?.get("fill") === "transparent" ||
-                           activeShape?.get("fill") === "#00000000" ||
-                           !activeShape?.get("fill")
+                        (activeShape ? activeShape.get("fill") : canvas?.defaultShapeProps.fill) === "transparent" ||
+                           (activeShape ? activeShape.get("fill") : canvas?.defaultShapeProps.fill) === "#00000000" ||
+                           !(activeShape ? activeShape.get("fill") : canvas?.defaultShapeProps.fill)
                            ? "ring-2 ring-primary ring-offset-1"
                            : "",
                      )}>
@@ -886,7 +889,7 @@ function FillOption({ debounceMs = 200, className, standalone = false, icon, mob
                            title={c}
                            className={cn(
                               "h-5 w-5 border border-border/70 transition-transform hover:scale-110 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1",
-                              activeShape?.get("fill") === c ? "ring-2 ring-primary ring-offset-1" : "",
+                              (activeShape ? activeShape.get("fill") : canvas?.defaultShapeProps.fill) === c ? "ring-2 ring-primary ring-offset-1" : "",
                            )}
                         />
                      );
@@ -924,7 +927,7 @@ function FillOption({ debounceMs = 200, className, standalone = false, icon, mob
                   <Input
                      className="text-sm text-muted-foreground"
                      type="text"
-                     defaultValue={activeShape?.get("fill")}
+                     defaultValue={activeShape ? activeShape.get("fill") : canvas?.defaultShapeProps.fill}
                   />
                   <div className="relative h-6 w-6 rounded-md overflow-hidden border border-border/50 cursor-pointer hover:scale-110 transition-transform">
                      <Label htmlFor="cst-fill-c">
@@ -935,9 +938,9 @@ function FillOption({ debounceMs = 200, className, standalone = false, icon, mob
                         type="color"
                         className="hidden inset-0 w-[150%] h-[150%] -top-1/4 -left-1/4 cursor-pointer p-0 border-0"
                         value={
-                           activeShape?.get("fill") === "transparent"
+                           (activeShape ? activeShape.get("fill") : canvas?.defaultShapeProps.fill) === "transparent"
                               ? "#ffffff"
-                              : activeShape?.get("fill") || "#ffffff"
+                              : (activeShape ? activeShape.get("fill") : canvas?.defaultShapeProps.fill) || "#ffffff"
                         }
                         onChange={(e) => {
                            if (!activeShape) return;
@@ -984,7 +987,7 @@ function FillOption({ debounceMs = 200, className, standalone = false, icon, mob
                         {icon ||
                            <div
                               className="bottom-1 right-1 w-6 h-6 rounded-sm border border-background"
-                              style={{ background: activeShape?.get("fill") || "currentColor" }}
+                              style={{ background: (activeShape ? activeShape.get("fill") : canvas?.defaultShapeProps.fill) || "transparent" }}
                            />
                         }
                      </button>
@@ -1001,7 +1004,9 @@ function FillOption({ debounceMs = 200, className, standalone = false, icon, mob
 
 function ItalicOption({ debounceMs = 200 }: { debounceMs?: number }) {
    const { activeShape, canvas, setActiveShape, update } = useBoard();
-   const [isItalic, setItalic] = useState(!!activeShape?.get("italic"));
+   const currentItalic = !!(activeShape ? activeShape.get("italic") : canvas?.defaultShapeProps.italic);
+   const [isItalic, setItalic] = useState(currentItalic);
+   useEffect(() => setItalic(currentItalic), [currentItalic]);
    const handleUpdate = debounce(() => update(), debounceMs);
 
    return (
@@ -1009,7 +1014,9 @@ function ItalicOption({ debounceMs = 200 }: { debounceMs?: number }) {
          variant={isItalic ? "secondary" : "ghost"}
          size="xs"
          onClick={() => {
-            if (!canvas || !activeShape) return;
+            if (!canvas) return;
+            canvas.defaultShapeProps.italic = !isItalic;
+            if (!activeShape) { handleUpdate(); return; }
             if (activeShape instanceof ActiveSelection) {
                activeShape.shapes.forEach((s) => {
                   if (s.s) s.s.set("italic", !isItalic);
@@ -1032,7 +1039,8 @@ function AlignOptions({ debounceMs = 100, standalone, icon, children, className 
    const handleUpdate = debounce(() => update(), debounceMs);
 
    const handleAlign = (a: textAlign) => {
-      if (!activeShape || !canvas) return;
+      if (canvas) canvas.defaultShapeProps.textAlign = a;
+      if (!activeShape) { handleUpdate(); return; }
       if (activeShape instanceof ActiveSelection) {
          activeShape.shapes.forEach((s) => {
             if (s.s) s.s.set("textAlign", a);
@@ -1043,7 +1051,7 @@ function AlignOptions({ debounceMs = 100, standalone, icon, children, className 
       handleUpdate();
    };
 
-   const currentAlign = (activeShape?.get("textAlign") as textAlign) || "center";
+   const currentAlign = ((activeShape ? activeShape.get("textAlign") : canvas?.defaultShapeProps.textAlign) as textAlign) || "center";
    const content = () => (
       <div className="flex bg-muted/50 rounded-md p-0.5 border border-border/50">
          <Button
@@ -1083,7 +1091,9 @@ function AlignOptions({ debounceMs = 100, standalone, icon, children, className 
 
 function BoldOption({ debounceMs = 200 }: { debounceMs?: number }) {
    const { activeShape, canvas, update } = useBoard();
-   const [w, setW] = useState((activeShape?.get("fontWeight") as number) || 500);
+   const currentW = (activeShape ? activeShape.get("fontWeight") : canvas?.defaultShapeProps.fontWeight) as number || 500;
+   const [w, setW] = useState(currentW);
+   useEffect(() => setW(currentW), [currentW]);
    const handleUpdate = debounce(() => update(), debounceMs);
 
    return (
@@ -1091,7 +1101,9 @@ function BoldOption({ debounceMs = 200 }: { debounceMs?: number }) {
          variant={w !== 500 ? "secondary" : "ghost"}
          size="xs"
          onClick={() => {
-            if (!activeShape || !canvas) return;
+            if (!canvas) return;
+            canvas.defaultShapeProps.fontWeight = w === 500 ? 800 : 500;
+            if (!activeShape) { handleUpdate(); return; }
             activeShape.set("fontWeight", w === 500 ? 800 : 500);
             canvas.render();
             handleUpdate();
@@ -1105,12 +1117,13 @@ function BoldOption({ debounceMs = 200 }: { debounceMs?: number }) {
 function FontSizes({ debounceMs = 200, className, standalone, children }: Props) {
    const { activeShape, canvas, update } = useBoard();
    const handleUpdate = debounce(() => update(), debounceMs);
-   const currentSize = activeShape?.get("fontSize");
+   const currentSize = activeShape ? activeShape.get("fontSize") : canvas?.defaultShapeProps.fontSize;
    const matchedPreset = FONT_SIZES.find((f) => f.size === currentSize);
    const displayLabel = matchedPreset ? matchedPreset.label : currentSize || "Size";
 
    const handleSizeChange = (newSize: number) => {
-      if (!activeShape || !canvas) return;
+      if (canvas) canvas.defaultShapeProps.fontSize = newSize;
+      if (!activeShape) { handleUpdate(); return; }
       if (activeShape instanceof ActiveSelection) {
          activeShape.shapes.forEach((s) => {
             if (s.s) s.s.set("fontSize", newSize);
@@ -1177,7 +1190,8 @@ function FontFamilyOption({ debounceMs = 200, className, standalone }: Props) {
    const handleUpdate = debounce(() => update(), debounceMs);
 
    const handleSetFont = (fValue: string) => {
-      if (!activeShape || !canvas) return;
+      if (canvas) canvas.defaultShapeProps.fontFamily = fValue;
+      if (!activeShape) { handleUpdate(); return; }
       if (activeShape instanceof ActiveSelection) {
          activeShape.shapes.forEach((s) => {
             if (s.s) s.s.set("fontFamily", fValue);
@@ -1189,7 +1203,7 @@ function FontFamilyOption({ debounceMs = 200, className, standalone }: Props) {
    };
 
    const mainFonts = FONT_FAMILIES.slice(0, 3);
-   const currentFont = activeShape?.get("fontFamily") || FONT_FAMILIES[0].value;
+   const currentFont = (activeShape ? activeShape.get("fontFamily") : canvas?.defaultShapeProps.fontFamily) || FONT_FAMILIES[0].value;
 
    const getIconComponent = (iconName: string) => {
       switch (iconName) {
@@ -1258,9 +1272,10 @@ function FontFamilyOption({ debounceMs = 200, className, standalone }: Props) {
 function RoughnessOption({ debounceMs = 0, className, standalone, children }: Props) {
    const { activeShape, canvas, update } = useBoard();
    // Provide a fallback of 1 (Artist) if roughness isn't explicitly set yet
-   const activeRoughness = activeShape?.get("roughness") ?? 1;
+   const activeRoughness = (activeShape ? activeShape.get("roughness") : canvas?.defaultShapeProps.roughness) ?? 1;
    const handleSetRoughness = debounce((v: number) => {
-      if (!activeShape || !canvas) return;
+      if (canvas) canvas.defaultShapeProps.roughness = v;
+      if (!activeShape) { update(); return; }
       if (activeShape instanceof ActiveSelection) {
          activeShape.shapes.forEach((s) => {
             s.s.set("roughness", v);
@@ -1329,9 +1344,10 @@ function RoughnessOption({ debounceMs = 0, className, standalone, children }: Pr
 
 function FillStyleOption({ debounceMs = 0, className, standalone, children }: Props) {
    const { activeShape, canvas, update } = useBoard();
-   const activeFillStyle = activeShape?.get("fillStyle") ?? "hachure";
+   const activeFillStyle = (activeShape ? activeShape.get("fillStyle") : canvas?.defaultShapeProps.fillStyle) ?? "hachure";
    const handleSetFillStyle = debounce((v: string) => {
-      if (!activeShape || !canvas) return;
+      if (canvas) canvas.defaultShapeProps.fillStyle = v;
+      if (!activeShape) { update(); return; }
       if (activeShape instanceof ActiveSelection) {
          activeShape.shapes.forEach((s) => {
             s.s.set("fillStyle", v);
@@ -1397,10 +1413,14 @@ function FillStyleOption({ debounceMs = 0, className, standalone, children }: Pr
 
 function StrokeDash({ debounceMs = 200, className, standalone, children }: Props) {
    const { setActiveShape, activeShape, canvas, update } = useBoard();
-   const [, setS] = useState(activeShape?.get("dash").toString() || "");
+   const currentDashState = (activeShape ? activeShape.get("dash") : canvas?.defaultShapeProps.dash)?.toString() || "0,0";
+   const [, setS] = useState(currentDashState);
+   useEffect(() => setS(currentDashState), [currentDashState]);
    const handleUpdate = debounce(() => update(), debounceMs);
 
    const handledash = (v: [number, number]) => {
+      if (canvas) canvas.defaultShapeProps.dash = v;
+      if (!activeShape) { handleUpdate(); return; }
       if (activeShape instanceof ActiveSelection) {
          activeShape.shapes.forEach((s) => {
             if (s.s) s.s.set("dash", v);
@@ -1413,7 +1433,7 @@ function StrokeDash({ debounceMs = 200, className, standalone, children }: Props
       handleUpdate();
    };
 
-   const currentDash = activeShape?.get("dash").toString() || "0,0";
+   const currentDash = (activeShape ? activeShape.get("dash") : canvas?.defaultShapeProps.dash)?.toString() || "0,0";
 
    const content = (
       <div className={className}>
@@ -1552,7 +1572,8 @@ function VerticalAlignOptions({ debounceMs = 50, children, className, icon, stan
    const handleUpdate = debounce(() => update(), debounceMs);
 
    const handleAlign = (a: "top" | "center" | "bottom") => {
-      if (!activeShape || !canvas) return;
+      if (canvas) canvas.defaultShapeProps.verticalAlign = a;
+      if (!activeShape) { handleUpdate(); return; }
       if (activeShape instanceof ActiveSelection) {
          activeShape.shapes.forEach((s) => {
             if (s.s) s.s.set("verticalAlign", a);
@@ -1564,7 +1585,7 @@ function VerticalAlignOptions({ debounceMs = 50, children, className, icon, stan
    };
 
    const currentAlign =
-      (activeShape?.get("verticalAlign") as "top" | "center" | "bottom") || "center";
+      ((activeShape ? activeShape.get("verticalAlign") : canvas?.defaultShapeProps.verticalAlign) as "top" | "center" | "bottom") || "center";
 
    const content = (
       <div className="flex bg-muted/50 rounded-md p-0.5 border border-border/50">

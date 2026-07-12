@@ -46,7 +46,7 @@ class TextTool implements ToolInterface {
 
       const textarea = document.createElement("textarea");
       const scale = this._board.view.scl;
-      const editorFontSize = this.baseFontSize * scale;
+      const editorFontSize = (this._board.defaultShapeProps.fontSize || this.baseFontSize) * scale;
 
       textarea.placeholder = ""; 
       textarea.spellcheck = true;
@@ -62,9 +62,9 @@ class TextTool implements ToolInterface {
       textarea.style.resize = "none";
       textarea.style.overflow = "hidden";
       textarea.style.background = "transparent";
-      textarea.style.color = this._board.foreground;
-      textarea.style.fontFamily = "system-ui, sans-serif";
-      textarea.style.fontWeight = "700";
+      textarea.style.color = this._board.defaultShapeProps.fill || this._board.foreground;
+      textarea.style.fontFamily = this._board.defaultShapeProps.fontFamily || "system-ui, sans-serif";
+      textarea.style.fontWeight = this._board.defaultShapeProps.fontWeight || "500";
       textarea.style.fontSize = `${editorFontSize}px`;
       textarea.style.lineHeight = `${editorFontSize * 1.2}px`;
       textarea.style.whiteSpace = "pre"; // Don't wrap automatically unless explicitly breaking line

@@ -127,7 +127,9 @@ class LineShape extends Line {
             strokeWidth: this.strokeWidth,
             fill: currentFill,
             fillStyle: currentFillStyle,
-            roughness: currentRoughness === 0 ? 0 : (currentRoughness === 1 ? 1.5 : 3)
+            roughness: currentRoughness === 0 ? 0 : (currentRoughness === 1 ? 1 : 2),
+            disableMultiStroke: true,
+            preserveVertices: true,
          };
          if (this.dash?.[0] > 0) roughOptions.strokeLineDash = this.dash;
          if (currentRoughness > 0) roughOptions.seed = this.left + this.top;

@@ -17,6 +17,21 @@ class ShapeTool implements ToolInterface {
    private newShape: Shape | null = null;
    private oldShapeProps: Box;
 
+   private getDefaultProps(p: any, w: number) {
+      return {
+         ...this._board.defaultShapeProps,
+         stroke: this._board.defaultShapeProps.stroke || this._board.foreground,
+         fill: this._board.defaultShapeProps.fill || "transparent",
+         _board: this._board,
+         ctx: this._board.ctx,
+         width: w,
+         height: w,
+         left: p.x,
+         top: p.y,
+      };
+   }
+
+
    constructor(board: Board, submode?: submodes) {
       this._board = board;
       this.submode = submode || "rect";
@@ -42,25 +57,14 @@ class ShapeTool implements ToolInterface {
       if (this._board.customShapes.has(this.submode)) {
          const ShapeConstructor = this._board.customShapes.get(this.submode);
          if (ShapeConstructor) {
-            this.newShape = new ShapeConstructor({
-               _board: this._board,
-               ctx: this._board.ctx,
-               width: w,
-               height: w,
-               left: p.x,
-               top: p.y,
-            });
+            this.newShape = new ShapeConstructor(this.getDefaultProps(p, w));
          }
       }
 
       switch (this.submode) {
          case "path:diamond":
             this.newShape = new Path({
-               _board: this._board,
-               ctx: this._board.ctx,
-               width: w,
-               height: w,
-               stroke: this._board.foreground,
+               ...this.getDefaultProps(p, w),
                points: [
                   new Pointer({ x: 0, y: w * 0.2 }),
                   new Pointer({ x: w * 0.2, y: 0 }),
@@ -69,19 +73,11 @@ class ShapeTool implements ToolInterface {
                   new Pointer({ x: w / 2, y: w }),
                   new Pointer({ x: 0, y: w * 0.2 }),
                ],
-               left: p.x,
-               top: p.y,
             });
             break;
          case "path:plus":
             this.newShape = new Path({
-               _board: this._board,
-               ctx: this._board.ctx,
-               width: w,
-               height: w,
-               left: p.x,
-               top: p.y,
-               stroke: this._board.foreground,
+               ...this.getDefaultProps(p, w),
                points: [
                   new Pointer({ x: 0, y: w * 0.4 }),
                   new Pointer({ x: w * 0.4, y: w * 0.4 }),
@@ -100,13 +96,7 @@ class ShapeTool implements ToolInterface {
             break;
          case "path:triangle":
             this.newShape = new Path({
-               _board: this._board,
-               ctx: this._board.ctx,
-               width: w,
-               height: w,
-               stroke: this._board.foreground,
-               left: p.x,
-               top: p.y,
+               ...this.getDefaultProps(p, w),
                points: [
                   new Pointer({ x: w * 0.5, y: 0 }),
                   new Pointer({ x: w, y: w }),
@@ -117,13 +107,7 @@ class ShapeTool implements ToolInterface {
             break;
          case "path:trapezoid":
             this.newShape = new Path({
-               _board: this._board,
-               ctx: this._board.ctx,
-               width: w,
-               height: w,
-               stroke: this._board.foreground,
-               left: p.x,
-               top: p.y,
+               ...this.getDefaultProps(p, w),
                points: [
                   new Pointer({ x: w * 0.2, y: 0 }),
                   new Pointer({ x: w - w * 0.2, y: 0 }),
@@ -134,13 +118,7 @@ class ShapeTool implements ToolInterface {
             break;
          case "path:pentagon":
             this.newShape = new Path({
-               _board: this._board,
-               ctx: this._board.ctx,
-               width: w,
-               height: w,
-               left: p.x,
-               stroke: this._board.foreground,
-               top: p.y,
+               ...this.getDefaultProps(p, w),
                points: [
                   new Pointer({ x: w / 2, y: 0 }),
                   new Pointer({ x: w, y: w * 0.4 }),
@@ -152,69 +130,28 @@ class ShapeTool implements ToolInterface {
             break;
          case "path:star":
             this.newShape = new Star({
-               _board: this._board,
-               ctx: this._board.ctx,
-               width: w,
-               height: w,
-               stroke: this._board.foreground,
-               left: p.x,
-               top: p.y,
+               ...this.getDefaultProps(p, w),
             });
             break;
          case "path:hexagon":
-            this.newShape = new Hexagon({
-               _board: this._board,
-               ctx: this._board.ctx,
-               width: w,
-               height: w,
-               left: p.x,
-               top: p.y,
-            });
+            this.newShape = new Hexagon(this.getDefaultProps(p, w));
             break;
          case "path:arrow":
-            this.newShape = new Arrow({
-               _board: this._board,
-               ctx: this._board.ctx,
-               stroke: this._board.foreground,
-               width: w,
-               height: w,
-               left: p.x,
-               top: p.y,
-            });
+            this.newShape = new Arrow(this.getDefaultProps(p, w));
             break;
          case "path:message":
-            this.newShape = new MessageBubble({
-               _board: this._board,
-               ctx: this._board.ctx,
-               width: w,
-               stroke: this._board.foreground,
-               height: w,
-               left: p.x,
-               top: p.y,
-            });
+            this.newShape = new MessageBubble(this.getDefaultProps(p, w));
             break;
          case "rect":
             this.newShape = new Rect({
-               ctx: this._board.ctx,
-               left: p.x,
-               top: p.y,
-               stroke: this._board.foreground,
-               width: 0,
-               height: 0,
-               _board: this._board,
+               ...this.getDefaultProps(p, 0)
             });
             break;
          case "circle":
             this.newShape = new Ellipse({
-               ctx: this._board.ctx,
-               left: p.x,
-               stroke: this._board.foreground,
-               top: p.y,
-               width: 0,
-               height: 0,
+               ...this.getDefaultProps(p, 0),
                rx: 0,
-               ry: 0,
-               _board: this._board,
+               ry: 0
             });
             break;
       }

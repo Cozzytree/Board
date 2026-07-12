@@ -136,7 +136,7 @@ class ImageShape extends Shape {
     }
 
     // Border
-    if (this.strokeWidth > 0 && this.stroke !== "transparent" && !resize) {
+    if (this.strokeWidth > 0 && this.stroke !== "transparent") {
       context.beginPath();
       context.rect(this.left, this.top, this.width, this.height);
       context.stroke();

@@ -80,6 +80,10 @@ class SelectionTool implements ToolInterface {
       document.addEventListener("keydown", this.handleKeyDown);
    }
 
+   setConf(key: string, value: any): void { }
+
+   getConf(key: string) { }
+
    touchStart(e: TouchEvent) {
       if (e.touches.length < 2) return;
       this.isTouchGesture = true;
@@ -120,7 +124,7 @@ class SelectionTool implements ToolInterface {
       if (e.touches.length < 2) {
          this.isTouchGesture = false;
          this.touchStartView = null;
-         
+
          // Prevent pointerup from triggering a tap for the next 100ms
          setTimeout(() => {
             this.wasPinching = false;
@@ -149,7 +153,7 @@ class SelectionTool implements ToolInterface {
                this.textEdit.setSilent({ text: value, opacity: 1 });
                this.textEdit.set("text", value);
             }
-            try { el.remove(); } catch (e) {}
+            try { el.remove(); } catch (e) { }
          }
          this.isInput = false;
          this.textEdit = null;
@@ -218,8 +222,10 @@ class SelectionTool implements ToolInterface {
                   y: currentActive.top + currentActive.height / 2,
                };
 
-               // this.initialRotationAngle = Math.atan2(p.y - this.rotationCenter.y, p.x - this.rotationCenter.x);
-               // this.initialShapeRotation = currentActive.rotate;
+               const dx = p.x - this.rotationCenter.x;
+               const dy = p.y - this.rotationCenter.y;
+               this.rotationStartAngle = Math.atan2(dy, dx) - currentActive.rotate;
+               this._board.setCursor("grabbing");
                return;
             }
 
@@ -772,7 +778,7 @@ class SelectionTool implements ToolInterface {
       if (this.wasPinching) {
          this.wasPinching = false; // Reset the flag immediately to be safe
          eventCb({ e: { x: p.x, y: p.y, target: null } });
-         return; 
+         return;
       }
 
       if (this.tryStartTextEdit(p)) {
@@ -876,15 +882,20 @@ class SelectionTool implements ToolInterface {
 
       // Remove any existing textarea
       const existingEl = document.getElementById(textAreaId);
-      try { existingEl?.remove(); } catch (e) {}
+      try { existingEl?.remove(); } catch (e) { }
 
       // Create container div
       const div = document.createElement("div");
       div.setAttribute("id", textAreaId);
       div.style.position = "absolute";
       div.style.zIndex = "1000";
-      
+
       const isGroupTitle = active instanceof Group && active.isTitleHovered(p);
+
+      // Prevent regular text editing for Groups, ONLY allow title editing
+      if (active instanceof Group && !isGroupTitle) {
+         return false;
+      }
 
       if (isGroupTitle) {
          div.style.left = rect.left + (this.textEdit.left - this.textEdit.padding) * this._board.view.scl + this._board.view.x + "px";
@@ -900,7 +911,7 @@ class SelectionTool implements ToolInterface {
          div.style.top = rect.top + this.textEdit.top * this._board.view.scl + this._board.view.y + "px";
          div.style.width = this.textEdit.width * this._board.view.scl + "px";
          div.style.height = this.textEdit.height * this._board.view.scl + "px";
-         
+
          div.style.display = "flex";
          // Text alignment logic for container
          div.style.alignItems = this.textEdit.verticalAlign === "top" ? "flex-start" : this.textEdit.verticalAlign === "bottom" ? "flex-end" : "center";
@@ -913,15 +924,15 @@ class SelectionTool implements ToolInterface {
       // Create input/textarea
       const inputEl = isGroupTitle ? document.createElement("input") : document.createElement("textarea");
       inputEl.setAttribute("data-board-text-edit", "true");
-      
+
       const originalText = isGroupTitle ? (this.textEdit as Group).title : this.textEdit.text || "";
       inputEl.value = originalText;
-      
+
       inputEl.spellcheck = true;
       inputEl.autocomplete = "off";
       inputEl.setAttribute("autocapitalize", "sentences");
       inputEl.setAttribute("inputmode", "text");
-      
+
       inputEl.style.margin = "0px";
       inputEl.style.padding = isGroupTitle ? "0px" : `${(this.textEdit.padding || 8) * scale}px`;
       inputEl.style.border = "none";
@@ -933,18 +944,18 @@ class SelectionTool implements ToolInterface {
       inputEl.style.fontSize = `${editorFontSize}px`;
       inputEl.style.lineHeight = `${editorFontSize * 1.2}px`;
       inputEl.style.caretColor = this.textEdit.stroke;
-      
+
       if (!isGroupTitle) {
          const textarea = inputEl as HTMLTextAreaElement;
          textarea.style.resize = "none";
          textarea.style.overflow = "hidden";
-         
+
          // Crucial part for wrapping text in shape bounds
-         textarea.style.whiteSpace = "pre-wrap"; 
+         textarea.style.whiteSpace = "pre-wrap";
          textarea.style.wordBreak = "break-word";
          textarea.style.boxSizing = "border-box";
          textarea.style.textAlign = this.textEdit.textAlign || "center";
-         
+
          // Textarea will fit its content, but never exceed parent div's width
          textarea.style.width = "fit-content";
          textarea.style.maxWidth = "100%";
@@ -967,13 +978,13 @@ class SelectionTool implements ToolInterface {
       }
       this._board.render(); // Redraws main canvas immediately (shape is drawn without text)
 
-      let autoSizeTextareaHeight: () => void = () => {};
+      let autoSizeTextareaHeight: () => void = () => { };
 
       if (!isGroupTitle) {
          const textarea = inputEl as HTMLTextAreaElement;
          const checkResize = debounce(() => {
             if (!this.textEdit) return;
-            
+
             // In a pre-wrap textarea, width wraps naturally, but we need to track height
             const requiredHeight = textarea.scrollHeight;
             const currentHeightScaled = this.textEdit.height * scale;
@@ -994,7 +1005,7 @@ class SelectionTool implements ToolInterface {
             textarea.style.height = scrollHeight + "px";
             checkResize();
          };
-         
+
          // Initial size
          autoSizeTextareaHeight();
          textarea.addEventListener("input", autoSizeTextareaHeight);
@@ -1004,7 +1015,7 @@ class SelectionTool implements ToolInterface {
       requestAnimationFrame(() => {
          inputEl.focus();
          if (inputEl instanceof HTMLTextAreaElement || inputEl instanceof HTMLInputElement) {
-             inputEl.setSelectionRange(inputEl.value.length, inputEl.value.length);
+            inputEl.setSelectionRange(inputEl.value.length, inputEl.value.length);
          }
       });
 

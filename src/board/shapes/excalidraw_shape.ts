@@ -372,7 +372,7 @@ class ExcalidrawShape extends Shape {
             context.fillStyle = "transparent";
          }
 
-         if (el._roughDrawable && !resize) {
+         if (el._roughDrawable) {
             const rc = rough.canvas(context.canvas as HTMLCanvasElement);
             rc.draw(el._roughDrawable);
          } else if (el._cachedPath) {

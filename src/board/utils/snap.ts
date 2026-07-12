@@ -72,6 +72,15 @@ export function snapShape({
    board.shapeStore.forEach((target) => {
       // Skip self
       if (shape.ID() === target.ID() || shape.groupId) return false;
+      
+      // Skip children if the moving shape is a Group
+      if (target.groupId === shape.ID()) return false;
+      
+      // Skip items inside the selection if the moving shape is an ActiveSelection
+      if (shape.type === "selection" && (shape as any).shapes.some((s: any) => s.s.ID() === target.ID())) {
+         return false;
+      }
+
       // Skip shapes inside the selection
       if (target.connections.forEach((c) => c.s.ID() === shape.ID())) return false;
 
@@ -265,6 +274,15 @@ export function snapResize({
 
    board.shapeStore.forEach((target) => {
       if (shape.ID() === target.ID() || shape.groupId) return false;
+      
+      // Skip children if the moving shape is a Group
+      if (target.groupId === shape.ID()) return false;
+      
+      // Skip items inside the selection if the moving shape is an ActiveSelection
+      if (shape.type === "selection" && (shape as any).shapes.some((s: any) => s.s.ID() === target.ID())) {
+         return false;
+      }
+
       if (target.connections.forEach((c) => c.s.ID() === shape.ID())) return false;
 
       if (

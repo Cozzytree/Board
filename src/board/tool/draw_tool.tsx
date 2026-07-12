@@ -29,12 +29,12 @@ class DrawTool extends Tool {
    pointerDown({ p }: ToolEventData): void {
       this._board.renderClickEffect(p);
       this.shape = new SimplePath({
+         ...this._board.defaultShapeProps,
+         stroke: this._board.defaultShapeProps.stroke || this._board.foreground,
          left: p.x,
          top: p.y,
          _board: this._board,
-         ctx: this._board.ctx,
-         roughness: 0,
-         strokeWidth: this.strokeWidth
+         ctx: this._board.ctx
       });
       this.isDrawingScheduled = false;
    }

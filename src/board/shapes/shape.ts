@@ -271,9 +271,8 @@ abstract class Shape implements ShapeProps {
       const w = this.width + pad * 2;
       const h = this.height + pad * 2;
 
-      // Compute actual uniform scale
-      // Use the board's view scale directly to avoid any getTransform() inconsistencies
-      const currentScale = this._board.view.scl * this._board.getCanvasDpr();
+      // Compute actual uniform scale using only view scale so that sizes map exactly to CSS pixels
+      const currentScale = this._board.view.scl;
 
       context.save();
 
@@ -284,7 +283,7 @@ abstract class Shape implements ShapeProps {
       context.rotate(this.rotate);
       context.translate(-centerX, -centerY);
 
-      const handleSizePx = 10;
+      const handleSizePx = 8;
       const outlineWidthPx = 1;
       const handleBorderPx = 1;
 
@@ -298,9 +297,7 @@ abstract class Shape implements ShapeProps {
       context.closePath();
 
       const drawHandle = (cx: number, cy: number) => {
-         // Clamp the size so it doesn't become overwhelmingly large relative to small shapes when zoomed out
-         const maxAllowedSize = Math.max(w, h, 20) * 0.4;
-         const size = Math.min(handleSizePx / currentScale, maxAllowedSize);
+         const size = handleSizePx / currentScale;
          context.beginPath();
          context.fillStyle = this._board.background || "#ffffff";
          context.strokeStyle = INDICATOR_COLOR;

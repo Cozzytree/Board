@@ -122,12 +122,14 @@ class SimplePath extends Path {
             const roughOptions: any = {
                stroke: this.stroke,
                strokeWidth: this.strokeWidth,
-               roughness: currentRoughness === 1 ? 1.5 : 3,
-               seed: this.left + this.top // pseudo-random seed
+               roughness: currentRoughness === 1 ? 1 : 2,
+               seed: this.left + this.top, // pseudo-random seed
+               disableMultiStroke: true,
+               preserveVertices: true,
             };
             if (dash0 > 0 || dash1 > 0) roughOptions.strokeLineDash = [dash0, dash1];
             
-            this.simpleRoughDrawable = generator.curve(transformedPointsForRough, roughOptions);
+            this.simpleRoughDrawable = generator.linearPath(transformedPointsForRough, roughOptions);
             this._cachedPath = null;
          } else {
             this.simpleRoughDrawable = null;
@@ -170,12 +172,12 @@ class SimplePath extends Path {
       context.translate(this.left, this.top);
       context.globalAlpha = this.opacity;
 
-      if (this.simpleRoughDrawable && !resize) {
+      if (this.simpleRoughDrawable) {
          const rc = rough.canvas(context.canvas as HTMLCanvasElement);
          rc.draw(this.simpleRoughDrawable);
       } else if (this._cachedPath) {
          // Fill the stroke path with the stroke color
-         context.fillStyle = resize ? "#808080" : this.stroke;
+         context.fillStyle = this.stroke;
          context.fill(this._cachedPath);
       }
 

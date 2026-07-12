@@ -42,6 +42,7 @@ class LineTool extends Tool {
          this.newLine = new LineShape({
             _board: this._board,
             ctx: this._board.ctx,
+            roughness: 0,
             points: [
                { x: 0, y: 0 },
                { x: 0, y: 0 },
@@ -55,6 +56,7 @@ class LineTool extends Tool {
          this.newLine = new LineShape({
             _board: this._board,
             ctx: this._board.ctx,
+            roughness: 0,
             points: [
                { x: 0, y: 0 },
                { x: 0, y: 0 },
@@ -68,6 +70,7 @@ class LineTool extends Tool {
          this.newLine = new LineShape({
             _board: this._board,
             ctx: this._board.ctx,
+            roughness: 0,
             points: [
                { x: 0, y: 0 },
                { x: 0, y: 0 },

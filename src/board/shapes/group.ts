@@ -1,7 +1,7 @@
 import Box from "../utils/box";
 import { isDraggableWithRotation, resizeRect } from "../utils/resize";
 import { resizeWithRotation } from "../utils/resizeWithRotation";
-import { calcPointWithRotation } from "../utils/utilfunc";
+import { calcPointWithRotation, rotatePoint } from "../utils/utilfunc";
 import Shape, { type DrawProps } from "./shape";
 import { INDICATOR_COLOR } from "../constants";
 import type { BoxInterface, Identity, Point, resizeDirection, ShapeEventData, ShapeProps } from "../types";
@@ -55,6 +55,44 @@ class Group extends Shape {
       ;
       this._tempShapes = [];
       this._currentShapesIdSet = new Set(this.shapes.map(s => s.s.ID()));
+   }
+
+   private applyRotationToChildren(props: Record<string, any>, isSilent: boolean) {
+      if ("rotate" in props && props.rotate !== undefined) {
+         const delta = props.rotate - this.rotate;
+         if (delta !== 0) {
+            const groupCenter = { x: this.left + this.width / 2, y: this.top + this.height / 2 };
+            this.shapes.forEach(({ s }) => {
+               const newCenter = rotatePoint(
+                  { x: s.left + s.width / 2, y: s.top + s.height / 2 },
+                  groupCenter,
+                  delta,
+               );
+               const newProps = {
+                  left: newCenter.x - s.width / 2,
+                  top: newCenter.y - s.height / 2,
+                  rotate: s.rotate + delta,
+               };
+               if (isSilent) {
+                  s.setSilent(newProps);
+               } else {
+                  s.set(newProps);
+               }
+            });
+         }
+      }
+   }
+
+   set(key: string | Record<string, any>, value?: any): this {
+      const props: Record<string, any> = typeof key === "object" ? key : { [key]: value };
+      this.applyRotationToChildren(props, false);
+      return super.set(props);
+   }
+
+   setSilent(key: string | Record<string, any>, value?: any): this {
+      const props: Record<string, any> = typeof key === "object" ? key : { [key]: value };
+      this.applyRotationToChildren(props, true);
+      return super.setSilent(props);
    }
 
    toSVG() {
@@ -445,14 +483,14 @@ class Group extends Shape {
       context.stroke();
 
       if (this.title) {
-         context.font = `bold ${(14 / currentScale) % 23}px ${this.fontFamily || "system-ui"}`;
+         context.font = `bold 14px ${this.fontFamily || "system-ui"}`;
          context.fillStyle = this.stroke;
          context.textAlign = "left";
          context.textBaseline = "bottom";
          context.fillText(
             this.title,
             this.left - this.padding,
-            this.top - this.padding - 4 / currentScale
+            this.top - this.padding - 4
          );
       }
       context.restore();
@@ -482,23 +520,23 @@ class Group extends Shape {
       context.restore(); // removes clip + alpha + rotation
 
       // ── 3. Draw resize indicators (unclipped) ──
-      if (resize) {
-         context.save();
-         this._tempShapes.forEach(({ oldProps }) => {
-            if (!oldProps) return;
-            const x = oldProps.x1 - 4;
-            const y = oldProps.y1 - 4;
-            const w = (oldProps.x2 - oldProps.x1) + 8;
-            const h = (oldProps.y2 - oldProps.y1) + 8;
+      // if (resize) {
+      //    context.save();
+      //    this._tempShapes.forEach(({ oldProps }) => {
+      //       if (!oldProps) return;
+      //       const x = oldProps.x1 - 4;
+      //       const y = oldProps.y1 - 4;
+      //       const w = (oldProps.x2 - oldProps.x1) + 8;
+      //       const h = (oldProps.y2 - oldProps.y1) + 8;
 
-            context.beginPath();
-            context.strokeStyle = INDICATOR_COLOR;
-            context.lineWidth = 2 / currentScale;
-            context.setLineDash([4 / currentScale, 4 / currentScale]);
-            context.strokeRect(x, y, w, h);
-         });
-         context.restore();
-      }
+      //       context.beginPath();
+      //       context.strokeStyle = INDICATOR_COLOR;
+      //       context.lineWidth = 2 / currentScale;
+      //       context.setLineDash([4 / currentScale, 4 / currentScale]);
+      //       context.strokeRect(x, y, w, h);
+      //    });
+      //    context.restore();
+      // }
    }
 }
 

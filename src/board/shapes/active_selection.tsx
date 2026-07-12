@@ -104,9 +104,7 @@ class ActiveSelection extends Shape {
       return null;
    }
 
-   set(key: string | Record<string, any>, value?: any): this {
-      const props: Record<string, any> = typeof key === "object" ? key : { [key]: value };
-
+   private applyRotationToChildren(props: Record<string, any>, isSilent: boolean) {
       if ("rotate" in props && props.rotate !== undefined) {
          const delta = props.rotate - this.rotate;
          if (delta !== 0) {
@@ -117,16 +115,31 @@ class ActiveSelection extends Shape {
                   selCenter,
                   delta,
                );
-               s.set({
+               const newProps = {
                   left: newCenter.x - s.width / 2,
                   top: newCenter.y - s.height / 2,
                   rotate: s.rotate + delta,
-               });
+               };
+               if (isSilent) {
+                  s.setSilent(newProps);
+               } else {
+                  s.set(newProps);
+               }
             });
          }
       }
+   }
 
+   set(key: string | Record<string, any>, value?: any): this {
+      const props: Record<string, any> = typeof key === "object" ? key : { [key]: value };
+      this.applyRotationToChildren(props, false);
       return super.set(props);
+   }
+
+   setSilent(key: string | Record<string, any>, value?: any): this {
+      const props: Record<string, any> = typeof key === "object" ? key : { [key]: value };
+      this.applyRotationToChildren(props, true);
+      return super.setSilent(props);
    }
 
    dragging(prev: Point, current: Point) {
@@ -173,9 +186,8 @@ class ActiveSelection extends Shape {
       const w = this.width + pad;
       const h = this.height + pad;
 
-      // Compute actual uniform scale
-      const transform = context.getTransform();
-      const currentScale = Math.sqrt(transform.a ** 2 + transform.b ** 2);
+      // Compute actual uniform scale using only view scale
+      const currentScale = this._board.view.scl;
 
       context.save();
 
@@ -196,7 +208,7 @@ class ActiveSelection extends Shape {
       context.closePath();
 
       // Corner dot size in screen pixels
-      const screenDotSize = 6;
+      const screenDotSize = 8;
       const drawDot = (cx: number, cy: number) => {
          const wh = screenDotSize / currentScale; // Inverse scale for visual consistency
          context.beginPath();
@@ -226,9 +238,8 @@ class ActiveSelection extends Shape {
       const w = this.width + pad * 2;
       const h = this.height + pad * 2;
 
-      // Compute actual uniform scale
-      // Use the board's view scale directly to avoid any getTransform() inconsistencies
-      const currentScale = this._board.view.scl * this._board.getCanvasDpr();
+      // Compute actual uniform scale using only view scale
+      const currentScale = this._board.view.scl;
 
       context.save();
 
@@ -239,7 +250,7 @@ class ActiveSelection extends Shape {
       context.rotate(this.rotate);
       context.translate(-centerX, -centerY);
 
-      const handleSizePx = 10;
+      const handleSizePx = 8;
       const outlineWidthPx = 3;
       const handleBorderPx = 1;
 
@@ -253,9 +264,7 @@ class ActiveSelection extends Shape {
       context.closePath();
 
       const drawHandle = (cx: number, cy: number) => {
-         // Clamp the size so it doesn't become overwhelmingly large relative to small shapes when zoomed out
-         const maxAllowedSize = Math.max(w, h, 20) * 0.4;
-         const size = Math.min(handleSizePx / currentScale, maxAllowedSize);
+         const size = handleSizePx / currentScale;
          context.beginPath();
          context.setLineDash([]);
          context.fillStyle = this._board.background || "#ffffff";

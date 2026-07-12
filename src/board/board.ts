@@ -155,6 +155,18 @@ class Board implements BoardInterface {
    customShapes: Map<string, ShapeConstructor>;
    onImageUpload?: (file: File) => Promise<string>;
 
+   public defaultShapeProps: Record<string, any> = {
+      strokeWidth: 2,
+      roughness: 0,
+      radius: 0,
+      dash: [0, 0],
+      fontSize: 25,
+      fontFamily: "system-ui, sans-serif",
+      textAlign: "left",
+      verticalAlign: "center",
+      opacity: 1,
+   };
+
    getCanvasDpr() {
       const dpr = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1;
 
