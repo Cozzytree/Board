@@ -1,8 +1,10 @@
+import Box from "@/board/utils/box";
+import Pointer from "@/board/utils/point";
+import Rect from "../rect";
+import Shape from "../shape";
 import { HoveredColor } from "@/board/constants";
 import type { BoxInterface, Point, resizeDirection, ShapeEventData, ShapeProps } from "../../types";
 import type { connectionEventData, LineProps, LineType, Side } from "../shape_types";
-
-import { Box, Pointer, Rect, Shape } from "@/board/index";
 import {
    intersectLineWithBox,
    isPointNearSegment,
@@ -75,13 +77,14 @@ abstract class Line extends Shape {
       context.rotate(this.rotate);
       context.translate(-centerX, -centerY);
 
-      // Compute actual uniform scale
-      const transform = context.getTransform();
-      const currentScale = Math.sqrt(transform.a ** 2 + transform.b ** 2);
+      // Compute actual uniform scale using board view scale to avoid transform issues
+      const currentScale = this._board.view.scl * this._board.getCanvasDpr();
 
       // Draw corner dots
       const drawDot = (cx: number, cy: number) => {
-         const size = 6 / currentScale;
+         // Clamp size so it doesn't overwhelm the shape when zoomed out
+         const maxAllowedSize = Math.max(this.width, this.height, 20) * 0.4;
+         const size = Math.min(6 / currentScale, maxAllowedSize);
          const strokeWidth = 3 / currentScale;
          context.beginPath();
          context.fillStyle = "black";

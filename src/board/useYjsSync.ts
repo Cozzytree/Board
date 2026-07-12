@@ -2,8 +2,8 @@ import { useEffect, useRef, useCallback } from "react";
 import * as Y from "yjs";
 import type { HocuspocusProvider } from "@hocuspocus/provider";
 import type { Board } from "./index";
-import { Shape } from "./index";
-import { generateShapeByShapeType } from "./utils/utilfunc";
+import Shape from "./shapes/shape";
+import { generateShapeByShapeType } from "./utils/shape_factory";
 
 /**
  * Custom hook that binds a Board instance to a Yjs shared document via HocuspocusProvider.

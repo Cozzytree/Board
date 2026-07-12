@@ -7,10 +7,16 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 
 export default function ExcalidrawOptionsPanel() {
    const isMobile = useIsMobile();
-   const { activeShape, isMinimal } = useBoard();
-   const debounceMs = 200;
+   const { activeShape, isMinimal, modes } = useBoard();
+   const debounceMs = 0;
 
+   const isDraw = modes?.m === "draw"
+   console.log("isDraw")
+   if (isDraw) {
+      return <div>deaw</div>
+   }
    if (isMinimal || !activeShape) return null;
+
 
    if (isMobile) {
       return (
@@ -20,9 +26,9 @@ export default function ExcalidrawOptionsPanel() {
                <FillOption debounceMs={debounceMs} className="z-[9999]" mobile />
                <OpacityOption debounceMs={debounceMs} className="z-[9999]" />
                {activeShape.type !== "text" ? <>
-                  <StrokeSize debounceMs={debounceMs} className="z-[9999] flex gap-1" />
-                  <StrokeDash debounceMs={debounceMs} className="z-[9999]" />
-               </> : <></>}
+                                                 <StrokeSize debounceMs={debounceMs} className="z-[9999] flex gap-1" />
+                                                 <StrokeDash debounceMs={debounceMs} className="z-[9999]" />
+                                              </> : <></>}
                <RoughnessOption debounceMs={debounceMs} className="z-[9999] w-fit" />
                <FillStyleOption debounceMs={debounceMs} className="z-[9999]" />
                {activeShape?.text?.length ?

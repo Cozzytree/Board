@@ -1,4 +1,10 @@
-import { Board, Box, Ellipse, Path, Pointer, Rect, type Shape } from "../index";
+import type Board from "../board";
+import Box from "../utils/box";
+import Ellipse from "../shapes/ellipse";
+import Path from "../shapes/paths/path";
+import Pointer from "../utils/point";
+import Rect from "../shapes/rect";
+import type Shape from "../shapes/shape";
 import Star from "../shapes/paths/star";
 import Hexagon from "../shapes/paths/hexagon";
 import Arrow from "../shapes/paths/arrow";
@@ -20,6 +26,7 @@ class ShapeTool implements ToolInterface {
    cleanUp(): void { }
 
    pointerDown({ p }: ToolEventData): void {
+      this._board.renderClickEffect(p);
       this._board.discardActiveShapes();
 
       const lastInserted = this._board.shapeStore.getLastInsertedShape();

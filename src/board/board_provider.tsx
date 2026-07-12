@@ -29,7 +29,7 @@ import Rect from "./shapes/rect.ts";
 import Shape from "./shapes/shape.ts";
 import ActiveSelection from "./shapes/active_selection.tsx"
 import type { modes, submodes, CustomShapeDef, EventData, ShapeProps } from "./types";
-import { generateShapeByShapeType } from "./utils/utilfunc";
+import { generateShapeByShapeType } from "./utils/shape_factory";
 import { saveLibraryItems } from "./utils/library_db";
 import { loadShapesFromProps } from "@/lib/shape-loader";
 import {
@@ -157,6 +157,7 @@ const BoardProvider = ({
    const [offset, setOffset] = React.useState<[number, number]>([0, 0]);
    const [zoom, setZoom] = React.useState(100);
    const [activeShape, setActiveShape] = React.useState<Shape | null>(null);
+   const [, forceUpdate] = React.useReducer((x) => x + 1, 0);
    const [isSnap, setSnapState] = React.useState(() => {
       try {
          return localStorage.getItem("board_snap") === "true";
@@ -536,6 +537,7 @@ const BoardProvider = ({
       const debouncedSaveViewToStorage = debounce((board: Board) => saveViewToStorage(board), 200);
 
       const newBoard = new Board({
+         clickEffect: true,
          snapGrid,
          scrollEase: 1,
          isLocked: isLockedCanvas,
@@ -648,39 +650,14 @@ const BoardProvider = ({
             if (e.shiftKey) {
                // Redo (Ctrl+Shift+Z)
                handleRedo(newBoard);
-               // if (redoStack.current.length > 0) {
-               //    isUndoing.current = true;
-               //    undoStack.current.push(serializeBoard(newBoard));
-               //    const nextState = redoStack.current.pop()!;
-               //    restoreShapesFromData(newBoard, nextState);
-               //    saveShapesToStorage(newBoard);
-               //    isUndoing.current = false;
-               // }
             } else {
                // Undo (Ctrl+Z)
                handleUndo(newBoard);
-               // if (undoStack.current.length > 1) { // Leave the very first state intact
-               //    isUndoing.current = true;
-               //    const currentState = undoStack.current.pop()!;
-               //    redoStack.current.push(currentState);
-               //    const prevState = undoStack.current[undoStack.current.length - 1];
-               //    restoreShapesFromData(newBoard, prevState);
-               //    saveShapesToStorage(newBoard);
-               //    isUndoing.current = false;
-               // }
             }
          } else if (e.ctrlKey && e.key === "y") {
             e.preventDefault();
             // Redo (Ctrl+Y)
             handleRedo(newBoard);
-            // if (redoStack.current.length > 0) {
-            //    isUndoing.current = true;
-            //    undoStack.current.push(serializeBoard(newBoard));
-            //    const nextState = redoStack.current.pop()!;
-            //    restoreShapesFromData(newBoard, nextState);
-            //    saveShapesToStorage(newBoard);
-            //    isUndoing.current = false;
-            // }
          } else if (e.key === "Delete") {
             requestAnimationFrame(() => {
                if (onShapesChangedRef.current) {
@@ -998,7 +975,7 @@ const BoardProvider = ({
                   setSnap: (s) => {
                      setSnap(s);
                   },
-                  update: () => { },
+                  update: () => forceUpdate(),
                   importLibrary,
 
                   // Composable UI state

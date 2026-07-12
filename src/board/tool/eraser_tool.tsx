@@ -43,6 +43,7 @@ class EraserTool extends Tool {
    }
 
    pointerDown(e: ToolEventData): void {
+      this._board.renderClickEffect(e.p);
       this.startPoint = e.p;
       this.isDrawing = true;
       if (this.oldProps && this.indicatorShape) {

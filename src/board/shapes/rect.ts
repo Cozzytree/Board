@@ -1,4 +1,3 @@
-import Shape from "../shapes/shape.ts"
 import Box from "../utils/box.ts"
 import Pointer from "../utils/point.ts"
 import type { BoxInterface, Point, resizeDirection, ShapeEventData, ShapeProps } from "../types";
@@ -8,15 +7,9 @@ import { calcPointWithRotation, breakText } from "../utils/utilfunc";
 import type { DrawProps } from "./shape";
 import rough from "roughjs";
 import type { Drawable } from "roughjs/bin/core";
-
-type RectProps = {
-   rx?: number;
-   ry?: number;
-};
+import Shape from "./shape";
 
 class Rect extends Shape {
-   declare rx: number;
-   declare ry: number;
    private roughDrawable: Drawable | null = null;
    private lastWidth: number = 0;
    private lastHeight: number = 0;
@@ -27,11 +20,10 @@ class Rect extends Shape {
    private lastStrokeWidth: number | undefined = undefined;
    private lastDash0: number | undefined = undefined;
    private lastDash1: number | undefined = undefined;
+   private lastRadius: number | undefined = undefined;
 
-   constructor(props: ShapeProps & RectProps) {
+   constructor(props: ShapeProps) {
       super({ ...props });
-      this.rx = props.rx || 0;
-      this.ry = props.ry || 0;
 
       this.type = "rect";
       this.verticalAlign = "center";
@@ -39,19 +31,19 @@ class Rect extends Shape {
 
    clone(): Shape {
       const props = this.cloneProps();
-      return new Rect({ ...props, rx: this.rx, ry: this.ry });
+      return new Rect({ ...props, radius: this.radius });
    }
 
    toSVG(): string {
       const attrs = this.getSvgAttributes();
-      const r = Math.min(this.rx || 0, this.ry || 0, this.width / 2, this.height / 2);
+      const r = Math.min(this.radius || 0, this.width / 2, this.height / 2);
       return `<rect x="${this.left}" y="${this.top}" width="${this.width}" height="${this.height}" rx="${r}" ${attrs} />`;
    }
 
    getLocalPath(): Path2D {
       if (!this.cachedLocalPath) {
          this.cachedLocalPath = new Path2D();
-         const r = Math.min(this.rx || 0, this.ry || 0, this.width / 2, this.height / 2);
+         const r = Math.min(this.radius || 0, this.width / 2, this.height / 2);
          this.cachedLocalPath.roundRect(0, 0, this.width, this.height, r);
       }
       return this.cachedLocalPath;
@@ -135,12 +127,22 @@ class Rect extends Shape {
       return null;
    }
 
+   // activeRect(ctx?: CanvasRenderingContext2D) {
+   //    const context = ctx || this.ctx;
+   //    this.draw({ ctx: context });
+   //    super.activeRect(context);
+   // }
+
    draw({ addStyles = true, ctx, resize = false }: DrawProps): void {
       const context = ctx || this.ctx;
 
-      // const r = Math.min(this.rx || 0, this.ry || 0, this.width / 2, this.height / 2);
+      const r = Math.min(this.radius || 0, this.width / 2, this.height / 2);
 
       context.save();
+
+      if (resize) {
+         context.globalAlpha = 0.5;
+      }
 
       // Get the current scale BEFORE applying rotation
       const currentScale = context.getTransform().a;
@@ -153,86 +155,72 @@ class Rect extends Shape {
       context.beginPath();
       context.globalAlpha = this.opacity;
 
-      if (resize) {
-         context.globalAlpha = this.selectionAlpha;
-         context.strokeStyle = this.selectionColor;
-         context.fillStyle = this.selectionFill;
-         context.lineWidth = this.selectionStrokeWidth;
-         context.setLineDash([
-            this.selectionDash[0] / currentScale,
-            this.selectionDash[1] / currentScale,
-         ]);
-         
-         // Standard crisp rect for selection outline
-         context.strokeRect(this.left, this.top, this.width, this.height);
-         if (addStyles) context.fillRect(this.left, this.top, this.width, this.height);
-      } else {
-         // Generate Rough.js Drawable at (0, 0) ONCE to prevent 60fps vibration.
-         // We only regenerate if any relevant property changes.
-         const currentRoughness = this.roughness ?? 1;
-         const currentFillStyle = this.fillStyle || "hachure";
-         const currentFill = this.fill !== "transparent" && this.fill !== "#00000000" ? this.fill : undefined;
-         const dash0 = this.dash?.[0] || 0;
-         const dash1 = this.dash?.[1] || 0;
+      const currentRoughness = this.roughness ?? 1;
+      const currentFillStyle = this.fillStyle || "hachure";
+      const currentFill = this.fill !== "transparent" && this.fill !== "#00000000" ? this.fill : undefined;
+      const dash0 = this.dash?.[0] || 0;
+      const dash1 = this.dash?.[1] || 0;
 
-         if (
-            !this.roughDrawable || 
-            this.width !== this.lastWidth || 
-            this.height !== this.lastHeight || 
-            currentRoughness !== this.lastRoughness || 
-            currentFillStyle !== this.lastFillStyle ||
-            this.stroke !== this.lastStroke ||
-            currentFill !== this.lastFill ||
-            this.strokeWidth !== this.lastStrokeWidth ||
-            dash0 !== this.lastDash0 ||
-            dash1 !== this.lastDash1
-         ) {
-            const generator = rough.generator();
-            const roughOptions: any = {
-               stroke: this.stroke,
-               fill: currentFill,
-               strokeWidth: this.strokeWidth,
-               fillStyle: currentFillStyle,
-            };
-            
-            if (dash0 > 0 || dash1 > 0) {
-               roughOptions.strokeLineDash = [dash0, dash1];
-            }
-            
-            // Only use roughjs if roughness > 0, otherwise draw crisp rect
-            if (currentRoughness === 0) {
-               this.roughDrawable = generator.rectangle(0, 0, this.width, this.height, {
-                  ...roughOptions,
-                  roughness: 0,
-               });
-            } else {
-               this.roughDrawable = generator.rectangle(0, 0, this.width, this.height, {
-                  ...roughOptions,
-                  roughness: currentRoughness === 1 ? 1.5 : 3, // Artist = 1.5, Cartoonist = 3
-                  seed: this.left + this.top // pseudo-random seed so it doesn't change
-               });
-            }
-            this.lastWidth = this.width;
-            this.lastHeight = this.height;
-            this.lastRoughness = currentRoughness;
-            this.lastFillStyle = currentFillStyle;
-            this.lastStroke = this.stroke;
-            this.lastFill = currentFill;
-            this.lastStrokeWidth = this.strokeWidth;
-            this.lastDash0 = dash0;
-            this.lastDash1 = dash1;
+      if (
+         !this.roughDrawable ||
+         this.width !== this.lastWidth ||
+         this.height !== this.lastHeight ||
+         currentRoughness !== this.lastRoughness ||
+         currentFillStyle !== this.lastFillStyle ||
+         this.stroke !== this.lastStroke ||
+         currentFill !== this.lastFill ||
+         this.strokeWidth !== this.lastStrokeWidth ||
+         dash0 !== this.lastDash0 ||
+         dash1 !== this.lastDash1 ||
+         r !== this.lastRadius
+      ) {
+         const generator = rough.generator();
+         const roughOptions: any = {
+            stroke: this.stroke,
+            fill: currentFill,
+            strokeWidth: this.strokeWidth,
+            fillStyle: currentFillStyle,
+         };
+
+         if (dash0 > 0 || dash1 > 0) {
+            roughOptions.strokeLineDash = [dash0, dash1];
          }
-         // We must translate to this.left, this.top since the Drawable is at 0,0
-         context.translate(this.left, this.top);
 
-         // Context switching!
-         // We grab whichever canvas element owns the current `context` (main, overlay, or offscreen export).
-         const rc = rough.canvas(context.canvas as HTMLCanvasElement);
-         rc.draw(this.roughDrawable);
+         const getSvgPathStr = (w: number, h: number, rad: number) => {
+            return `M ${rad} 0 L ${w - rad} 0 Q ${w} 0 ${w} ${rad} L ${w} ${h - rad} Q ${w} ${h} ${w - rad} ${h} L ${rad} ${h} Q 0 ${h} 0 ${h - rad} L 0 ${rad} Q 0 0 ${rad} 0 Z`;
+         };
 
-         // Translate back so text renders at correct world coordinates
-         context.translate(-this.left, -this.top);
+         // Only use roughjs if roughness > 0, otherwise draw crisp rect
+         if (currentRoughness === 0) {
+            this.roughDrawable = r > 0
+               ? generator.path(getSvgPathStr(this.width, this.height, r), { ...roughOptions, roughness: 0 })
+               : generator.rectangle(0, 0, this.width, this.height, { ...roughOptions, roughness: 0 });
+         } else {
+            this.roughDrawable = r > 0
+               ? generator.path(getSvgPathStr(this.width, this.height, r), { ...roughOptions, roughness: currentRoughness === 1 ? 1.5 : 3, seed: this.left + this.top })
+               : generator.rectangle(0, 0, this.width, this.height, { ...roughOptions, roughness: currentRoughness === 1 ? 1.5 : 3, seed: this.left + this.top });
+         }
+         this.lastWidth = this.width;
+         this.lastHeight = this.height;
+         this.lastRoughness = currentRoughness;
+         this.lastFillStyle = currentFillStyle;
+         this.lastStroke = this.stroke;
+         this.lastFill = currentFill;
+         this.lastStrokeWidth = this.strokeWidth;
+         this.lastDash0 = dash0;
+         this.lastDash1 = dash1;
+         this.lastRadius = r;
       }
+      // We must translate to this.left, this.top since the Drawable is at 0,0
+      context.translate(this.left, this.top);
+
+      // Context switching!
+      // We grab whichever canvas element owns the current `context` (main, overlay, or offscreen export).
+      const rc = rough.canvas(context.canvas as HTMLCanvasElement);
+      rc.draw(this.roughDrawable);
+
+      // Translate back so text renders at correct world coordinates
+      context.translate(-this.left, -this.top);
 
       context.closePath();
       if (this.text.length) {
@@ -264,18 +252,18 @@ class Rect extends Shape {
       // Adjust height for text if needed
       const adjustedHeight = this.adjustHeight(newBounds.height);
 
-      this.set({
-         left: newBounds.left,
-         top: newBounds.top,
-         width: newBounds.width,
-         height: adjustedHeight,
-      })
-      // this.setTarget({
+      // this.set({
       //    left: newBounds.left,
       //    top: newBounds.top,
       //    width: newBounds.width,
       //    height: adjustedHeight,
-      // });
+      // })
+      this.setTarget({
+         left: newBounds.left,
+         top: newBounds.top,
+         width: newBounds.width,
+         height: adjustedHeight,
+      });
 
       return super.Resize(current, old, d);
    }

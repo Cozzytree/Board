@@ -8,7 +8,7 @@ export default function Toolbar() {
    const { mode, setMode, tools } = useBoard();
 
    return (
-      <div className="flex bg-background gap-1 p-1 items-center rounded-sm border border-muted shadow">
+      <div className="w-fit flex justify-center bg-background gap-1 p-1 items-center rounded-sm border border-muted shadow">
          {tools.map((t, i) => {
             const button = (
                <button
@@ -20,7 +20,7 @@ export default function Toolbar() {
                   }}
                   className={cn(
                      mode.m === t.mode ? "text-background bg-foreground" : "hover:bg-foreground/10",
-                     "py-[0.2em] px-[0.4em] rounded-sm",
+                     "rounded-sm w-10 h-10 flex justify-center items-center",
                   )}>
                   <ShowIcon I={t.I} />
                </button>
@@ -41,13 +41,13 @@ export default function Toolbar() {
                                  <button
                                     className={cn(
                                        mode.sm === sm.sm ? "bg-primary text-background" : "hover:bg-foreground/10",
-                                       "py-[0.2em] px-[0.5em] rounded-sm cursor-pointer w-7 g-7 md:w-8 md:h-8 flex justify-center items-center",
+                                       "py-[0.2em] px-[0.5em] rounded-sm cursor-pointer flex justify-center items-center",
                                     )}
                                     onClick={() => {
                                        if (mode.sm == sm.sm) return;
                                        setMode(t.mode, sm.sm);
                                     }}>
-                                    <ShowIcon I={sm.I} />
+                                    <ShowIcon I={sm.I} width={20}/>
                                  </button>
                               </div>
                            ))}
@@ -76,6 +76,6 @@ function ShowIcon({ I }: { I: LucideIcon | string }) {
       }
       return <img src={I} alt={I} loading="lazy" width={18} />;
    } else {
-      return <I className="w-3 md:w-4" />;
+      return <I className="w-4" />;
    }
 }

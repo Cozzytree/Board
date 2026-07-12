@@ -1,4 +1,5 @@
-import { Line, Shape } from "@/board/index";
+import Line from "./line";
+import type Shape from "../shape";
 import type { BoxInterface, Point, resizeDirection, ShapeProps } from "@/board/types";
 import type { DrawProps } from "../shape";
 import type { connectionEventData, LineProps } from "../shape_types";

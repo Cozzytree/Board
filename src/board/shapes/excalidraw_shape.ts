@@ -432,8 +432,8 @@ class ExcalidrawShape extends Shape {
       const h = this.height + pad * 2;
 
       // Compute actual uniform scale
-      const transform = context.getTransform();
-      const currentScale = Math.sqrt(transform.a ** 2 + transform.b ** 2);
+      // Use the board's view scale directly to avoid any getTransform() inconsistencies
+      const currentScale = this._board.view.scl * this._board.getCanvasDpr();
 
       context.save();
 
@@ -458,7 +458,9 @@ class ExcalidrawShape extends Shape {
       context.closePath();
 
       const drawHandle = (cx: number, cy: number) => {
-         const size = handleSizePx / currentScale;
+         // Clamp the size so it doesn't become overwhelmingly large relative to small shapes when zoomed out
+         const maxAllowedSize = Math.max(w, h, 20) * 0.4;
+         const size = Math.min(handleSizePx / currentScale, maxAllowedSize);
          context.beginPath();
          context.setLineDash([]);
          context.fillStyle = this._board.background || "#ffffff";

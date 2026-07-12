@@ -1,51 +1,95 @@
 import { AlignOptions, BoldOption, DeleteOption, DuplicateOption, FillOption, FillStyleOption, FontFamilyOption, FontSizes, ItalicOption, OpacityOption, RotationOption, RoughnessOption, StrokeDash, StrokeOption, StrokeSize, VerticalAlignOptions, ZOrderButtons } from "@/board/components/shapeoptions";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useBoard } from "@/board/board-context";
-import { AlignCenter, AlignVerticalSpaceAround, Layers3Icon } from "lucide-react";
+import { AlignCenter, AlignVerticalSpaceAround, Layers3Icon, SlidersHorizontal } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "../components/ui/popover.tsx";
+import type { Board } from "@/lib.ts";
+
+function DrawOptions({ board }: { board: Board }) {
+   return (
+      <div>
+         <div>
+            <Popover>
+               <PopoverTrigger>
+                  <SlidersHorizontal />
+               </PopoverTrigger>
+               <PopoverContent>
+                  <span>Stroke width</span>
+                  <div className="flex gap-1 items-center">
+                     {Array.from({ length: 3 }).map((_, i) => <button onClick={() => {
+                        board.currentTool.setConf("strokeWidth", (i + 2) * 2)
+                     }} className="p-1 border">{(i + 2) * 2}</button>)}
+                  </div>
+               </PopoverContent>
+            </Popover>
+         </div>
+      </div>
+   )
+}
 
 export default function ExcalidrawOptionsPanel() {
    const isMobile = useIsMobile();
-   const { activeShape, isMinimal } = useBoard();
+   const { activeShape, isMinimal, mode, canvas } = useBoard();
    const debounceMs = 200;
+   const isDraw = mode?.m === "draw";
+
+   if (isDraw && canvas !== null) {
+      return (
+         <DrawOptions board={canvas} />
+      )
+   }
 
    if (isMinimal || !activeShape) return null;
 
    if (isMobile) {
       return (
-         <div className="absolute left-0 bottom-15 h-8 w-full px-4 z-[999] pointer-events-auto flex justify-center">
+         <div className="w-full px-4 z-[999] pointer-events-auto flex justify-center">
             <div className="flex justify-start overflow-x-auto gap-2 p-2 w-full [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                <StrokeOption debounceMs={debounceMs} className="z-[9999]" mobile />
                <FillOption debounceMs={debounceMs} className="z-[9999]" mobile />
-               <OpacityOption debounceMs={debounceMs} className="z-[9999]" />
-               {activeShape.type !== "text" ? <>
-                  <StrokeSize debounceMs={debounceMs} className="z-[9999] flex gap-1" />
-                  <StrokeDash debounceMs={debounceMs} className="z-[9999]" />
-               </> : <></>}
-               <RoughnessOption debounceMs={debounceMs} className="z-[9999] w-fit" />
-               <FillStyleOption debounceMs={debounceMs} className="z-[9999]" />
-               {activeShape?.text?.length ?
-                  <>
-                     <FontFamilyOption debounceMs={debounceMs} className="z-[9999]" standalone />
-                     <FontSizes debounceMs={debounceMs} className="z-[9999]" />
-                     <BoldOption debounceMs={debounceMs} />
-                     <ItalicOption debounceMs={debounceMs} />
-                     <AlignOptions debounceMs={debounceMs} icon={<AlignCenter />} />
-                     <VerticalAlignOptions debounceMs={debounceMs} icon={<AlignVerticalSpaceAround />} />
-                  </>
-                  :
-                  <></>
-               }
-               <RotationOption debounceMs={debounceMs} className="z-[9999]" />
                <Popover>
-                  <PopoverTrigger className="text-muted-foreground">
-                     <Layers3Icon className="w-4 h-4" />
+                  <PopoverTrigger>
+                     <SlidersHorizontal />
                   </PopoverTrigger>
-                  <PopoverContent className="w-fit" side="top">
-                     <ZOrderButtons className="flex items-center gap-1.5" debounceMs={debounceMs} />
+                  <PopoverContent>
+                     <div className="flex flex-col items-start">
+                        <span>Opacity</span>
+                        <OpacityOption debounceMs={debounceMs} className="z-[9999]" standalone />
+                     </div>
+                     {activeShape.type !== "text" ?
+                        <>
+                           <StrokeSize debounceMs={debounceMs} className="z-[9999] flex gap-1" />
+                           <StrokeDash debounceMs={debounceMs} className="z-[9999]" />
+                        </> :
+                        <></>
+                     }
+                     <FillStyleOption debounceMs={debounceMs} className="z-[9999]" />
+                     <RoughnessOption debounceMs={debounceMs} className="z-[9999] w-fit" />
+                     {activeShape?.text?.length ?
+                        <>
+                           <FontFamilyOption debounceMs={debounceMs} className="z-[9999]" standalone />
+                           <FontSizes debounceMs={debounceMs} className="z-[9999]" />
+                           <BoldOption debounceMs={debounceMs} />
+                           <ItalicOption debounceMs={debounceMs} />
+                           <AlignOptions debounceMs={debounceMs} icon={<AlignCenter />} />
+                           <VerticalAlignOptions debounceMs={debounceMs} icon={<AlignVerticalSpaceAround />} />
+                        </>
+                        :
+                        <></>
+                     }
+                     <RotationOption debounceMs={debounceMs} className="z-[9999]" />
+                     <Popover>
+                        <PopoverTrigger className="text-muted-foreground">
+                           <Layers3Icon className="w-4 h-4" />
+                        </PopoverTrigger>
+                        <PopoverContent className="w-fit" side="top">
+                           <ZOrderButtons className="flex items-center gap-1.5" debounceMs={debounceMs} />
+                        </PopoverContent>
+                     </Popover>
                   </PopoverContent>
                </Popover>
             </div>
+
          </div>
       );
    }

@@ -51,7 +51,8 @@ import { useIsMobile } from "@/hooks/use-mobile"
 import ActiveSelection from "../shapes/active_selection";
 import Group from "../shapes/group";
 import { Button } from "@/components/ui/button";
-import type { Board, Shape } from "../index";
+import type Board from "../board";
+import type Shape from "../shapes/shape";
 import { Input } from "@/components/ui/input";
 import { debounce } from "@/lib/utils";
 import { Label } from "@/components/ui/label";
@@ -1254,12 +1255,10 @@ function FontFamilyOption({ debounceMs = 200, className, standalone }: Props) {
    );
 }
 
-function RoughnessOption({ debounceMs = 100, className, standalone, children }: Props) {
+function RoughnessOption({ debounceMs = 0, className, standalone, children }: Props) {
    const { activeShape, canvas, update } = useBoard();
-
    // Provide a fallback of 1 (Artist) if roughness isn't explicitly set yet
    const activeRoughness = activeShape?.get("roughness") ?? 1;
-
    const handleSetRoughness = debounce((v: number) => {
       if (!activeShape || !canvas) return;
       if (activeShape instanceof ActiveSelection) {
@@ -1328,12 +1327,10 @@ function RoughnessOption({ debounceMs = 100, className, standalone, children }: 
    );
 }
 
-function FillStyleOption({ debounceMs = 200, className, standalone, children }: Props) {
+function FillStyleOption({ debounceMs = 0, className, standalone, children }: Props) {
    const { activeShape, canvas, update } = useBoard();
    const activeFillStyle = activeShape?.get("fillStyle") ?? "hachure";
-   const handleUpdate = debounce(() => update(), debounceMs);
-
-   const handleSetFillStyle = (v: string) => {
+   const handleSetFillStyle = debounce((v: string) => {
       if (!activeShape || !canvas) return;
       if (activeShape instanceof ActiveSelection) {
          activeShape.shapes.forEach((s) => {
@@ -1343,8 +1340,8 @@ function FillStyleOption({ debounceMs = 200, className, standalone, children }: 
          activeShape.set("fillStyle", v);
       }
       canvas.render();
-      handleUpdate();
-   };
+      update();
+   }, debounceMs);
 
    const content = (
       <>
@@ -1669,7 +1666,7 @@ function ZOrderButtons({ debounceMs = 200, className }: { debounceMs?: number, c
 
 function DeleteOption({ className }: Props) {
    const { activeShape, canvas } = useBoard();
-   if (!activeShape || !canvas) return null;
+   const disabled = (!activeShape || !canvas)
 
    const handleDelete = () => {
       if (!activeShape || !canvas) return;
@@ -1680,7 +1677,7 @@ function DeleteOption({ className }: Props) {
       <Tooltip>
          <TooltipTrigger asChild>
             <div className={className}>
-               <Button variant="outline" size="sm" className="border-none" onClick={handleDelete}>
+               <Button disabled={disabled} variant="outline" size="sm" className="border-none" onClick={handleDelete}>
                   <TrashIcon className="w-3.5 h-3.5" />
                </Button>
             </div>
@@ -1689,6 +1686,31 @@ function DeleteOption({ className }: Props) {
             Delete
          </TooltipContent>
       </Tooltip>
+   )
+}
+
+function RadiusOption({ className }: Props) {
+   const { activeShape, canvas } = useBoard()
+
+   return (
+      <div className={className}>
+        <Tooltip>
+            <TooltipTrigger asChild>
+               <button className="w-5 h-5 border rounded-md" />
+            </TooltipTrigger>
+            <TooltipContent>
+                Round
+            </TooltipContent>
+        </Tooltip>
+        <Tooltip>
+            <TooltipTrigger asChild>
+               <button className="w-5 h-5 border rounded-none" />
+            </TooltipTrigger>
+            <TooltipContent>
+                Sharp
+            </TooltipContent>
+        </Tooltip>
+      </div>
    )
 }
 

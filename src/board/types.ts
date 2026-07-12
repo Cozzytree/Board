@@ -66,6 +66,7 @@ export interface EventData {
 export type ShapeEventCallback = (shape: Shape, data?: ShapeEventData) => void;
 
 export type ShapeProps = {
+   radius?: number;
    fillStyle?: string;
    roughness?: number;
    ease?: number;
@@ -108,6 +109,8 @@ export type ToolCallback = (args: { mode: modes; submode: submodes }) => void;
 export type ToolEventData = { p: Point; e: MouseEvent | PointerEvent | WheelEvent | TouchEvent };
 
 export interface ToolInterface {
+   getConf(key: string): any;
+   setConf(key: string, value: any): void;
    pointerDown(e: ToolEventData, callback: (e: EventData) => void): void;
    pointermove(e: ToolEventData, callback: (e: EventData) => void): void;
    pointerup(e: ToolEventData, cb?: ToolCallback, eventCallback?: (e: EventData) => void): void;
@@ -144,6 +147,7 @@ export interface BoardInterface {
    onMouseUp?: (e: EventData) => void;
    registerCustomShape(def: CustomShapeDef): void;
    registerSvgIcon(name: string, svgString: string): boolean;
+   renderClickEffect(p: Point): void;
 }
 
 export type modes = "cursor" | "shape" | "line" | "draw" | "text" | "eraser" | "image" | "frame";

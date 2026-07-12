@@ -13,7 +13,7 @@ const CURSOR_COLORS = [
    "#a855f7",
 ];
 
-const INDICATOR_COLOR = "#6965db"; // Excalidraw-like purple
+const INDICATOR_COLOR = "#7975eb"; // Excalidraw-like purple
 const LINE_CONNECTION_PADDING = 10;
 const SCALE_RATE = 0.15;
 const keysNotNeeded = ["ctx", "eventListeners"];

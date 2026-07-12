@@ -1,7 +1,7 @@
 import "../assets/index.css";
 
-import type { Board } from "@/board/index";
-import { Text } from "../../board/index";
+import type Board from "../board";
+import Text from "../shapes/text";
 import type { ToolEventData, ToolInterface } from "../types";
 
 class TextTool implements ToolInterface {
@@ -21,7 +21,9 @@ class TextTool implements ToolInterface {
       this._board = board;
    }
 
-   pointerDown(): void { }
+   pointerDown({ p }: ToolEventData): void {
+      this._board.renderClickEffect(p);
+   }
 
    pointermove(): void { }
 

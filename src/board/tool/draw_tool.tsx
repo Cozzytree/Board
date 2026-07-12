@@ -1,22 +1,40 @@
-import { SimplePath, type Board } from "@/board/index";
+import SimplePath from "../shapes/paths/simple_path";
+import type Board from "../board";
 import Tool from "./tool";
 import type { ToolEventData } from "../types";
 
 class DrawTool extends Tool {
    private shape: SimplePath | null = null;
    private isDrawingScheduled: boolean = false;
+   private strokeWidth: number = 4;
 
    constructor(board: Board) {
       super(board);
       this._board = board;
    }
 
+   getConf(key: string) {
+      // @ts-ignore
+      return this[key];
+   }
+
+   setConf(key: string, value: any): void {
+      // @ts-ignore
+      if (this[key]) {
+         // @ts-ignore
+         this[key] = value;
+      }
+   }
+
    pointerDown({ p }: ToolEventData): void {
+      this._board.renderClickEffect(p);
       this.shape = new SimplePath({
          left: p.x,
          top: p.y,
          _board: this._board,
          ctx: this._board.ctx,
+         roughness: 0,
+         strokeWidth: this.strokeWidth
       });
       this.isDrawingScheduled = false;
    }

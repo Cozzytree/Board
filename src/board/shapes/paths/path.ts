@@ -28,6 +28,7 @@ class Path extends Shape {
    protected lastStrokeWidth: number | undefined = undefined;
    protected lastDash0: number | undefined = undefined;
    protected lastDash1: number | undefined = undefined;
+   protected lastRadius: number | undefined = undefined;
 
    constructor(props: ShapeProps & PathProps) {
       super(props);
@@ -91,39 +92,75 @@ class Path extends Shape {
       return new Path({ ...props, points: this.points });
    }
 
+   private getRoundedPolygonPath(points: [number, number][], radius: number): string {
+      if (points.length < 3 || radius <= 0) {
+         return `M ${points.map(p => `${p[0]} ${p[1]}`).join(" L ")} Z`;
+      }
+      
+      let path = "";
+      const len = points.length;
+      for (let i = 0; i < len; i++) {
+         const p1 = points[(i - 1 + len) % len];
+         const p2 = points[i];
+         const p3 = points[(i + 1) % len];
+         
+         const d1 = Math.hypot(p2[0] - p1[0], p2[1] - p1[1]);
+         const d2 = Math.hypot(p3[0] - p2[0], p3[1] - p2[1]);
+         
+         const r = Math.min(radius, d1 / 2, d2 / 2);
+         
+         if (r === 0) {
+            path += (i === 0 ? "M " : " L ") + `${p2[0]} ${p2[1]}`;
+            continue;
+         }
+         
+         const u1 = [(p1[0] - p2[0]) / d1, (p1[1] - p2[1]) / d1];
+         const u2 = [(p3[0] - p2[0]) / d2, (p3[1] - p2[1]) / d2];
+         
+         const startX = p2[0] + u1[0] * r;
+         const startY = p2[1] + u1[1] * r;
+         const endX = p2[0] + u2[0] * r;
+         const endY = p2[1] + u2[1] * r;
+         
+         if (i === 0) {
+            path += `M ${startX} ${startY}`;
+         } else {
+            path += ` L ${startX} ${startY}`;
+         }
+         
+         path += ` Q ${p2[0]} ${p2[1]} ${endX} ${endY}`;
+      }
+      path += " Z";
+      return path;
+   }
+
    toSVG(): string {
       const attrs = this.getSvgAttributes();
       if (this.points.length < 2) return "";
 
-      let d = `M ${this.left + this.points[0].x} ${this.top + this.points[0].y}`;
-
-      for (let i = 1; i < this.points.length; i++) {
-         d += ` L ${this.left + this.points[i].x} ${this.top + this.points[i].y}`;
-      }
-      
-      d += " Z";
+      const worldPoints = this.points.map((point) => {
+         let x = point.x;
+         let y = point.y;
+         if (this.flipX) x = this.width - x;
+         if (this.flipY) y = this.height - y;
+         return [this.left + x, this.top + y] as [number, number];
+      });
+      const d = this.getRoundedPolygonPath(worldPoints, this.radius || 0);
 
       return `<path d="${d}" ${attrs} />`;
    }
 
    getLocalPath(): Path2D {
       if (!this.cachedLocalPath) {
-         this.cachedLocalPath = new Path2D();
-         if (this.points.length > 0) {
-            let startX = this.points[0].x;
-            let startY = this.points[0].y;
-            if (this.flipX) startX = this.width - startX;
-            if (this.flipY) startY = this.height - startY;
-            this.cachedLocalPath.moveTo(startX, startY);
-
-            for (let i = 1; i < this.points.length; i++) {
-               let x = this.points[i].x;
-               let y = this.points[i].y;
-               if (this.flipX) x = this.width - x;
-               if (this.flipY) y = this.height - y;
-               this.cachedLocalPath.lineTo(x, y);
-            }
-         }
+         const transformedPoints = this.points.map((point) => {
+            let x = point.x;
+            let y = point.y;
+            if (this.flipX) x = this.width - x;
+            if (this.flipY) y = this.height - y;
+            return [x, y] as [number, number];
+         });
+         const pathStr = this.getRoundedPolygonPath(transformedPoints, this.radius || 0);
+         this.cachedLocalPath = new Path2D(pathStr);
       }
       return this.cachedLocalPath;
    }
@@ -161,6 +198,16 @@ class Path extends Shape {
       const dash0 = this.dash?.[0] || 0;
       const dash1 = this.dash?.[1] || 0;
 
+      const currentRadius = this.radius || 0;
+
+      const transformedPoints = this.points.map((point) => {
+         let x = point.x;
+         let y = point.y;
+         if (this.flipX) x = this.width - x;
+         if (this.flipY) y = this.height - y;
+         return [x, y] as [number, number];
+      });
+
       if (
          (!this.roughDrawable && currentRoughness > 0) ||
          this._cachedPointsLen !== this.points.length ||
@@ -170,7 +217,8 @@ class Path extends Shape {
          currentFill !== this.lastFill ||
          this.strokeWidth !== this.lastStrokeWidth ||
          dash0 !== this.lastDash0 ||
-         dash1 !== this.lastDash1
+         dash1 !== this.lastDash1 ||
+         currentRadius !== this.lastRadius
       ) {
          this._cachedPointsLen = this.points.length;
          this.lastRoughness = currentRoughness;
@@ -180,14 +228,7 @@ class Path extends Shape {
          this.lastStrokeWidth = this.strokeWidth;
          this.lastDash0 = dash0;
          this.lastDash1 = dash1;
-
-         const transformedPoints = this.points.map((point) => {
-            let x = point.x;
-            let y = point.y;
-            if (this.flipX) x = this.width - x;
-            if (this.flipY) y = this.height - y;
-            return [x, y] as [number, number];
-         });
+         this.lastRadius = currentRadius;
 
          const generator = rough.generator();
          const roughOptions: any = {
@@ -198,16 +239,21 @@ class Path extends Shape {
          };
          if (dash0 > 0 || dash1 > 0) roughOptions.strokeLineDash = [dash0, dash1];
          
-         if (currentRoughness === 0) {
-            this.roughDrawable = generator.polygon(transformedPoints, {
+         const roughnessOpt = currentRoughness === 0 ? 0 : (currentRoughness === 1 ? 1.5 : 3);
+         const seedOpt = currentRoughness === 0 ? undefined : this.left + this.top;
+
+         if (currentRadius > 0) {
+            const pathStr = this.getRoundedPolygonPath(transformedPoints, currentRadius);
+            this.roughDrawable = generator.path(pathStr, {
                ...roughOptions,
-               roughness: 0,
+               roughness: roughnessOpt,
+               seed: seedOpt
             });
          } else {
             this.roughDrawable = generator.polygon(transformedPoints, {
                ...roughOptions,
-               roughness: currentRoughness === 1 ? 1.5 : 3,
-               seed: this.left + this.top
+               roughness: roughnessOpt,
+               seed: seedOpt
             });
          }
       }
@@ -236,27 +282,12 @@ class Path extends Shape {
          ]);
          
          context.scale(this.scale, this.scale);
-         context.beginPath();
-
-         let startX = this.points[0].x;
-         let startY = this.points[0].y;
-
-         if (this.flipX) startX = this.width - startX;
-         if (this.flipY) startY = this.height - startY;
-
-         context.moveTo(startX, startY);
-
-         for (let i = 1; i < this.points.length; i++) {
-            let x = this.points[i].x;
-            let y = this.points[i].y;
-            if (this.flipX) x = this.width - x;
-            if (this.flipY) y = this.height - y;
-            context.lineTo(x, y);
-         }
          
-         context.closePath();
-         if (addStyles) context.fill();
-         context.stroke();
+         const pathStr = this.getRoundedPolygonPath(transformedPoints, currentRadius);
+         const p2d = new Path2D(pathStr);
+         
+         if (addStyles) context.fill(p2d);
+         context.stroke(p2d);
       } else {
          if (this.roughDrawable) {
             const rc = rough.canvas(context.canvas as HTMLCanvasElement);

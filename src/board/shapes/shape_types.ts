@@ -1,5 +1,5 @@
 import type { BoxInterface, Point } from "../types";
-import type { Shape } from "@/board/index";
+import type Shape from "./shape";
 
 export type Side = "left" | "right" | "top" | "bottom";
 export type connection = {

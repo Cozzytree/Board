@@ -13,7 +13,8 @@ import type {
    Identity,
    textAlign,
 } from "../types";
-import { Box, type Board } from "../index";
+import Box from "../utils/box";
+import type Board from "../board";
 import { IsIn } from "../utils/utilfunc";
 import Connections from "../connections";
 import { HoveredColor, LINE_CONNECTION_PADDING, INDICATOR_COLOR } from "../constants";
@@ -29,7 +30,7 @@ const keysNotNeeded = ["ctx", "eventListeners"];
 // const defaultStroke = (theme: Theme) => theme === "dark" ? "#efefef" : "#060505";
 
 abstract class Shape implements ShapeProps {
-   padding = 4;
+   padding = 3;
    protected rotationPadding = 5; // Distance outside resize zone for rotation
 
    protected lastFlippedState: { x: boolean; y: boolean };
@@ -42,6 +43,7 @@ abstract class Shape implements ShapeProps {
    declare selectionFill: string;
    declare selectionStrokeWidth: number;
 
+   radius: number;
    fillStyle: string;
    roughness: number;
    ease: number;
@@ -147,7 +149,9 @@ abstract class Shape implements ShapeProps {
       ease,
       roughness,
       fillStyle,
+      radius
    }: ShapeProps) {
+      this.radius = radius || 10;
       this.fillStyle = fillStyle || "hachure";
       this.roughness = roughness ?? 1;
       this.ease = ease ?? 0.8;
@@ -268,8 +272,8 @@ abstract class Shape implements ShapeProps {
       const h = this.height + pad * 2;
 
       // Compute actual uniform scale
-      const transform = context.getTransform();
-      const currentScale = Math.sqrt(transform.a ** 2 + transform.b ** 2);
+      // Use the board's view scale directly to avoid any getTransform() inconsistencies
+      const currentScale = this._board.view.scl * this._board.getCanvasDpr();
 
       context.save();
 
@@ -280,7 +284,7 @@ abstract class Shape implements ShapeProps {
       context.rotate(this.rotate);
       context.translate(-centerX, -centerY);
 
-      const handleSizePx = 8;
+      const handleSizePx = 10;
       const outlineWidthPx = 1;
       const handleBorderPx = 1;
 
@@ -294,7 +298,9 @@ abstract class Shape implements ShapeProps {
       context.closePath();
 
       const drawHandle = (cx: number, cy: number) => {
-         const size = (handleSizePx / currentScale) % 20;
+         // Clamp the size so it doesn't become overwhelmingly large relative to small shapes when zoomed out
+         const maxAllowedSize = Math.max(w, h, 20) * 0.4;
+         const size = Math.min(handleSizePx / currentScale, maxAllowedSize);
          context.beginPath();
          context.fillStyle = this._board.background || "#ffffff";
          context.strokeStyle = INDICATOR_COLOR;

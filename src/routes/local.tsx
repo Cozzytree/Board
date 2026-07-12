@@ -11,7 +11,8 @@ import CanvasOptions from "@/board/components/canvas_options";
 import { MenuIcon, RedoIcon, UndoIcon } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
-import ShapeOptions from "@/board/components/shapeoptions";
+import { useIsMobile } from "@/hooks/use-mobile.ts"
+import { DeleteOption } from "@/board/components/shapeoptions";
 const BoardProvider = React.lazy(() =>
    import("@/board/board_provider").then((m) => ({
       default: m.BoardProvider
@@ -58,6 +59,7 @@ function LocalBoardPage() {
 /** Separated so it can call useBoard() inside the provider tree */
 function BoardUI() {
    const { isMinimal, undo, redo, undoStack, redoStack } = useBoard();
+   const isMobile = useIsMobile();
 
    return (
       <>
@@ -98,8 +100,50 @@ function BoardUI() {
             }}
          />
 
-         <div className="pointer-events-auto z-50 fixed right-0 md:left-1/2 -translate-x-1/2 bottom-4 flex justify-center max-w-[95vw] overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
-            {!isMinimal && <BoardToolbar />}
+         <div className="pointer-events-auto z-50 fixed left-0 md:left-1/2 md:-translate-x-1/2 bottom-1 md:bottom-2 flex justify-center w-screen md:max-w-[95vw] overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+            <div className="w-full flex items-center flex-col">
+               {isMobile &&
+                  <div className="w-full flex justify-between items-center gap-2 px-3">
+                     <div>
+                        <Suspense fallback={null}>
+                           <ExcalidrawOptionsPanel />
+                        </Suspense>
+                     </div>
+                     <div className="flex items-center">
+                        <Button
+                           onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              undo();
+                           }}
+                           onPointerDown={(e) => e.stopPropagation()}
+                           onPointerUp={(e) => e.stopPropagation()}
+                           disabled={undoStack.length <= 1}
+                           variant={"outline"} size="xs"
+                           className="border-none">
+                           <UndoIcon />
+                        </Button>
+                        <Button
+                           onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              redo();
+                           }}
+                           onPointerDown={(e) => e.stopPropagation()}
+                           onPointerUp={(e) => e.stopPropagation()}
+                           disabled={redoStack.length === 0}
+                           variant={"outline"}
+                           size="xs"
+                           className="border-none">
+                           <RedoIcon />
+                        </Button>
+                        <DeleteOption />
+                     </div>
+                  </div>
+               }
+               {!isMinimal && <BoardToolbar />
+               }
+            </div>
          </div>
 
          <div className="w-full flex justify-between items-center z-[99] px-5 fixed top-0 left-0 h-10">
@@ -131,40 +175,45 @@ function BoardUI() {
             </div>
          </div>
 
-         <div className="absolute z-[999] bottom-2 left-2 flex items-center gap-2">
-            <BoardZoomControls />
-            <Button
-               onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  undo();
-               }}
-               onPointerDown={(e) => e.stopPropagation()}
-               onPointerUp={(e) => e.stopPropagation()}
-               disabled={undoStack.length <= 1}
-               variant={"outline"} size="xs"
-               className="border-none">
-               <UndoIcon />
-            </Button>
-            <Button
-               onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  redo();
-               }}
-               onPointerDown={(e) => e.stopPropagation()}
-               onPointerUp={(e) => e.stopPropagation()}
-               disabled={redoStack.length === 0}
-               variant={"outline"}
-               size="xs"
-               className="border-none">
-               <RedoIcon />
-            </Button>
-         </div>
+         {
+            !isMobile &&
+            <div className="absolute z-[999] bottom-2 left-2 flex items-center gap-2">
+               <BoardZoomControls />
+               <Button
+                  onClick={(e) => {
+                     e.preventDefault();
+                     e.stopPropagation();
+                     undo();
+                  }}
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onPointerUp={(e) => e.stopPropagation()}
+                  disabled={undoStack.length <= 1}
+                  variant={"outline"} size="xs"
+                  className="border-none">
+                  <UndoIcon />
+               </Button>
+               <Button
+                  onClick={(e) => {
+                     e.preventDefault();
+                     e.stopPropagation();
+                     redo();
+                  }}
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onPointerUp={(e) => e.stopPropagation()}
+                  disabled={redoStack.length === 0}
+                  variant={"outline"}
+                  size="xs"
+                  className="border-none">
+                  <RedoIcon />
+               </Button>
+            </div>
+         }
          <StatsForNerds className="backdrop-blur fixed z-[999] top-10 md:top-15 right-2 md:right-5" />
-         <Suspense fallback={null}>
-            <ExcalidrawOptionsPanel />
-         </Suspense>
+         {isMobile === false &&
+            <Suspense fallback={null}>
+               <ExcalidrawOptionsPanel />
+            </Suspense>
+         }
       </>
    );
 }

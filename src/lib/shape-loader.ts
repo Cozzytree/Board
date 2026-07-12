@@ -1,5 +1,5 @@
-import type { Board } from "@/board/index";
-import { generateShapeByShapeType } from "@/board/utils/utilfunc";
+import type Board from "@/board/board";
+import { generateShapeByShapeType } from "@/board/utils/shape_factory";
 import type { ShapeProps } from "@/board/types";
 
 interface ShapeWithProps {

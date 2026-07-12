@@ -1,7 +1,13 @@
 import Board from "../board";
 import { HoveredColor } from "../constants";
-import { ActiveSelection, Box, Line, Path, Pointer, Group, Rect } from "../index";
-import { Text } from "../index.ts";
+import ActiveSelection from "../shapes/active_selection";
+import Box from "../utils/box";
+import Line from "../shapes/line/line";
+import Path from "../shapes/paths/path";
+import Pointer from "../utils/point";
+import Group from "../shapes/group";
+import Rect from "../shapes/rect";
+import Text from "../shapes/text";
 import Shape from "../shapes/shape";
 import type {
    EventData,
@@ -13,7 +19,7 @@ import type {
    ToolEventData,
    ToolInterface,
 } from "../types";
-import { generateShapeByShapeType } from "../utils/utilfunc";
+import { generateShapeByShapeType } from "../utils/shape_factory";
 import { snapRotation, snapShape, snapResize } from "../utils/snap";
 import { debounce } from "../../lib/utils";
 
@@ -124,6 +130,7 @@ class SelectionTool implements ToolInterface {
 
    pointerDown({ e, p }: ToolEventData, callback?: (e: EventData) => void): void {
       if (this.isTouchGesture) return;
+      this._board.renderClickEffect(p);
 
       const isTouch = ('touches' in e) || (('pointerType' in e) && (e as any).pointerType === 'touch');
       const touchPadding = isTouch ? 20 : 0;
@@ -1075,6 +1082,14 @@ class SelectionTool implements ToolInterface {
       const active = this._board.getActiveShapes();
       if (active) {
          const a = active;
+
+         if (a.type === "line" && typeof (a as any).handleDoubleClick === "function") {
+            if ((a as any).handleDoubleClick(p)) {
+               this._board.render();
+               return;
+            }
+         }
+
          if (a.IsDraggable(p)) {
             this.createText();
          }

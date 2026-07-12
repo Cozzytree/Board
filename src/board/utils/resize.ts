@@ -1,5 +1,5 @@
 import type { Point, resizeDirection } from "../types";
-import type { Box } from "../index";
+import type Box from "./box";
 
 function resizeRect(down: Point, box: Box, padding: number) {
    const yTopAlign = down.y >= box.y1 - padding && down.y <= box.y1 + padding;

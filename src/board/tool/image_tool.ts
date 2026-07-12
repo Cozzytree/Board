@@ -18,6 +18,7 @@ class ImageTool implements ToolInterface {
   }
 
   pointerDown({ p }: ToolEventData): void {
+    this._board.renderClickEffect(p);
     if (this._pendingClick) return;
     this._pendingClick = true;
 

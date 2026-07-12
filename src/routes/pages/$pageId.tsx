@@ -30,7 +30,7 @@ import { getShapesByPage } from "@/lib/shape-api";
 
 import { getPage } from "@/lib/page-api";
 import { ShapeSyncManager } from "@/lib/shape-sync-manager";
-import type { Board } from "@/board/index";
+import type Board from "@/board/board";
 import { LibrarySidebar } from "@/board/components/library_sidebar";
 import { StatsForNerds } from "@/board/components/stat";
 import CanvasOptions from "@/board/components/canvas_options";

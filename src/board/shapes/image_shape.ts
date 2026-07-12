@@ -1,7 +1,9 @@
 import type { BoxInterface, Point, resizeDirection, ShapeEventData, ShapeProps } from "../types";
 import type { DrawProps } from "./shape";
 import { isDraggableWithRotation, resizeRect } from "../utils/resize";
-import { Box, Pointer, Shape } from "../index";
+import Box from "../utils/box";
+import Pointer from "../utils/point";
+import Shape from "./shape";
 import { resizeWithRotation } from "../utils/resizeWithRotation";
 import { calcPointWithRotation } from "../utils/utilfunc";
 

@@ -49,6 +49,7 @@ type BoardProps = {
    customShapes?: CustomShapeDef[];
    onImageUpload?: (file: File) => Promise<string>;
    isLocked?: boolean;
+   clickEffect?: boolean;
 };
 
 type EventCallback = (e: EventData) => void;
@@ -88,6 +89,7 @@ class Board implements BoardInterface {
 
    snap: boolean;
    hoverEffect: boolean;
+   clickEffect: boolean;
    _foreground: string;
    _background: string;
    _theme: "dark" | "light" = "dark";
@@ -236,11 +238,13 @@ class Board implements BoardInterface {
       onImageUpload,
       isLocked = false,
       snapGrid = false,
-      indicatorColor
+      indicatorColor,
+      clickEffect = false
    }: BoardProps) {
       this.snapGrid = snapGrid,
          this.indicatorColor = indicatorColor || INDICATOR_COLOR;
       this.isLocked = isLocked;
+      this.clickEffect = clickEffect;
       this.scrollEase = scrollEase ?? 0.5;
       this.customShapes = new Map();
       customShapes.forEach((s) => {
@@ -808,12 +812,12 @@ class Board implements BoardInterface {
 
    private onmousemove(e: PointerEvent | MouseEvent | TouchEvent) {
       if (this.isLocked) return;
+      e.preventDefault(); // Prevents pull-to-refresh and scroll takeover
 
-      if (typeof TouchEvent !== "undefined" && e instanceof TouchEvent) {
-         if (e.cancelable) {
-            e.preventDefault(); // Prevents pull-to-refresh and scroll takeover
-         }
-      }
+      // if (typeof TouchEvent !== "undefined" && e instanceof TouchEvent) {
+      //    if (e.cancelable) {
+      //    }
+      // }
 
       if (!this.throttlePointer) {
          this.throttledPointerMove(e);
@@ -1106,6 +1110,41 @@ class Board implements BoardInterface {
          this.render(); // One final render
          this.isAnimating = false;
       }
+   }
+
+   renderClickEffect(p: Point) {
+      if (!this.clickEffect) return;
+
+      const rect = this.canvas.getBoundingClientRect();
+      const rawX = p.x * this.view.scl + this.view.x;
+      const rawY = p.y * this.view.scl + this.view.y;
+      const clientX = rawX + rect.left;
+      const clientY = rawY + rect.top;
+
+      const effect = document.createElement("div");
+      effect.style.position = "fixed";
+      effect.style.left = `${clientX - 10}px`;
+      effect.style.top = `${clientY - 10}px`;
+      effect.style.width = "20px";
+      effect.style.height = "20px";
+      effect.style.borderRadius = "50%";
+      effect.style.backgroundColor = this.indicatorColor || "rgba(0, 150, 255, 0.5)";
+      effect.style.pointerEvents = "none";
+      effect.style.zIndex = "9999";
+      effect.style.transform = "scale(0.5)";
+      effect.style.opacity = "0.8";
+      effect.style.transition = "transform 0.3s ease-out, opacity 0.3s ease-out";
+
+      document.body.appendChild(effect);
+
+      requestAnimationFrame(() => {
+         effect.style.transform = "scale(2.5)";
+         effect.style.opacity = "0";
+      });
+
+      setTimeout(() => {
+         effect.remove();
+      }, 300);
    }
 }
 

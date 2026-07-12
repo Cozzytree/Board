@@ -1,14 +1,18 @@
 import type { EventData, ToolCallback, ToolEventData } from "../types";
 
 import Tool from "./tool";
-import { AnchorLine, Box, LineCurve, PlainLine, Rect, type Board, type Line } from "@/board/index";
+import Box from "../utils/box";
+import Rect from "../shapes/rect";
+import type Board from "../board";
+import LineShape from "../shapes/line/line_shape";
+import type Shape from "../shapes/shape";
 
 class LineTool extends Tool {
    private indicator: {
       show: boolean;
       rect: Rect;
    };
-   private newLine: Line | null = null;
+   private newLine: LineShape | null = null;
 
    constructor(board: Board) {
       super(board);
@@ -33,48 +37,50 @@ class LineTool extends Tool {
    }
 
    pointerDown({ p }: ToolEventData): void {
+      this._board.renderClickEffect(p);
       if (this._board.modes.sm === "line:straight") {
-         this.newLine = new PlainLine({
+         this.newLine = new LineShape({
             _board: this._board,
             ctx: this._board.ctx,
             points: [
                { x: 0, y: 0 },
                { x: 0, y: 0 },
-               { x: 0, y: 0 },
             ],
             left: p.x,
             top: p.y,
-            lineType: "straight",
-            fill: "white",
+            linetype: "straight",
             stroke: "white",
          });
       } else if (this._board.modes.sm === "line:curve") {
-         this.newLine = new LineCurve({
+         this.newLine = new LineShape({
             _board: this._board,
             ctx: this._board.ctx,
             points: [
                { x: 0, y: 0 },
                { x: 0, y: 0 },
-               { x: 0, y: 0 },
             ],
             left: p.x,
             top: p.y,
-            lineType: "curve",
-            fill: "white",
+            linetype: "curved",
+            stroke: "white",
          });
       } else {
-         this.newLine = new AnchorLine({
+         this.newLine = new LineShape({
             _board: this._board,
             ctx: this._board.ctx,
             points: [
                { x: 0, y: 0 },
-               { x: 1.5, y: 0 },
-               { x: 1.5, y: 3 },
-               { x: 3, y: 3 },
+               { x: 0, y: 0 },
             ],
             left: p.x,
             top: p.y,
+            linetype: "anchor",
+            stroke: "white",
          });
+      }
+      // Set resizeIndex to last point so initial drag moves the endpoint
+      if (this.newLine) {
+         (this.newLine as any).resizeIndex = this.newLine.points.length - 1;
       }
    }
 
@@ -107,10 +113,10 @@ class LineTool extends Tool {
             return false;
          });
          if (shape) {
-            this.draw(this.newLine, this.indicator.rect);
+            this.draw(this.newLine as unknown as Shape, this.indicator.rect);
          } else {
             this.indicator.show = false;
-            this.draw(this.newLine);
+            this.draw(this.newLine as unknown as Shape);
          }
       }
    }
@@ -118,12 +124,12 @@ class LineTool extends Tool {
    pointerup({ p }: ToolEventData, cb?: ToolCallback, ec?: (cb: EventData) => void): void {
       this.indicator.show = false;
       if (this.newLine) {
-         this._board.add(this.newLine);
+         this._board.add(this.newLine as unknown as Shape);
          this._board.render();
          this.newLine.setCoords();
          this.newLine.mouseup({ e: { point: p } });
 
-         ec?.({ e: { target: [this.newLine], x: p.x, y: p.y } });
+         ec?.({ e: { target: [this.newLine as unknown as Shape], x: p.x, y: p.y } });
 
          this.newLine = null;
       }

@@ -1,5 +1,9 @@
 import type { ActiveSelectionShape } from "./shape_types";
-import { Box, Ellipse, Line, Path, Shape } from "../index";
+import Box from "../utils/box";
+import Ellipse from "./ellipse";
+import Line from "./line/line";
+import Path from "./paths/path";
+import Shape from "./shape";
 import type { BoxInterface, Point, resizeDirection, ShapeEventData, ShapeProps } from "../types";
 import { resizeRect, isDraggableWithRotation } from "../utils/resize";
 import { resizeWithRotationAndFlip } from "../utils/resizeWithRotation";
@@ -223,8 +227,8 @@ class ActiveSelection extends Shape {
       const h = this.height + pad * 2;
 
       // Compute actual uniform scale
-      const transform = context.getTransform();
-      const currentScale = Math.sqrt(transform.a ** 2 + transform.b ** 2);
+      // Use the board's view scale directly to avoid any getTransform() inconsistencies
+      const currentScale = this._board.view.scl * this._board.getCanvasDpr();
 
       context.save();
 
@@ -235,7 +239,7 @@ class ActiveSelection extends Shape {
       context.rotate(this.rotate);
       context.translate(-centerX, -centerY);
 
-      const handleSizePx = 8;
+      const handleSizePx = 10;
       const outlineWidthPx = 3;
       const handleBorderPx = 1;
 
@@ -249,7 +253,9 @@ class ActiveSelection extends Shape {
       context.closePath();
 
       const drawHandle = (cx: number, cy: number) => {
-         const size = (handleSizePx / currentScale) % 20;
+         // Clamp the size so it doesn't become overwhelmingly large relative to small shapes when zoomed out
+         const maxAllowedSize = Math.max(w, h, 20) * 0.4;
+         const size = Math.min(handleSizePx / currentScale, maxAllowedSize);
          context.beginPath();
          context.setLineDash([]);
          context.fillStyle = this._board.background || "#ffffff";
@@ -280,8 +286,8 @@ class ActiveSelection extends Shape {
          old,
          direction: d,
          rotate: this.rotate,
-         minWidth: 20,
-         minHeight: 20,
+         minWidth: 1,
+         minHeight: 1,
       });
 
       const centerX = old.x1 + (old.x2 - old.x1) / 2;

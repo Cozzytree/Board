@@ -1,6 +1,6 @@
 // Excalidraw-style snap logic — at most 1 horizontal + 1 vertical guide line
 
-import { Path } from "../index";
+import Path from "../shapes/paths/path";
 import { SnapeLineColor } from "../constants";
 import type Board from "../board";
 import type Shape from "../shapes/shape";

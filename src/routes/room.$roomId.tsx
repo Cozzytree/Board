@@ -9,7 +9,8 @@ import { useYjsSync } from "@/board/useYjsSync";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import React from "react";
 import { Copy, Check, ArrowLeft } from "lucide-react";
-import type { Board, Shape } from "@/board/index";
+import type Board from "@/board/board";
+import type Shape from "@/board/shapes/shape";
 import { CursorStateManager, RealTimeProvider, useRealTime } from "@/components/realtime-provider";
 import { useTheme } from "@/components/theme-provider";
 

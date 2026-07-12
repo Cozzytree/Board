@@ -24,6 +24,7 @@ class FrameTool implements ToolInterface {
    }
 
    pointerDown(e: ToolEventData, callback: (e: EventData) => void): void {
+      this._board.renderClickEffect(e.p);
       this._tempGroup = new Group({
          left: e.p.x,
          top: e.p.y,
