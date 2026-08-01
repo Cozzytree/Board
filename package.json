@@ -28,7 +28,7 @@
     "build": "tsc && vite build",
     "build:app": "tsc && vite build",
     "build:lib": "rm -rf dist && vite build --config vite.lib.config.ts && tsc -p tsconfig.lib.json",
-    "prepublishOnly": "bun run build:lib",
+    "prepublishOnly": "npm run build:lib",
     "lint": "eslint .",
     "preview": "vite preview"
   },
@@ -58,6 +58,7 @@
     "roughjs": "^4.6.6",
     "tailwind-merge": "^3.3.1",
     "tailwindcss": "^4.1.11",
+    "typescript": "^7.0.2",
     "uuid": "^11.1.0",
     "vaul": "^1.1.2",
     "y-websocket": "^3.0.0",

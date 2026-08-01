@@ -103,6 +103,10 @@ class ImageTool implements ToolInterface {
     });
   }
 
+  getConf(_: string) { }
+  
+  setConf(_: string, val: any) {}
+
   pointermove(): void { }
 
   pointerup(_: ToolEventData, cb?: ToolCallback): void {

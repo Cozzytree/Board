@@ -6,37 +6,37 @@ import type { Shape, Board } from "./index";
 import type { ConnectionInterface } from "./shapes/shape_types";
 
 export type ConnectionPoint = {
-   s: Shape | null;
-   position: () => Point;
+  s: Shape | null;
+  position: () => Point;
 };
 
 export type ShapeConstructor = new (props: any) => Shape;
 
 export type CustomShapeDef = {
-   icon: any;
-   name: string;
-   shape: ShapeConstructor;
+  icon: any;
+  name: string;
+  shape: ShapeConstructor;
 };
 
 export type LibraryItem = {
-   _cachedPath?: Path2D | null,
-   roughness: number;
-   fillStyle?: string;
-   type: "line" | "ellipse" | "text" | "rectangle" | "diamond",
-   angle: number,
-   backgroundColor: string,
-   id: string,
-   x: number,
-   y: number,
-   opacity: number,
-   strokeColor: string,
-   strokeStyle: string,
-   width: number,
-   height: number,
-   text?: string,
-   textAlign?: string,
-   verticalAlign?: string,
-   points?: [number, number][],
+  _cachedPath?: Path2D | null,
+  roughness: number;
+  fillStyle?: string;
+  type: "line" | "ellipse" | "text" | "rectangle" | "diamond",
+  angle: number,
+  backgroundColor: string,
+  id: string,
+  x: number,
+  y: number,
+  opacity: number,
+  strokeColor: string,
+  strokeStyle: string,
+  width: number,
+  height: number,
+  text?: string,
+  textAlign?: string,
+  verticalAlign?: string,
+  points?: [number, number][],
 }
 
 export type ShapeEvent =
@@ -56,52 +56,52 @@ export type ShapeEvent =
    | "selection:move";
 
 export type ShapeEventData = {
-   e: { point: Point };
+  e: { point: Point };
 };
 
 export interface EventData {
-   e: { x?: number; y?: number; target: Shape[] | null };
+  e: { x?: number; y?: number; target: Shape[] | null };
 }
 
 export type ShapeEventCallback = (shape: Shape, data?: ShapeEventData) => void;
 
 export type ShapeProps = {
-   radius?: number;
-   fillStyle?: string;
-   roughness?: number;
-   ease?: number;
-   opacity?: number;
-   locked?: boolean;
-   italic?: boolean;
-   selectionFill?: string;
-   selectionAlpha?: number;
-   selectionDash?: [number, number];
-   selectionColor?: string;
-   selectionStrokeWidth?: number;
-   fontSize?: number;
-   fontWeight?: string | number;
-   fontFamily?: string;
-   verticalAlign?: "top" | "center" | "bottom";
-   textAlign?: textAlign;
-   left?: number;
-   top?: number;
-   width?: number;
-   height?: number;
-   stroke?: string;
-   fill?: string;
-   rotate?: number;
-   ctx: CanvasRenderingContext2D;
-   _board: Board;
-   strokeWidth?: number;
-   scale?: number;
-   flipX?: boolean;
-   flipY?: boolean;
-   id?: string;
-   type?: shapeType;
-   dash?: [number, number];
-   text?: string;
-   connections?: ConnectionInterface;
-   zOrder?: number;
+  radius?: number;
+  fillStyle?: string;
+  roughness?: number;
+  ease?: number;
+  opacity?: number;
+  locked?: boolean;
+  italic?: boolean;
+  selectionFill?: string;
+  selectionAlpha?: number;
+  selectionDash?: [number, number];
+  selectionColor?: string;
+  selectionStrokeWidth?: number;
+  fontSize?: number;
+  fontWeight?: string | number;
+  fontFamily?: string;
+  verticalAlign?: "top" | "center" | "bottom";
+  textAlign?: textAlign;
+  left?: number;
+  top?: number;
+  width?: number;
+  height?: number;
+  stroke?: string;
+  fill?: string;
+  rotate?: number;
+  ctx: CanvasRenderingContext2D;
+  _board: Board;
+  strokeWidth?: number;
+  scale?: number;
+  flipX?: boolean;
+  flipY?: boolean;
+  id?: string;
+  type?: shapeType;
+  dash?: [number, number];
+  text?: string;
+  connections?: ConnectionInterface;
+  zOrder?: number;
 };
 
 export type ToolCallback = (args: { mode: modes; submode: submodes }) => void;
@@ -109,45 +109,45 @@ export type ToolCallback = (args: { mode: modes; submode: submodes }) => void;
 export type ToolEventData = { p: Point; e: MouseEvent | PointerEvent | WheelEvent | TouchEvent };
 
 export interface ToolInterface {
-   getConf(key: string): any;
-   setConf(key: string, value: any): void;
-   pointerDown(e: ToolEventData, callback: (e: EventData) => void): void;
-   pointermove(e: ToolEventData, callback: (e: EventData) => void): void;
-   pointerup(e: ToolEventData, cb?: ToolCallback, eventCallback?: (e: EventData) => void): void;
-   dblClick(e: ToolEventData): void;
-   onClick(e: ToolEventData): void;
-   cleanUp(): void;
+  getConf(key: string): any;
+  setConf(key: string, value: any): void;
+  pointerDown(e: ToolEventData, callback: (e: EventData) => void): void;
+  pointermove(e: ToolEventData, callback: (e: EventData) => void): void;
+  pointerup(e: ToolEventData, cb?: ToolCallback, eventCallback?: (e: EventData) => void): void;
+  dblClick(e: ToolEventData): void;
+  onClick(e: ToolEventData): void;
+  cleanUp(): void;
 }
 
 export interface Point {
-   x: number;
-   y: number;
+  x: number;
+  y: number;
 }
 
 export interface ShapeInterface {
-   draw(options: { ctx?: CanvasRenderingContext2D; addStyles?: boolean }): void;
-   ID(): string;
-   mouseup(s: ShapeEventData): void;
-   mouseover(s: ShapeEventData): void;
-   mousedown(s: ShapeEventData): void;
-   IsDraggable(p: Point): boolean;
-   IsResizable(p: Point): resizeDirection | null;
-   Resize(current: Point, old: BoxInterface, d: resizeDirection): void;
-   clone(): Shape;
-   Index(): number;
-   SetIndex(v: number): void;
+  draw(options: { ctx?: CanvasRenderingContext2D; addStyles?: boolean }): void;
+  ID(): string;
+  mouseup(s: ShapeEventData): void;
+  mouseover(s: ShapeEventData): void;
+  mousedown(s: ShapeEventData): void;
+  IsDraggable(p: Point): boolean;
+  IsResizable(p: Point): resizeDirection | null;
+  Resize(current: Point, old: BoxInterface, d: resizeDirection): void;
+  clone(): Shape;
+  Index(): number;
+  SetIndex(v: number): void;
 }
 
 export interface BoardInterface {
-   canvas: HTMLCanvasElement;
-   ctx: CanvasRenderingContext2D;
-   modes: { m: modes; sm: submodes | null };
-   onMouseMove?: (e: EventData) => void;
-   onMouseDown?: (e: EventData) => void;
-   onMouseUp?: (e: EventData) => void;
-   registerCustomShape(def: CustomShapeDef): void;
-   registerSvgIcon(name: string, svgString: string): boolean;
-   renderClickEffect(p: Point): void;
+  canvas: HTMLCanvasElement;
+  ctx: CanvasRenderingContext2D;
+  modes: { m: modes; sm: submodes | null };
+  onMouseMove?: (e: EventData) => void;
+  onMouseDown?: (e: EventData) => void;
+  onMouseUp?: (e: EventData) => void;
+  registerCustomShape(def: CustomShapeDef): void;
+  registerSvgIcon(name: string, svgString: string): boolean;
+  renderClickEffect(p: Point): void;
 }
 
 export type modes = "cursor" | "shape" | "line" | "draw" | "text" | "eraser" | "image" | "frame";
@@ -184,10 +184,10 @@ export type shapeType =
    | "image";
 
 export interface BoxInterface {
-   x1: number;
-   y1: number;
-   x2: number;
-   y2: number;
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
 }
 
 export type resizeDirection = "tl" | "tr" | "bl" | "br" | "l" | "r" | "t" | "b";

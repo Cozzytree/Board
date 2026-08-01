@@ -9,7 +9,7 @@ import { INDICATOR_COLOR } from "../../constants";
 import type { Drawable } from "roughjs/bin/core";
 
 export type LineShapeProps = {
-   linetype?: "curved" | "straight" | "anchor";
+   linetype?: "curve" | "straight" | "anchor";
    arrow?: { star: boolean; end: boolean };
    arrowtype?: "full" | "filled";
    attached?: boolean;
@@ -18,7 +18,7 @@ export type LineShapeProps = {
 
 class LineShape extends Line {
    public attached: boolean;
-   public linetype: "curved" | "straight" | "anchor" = "straight";
+   public linetype: "curve" | "straight" | "anchor" = "straight";
    public arrowtype: "full" | "filled" = "full";
    public lineshape: boolean = true;
 
@@ -55,7 +55,7 @@ class LineShape extends Line {
    private getSvgPathString(): string {
       if (this.points.length === 0) return "";
       let d = `M ${this.points[0].x} ${this.points[0].y}`;
-      if (this.linetype === "curved" && this.points.length > 2) {
+      if (this.linetype === "curve" && this.points.length > 2) {
          for (let i = 0; i < this.points.length - 1; i++) {
             const p0 = i > 0 ? this.points[i - 1] : (this.attached ? this.points[this.points.length - 1] : this.points[0]);
             const p1 = this.points[i];

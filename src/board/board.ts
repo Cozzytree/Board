@@ -254,7 +254,7 @@ class Board implements BoardInterface {
       clickEffect = false
    }: BoardProps) {
       this.snapGrid = snapGrid,
-         this.indicatorColor = indicatorColor || INDICATOR_COLOR;
+      this.indicatorColor = indicatorColor || INDICATOR_COLOR;
       this.isLocked = isLocked;
       this.clickEffect = clickEffect;
       this.scrollEase = scrollEase ?? 0.5;
