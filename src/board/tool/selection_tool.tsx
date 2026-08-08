@@ -455,6 +455,8 @@ class SelectionTool implements ToolInterface {
     }
     this._board._lastMousePosition = p;
 
+    if ("touches" in e && (e as TouchEvent).touches.length > 2) return;
+
     this.shouldDrag(p);
 
     // Handle rotation (omitted for brevity, unchanged)

@@ -51,8 +51,7 @@ class Group extends Shape {
     }
   }
 
-  mousedown(s: ShapeEventData): void {
-    ;
+  mousedown(_: ShapeEventData): void {
     this._tempShapes = [];
     this._currentShapesIdSet = new Set(this.shapes.map(s => s.s.ID()));
   }
@@ -429,14 +428,14 @@ class Group extends Shape {
       y2: shape.top + shape.height,
     };
     this.shapes.push({ s: shape, oldProps: bounds });
-    const newLeft = Math.min(this.left, shape.left - this.padding);
-    const newTop = Math.min(this.top, shape.top - this.padding);
-    const newRight = Math.max(this.left + this.width, shape.left + shape.width + this.padding);
-    const newBottom = Math.max(this.top + this.height, shape.top + shape.height + this.padding);
-    this.left = newLeft;
-    this.top = newTop;
-    this.width = newRight - newLeft;
-    this.height = newBottom - newTop;
+    // const newLeft = Math.min(this.left, shape.left - this.padding);
+    // const newTop = Math.min(this.top, shape.top - this.padding);
+    // const newRight = Math.max(this.left + this.width, shape.left + shape.width + this.padding);
+    // const newBottom = Math.max(this.top + this.height, shape.top + shape.height + this.padding);
+    // this.left = newLeft;
+    // this.top = newTop;
+    // this.width = newRight - newLeft;
+    // this.height = newBottom - newTop;
   }
 
   ungroup(): Shape[] {

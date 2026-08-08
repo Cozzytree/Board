@@ -364,15 +364,15 @@ const BoardProvider = ({
       const normalized = { ...obj } as Record<string, any>;
       if (
         !normalized.type &&
-          typeof normalized.text === "string" &&
-          typeof normalized.fontSize === "number" &&
-          typeof normalized.left === "number" &&
-          typeof normalized.top === "number" &&
-          typeof normalized.width === "number" &&
-          typeof normalized.height === "number" &&
-          !Array.isArray(normalized.points) &&
-          !normalized.svgPath &&
-          !normalized.imageSrc
+        typeof normalized.text === "string" &&
+        typeof normalized.fontSize === "number" &&
+        typeof normalized.left === "number" &&
+        typeof normalized.top === "number" &&
+        typeof normalized.width === "number" &&
+        typeof normalized.height === "number" &&
+        !Array.isArray(normalized.points) &&
+        !normalized.svgPath &&
+        !normalized.imageSrc
       ) {
         normalized.type = "text";
       }
@@ -448,8 +448,8 @@ const BoardProvider = ({
       const view = JSON.parse(raw);
       if (
         typeof view.x === "number" &&
-          typeof view.y === "number" &&
-          typeof view.scl === "number"
+        typeof view.y === "number" &&
+        typeof view.scl === "number"
       ) {
         board.view.x = view.x;
         board.view.y = view.y;
@@ -1039,13 +1039,13 @@ const BoardProvider = ({
             onClick={() => {
               setHover((prev) => !prev);
             }}>
-              hover {isHover ? "off" : "on"}
+            hover {isHover ? "off" : "on"}
           </ContextMenuItem>
           <ContextMenuItem
             onClick={() => {
               void exportBoardAsLibrary();
             }}>
-              make board library
+            make board library
           </ContextMenuItem>
           <ContextMenuItem onClick={() => {
             setStat(!isStat);
