@@ -1,5 +1,5 @@
 import { DownloadIcon, MoonIcon, SunIcon, SaveIcon, TrashIcon, FolderOpenIcon, ImageIcon, UploadIcon, PlusIcon } from "lucide-react";
-import { useBoard } from "../board-context";
+// import { useBoard } from "../board-context";
 import { Button } from "@/components/ui/button";
 import type { Theme } from "../board_provider";
 import { cn } from "@/lib/utils";
@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { useBoardStore } from "../store";
 
 const BACKGROUNDS = {
    light: ["#ffffff", "#f8f9fa", "#f1f3f5", "#fff5f5", "#fff0f6", "#f8f0fc", "#f3f0ff", "#edf2ff", "#e6fcf5", "#ebfbee", "#f4fce3", "#fff9db", "#fff4e6"],
@@ -15,14 +16,14 @@ const BACKGROUNDS = {
 };
 
 export default function CanvasOptions() {
-   const { setTheme, theme, canvas, background, setBackground } = useBoard();
+   const { setTheme, theme, canvas, background, setBackground } = useBoardStore();
    const [filename, setFilename] = useState("untitled-board");
    const [isFileOpDialogOpen, setIsFileOpDialogOpen] = useState(false);
    const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
    const [isTransparentBg, setIsTransparentBg] = useState(false);
    const [previewUrl, setPreviewUrl] = useState("");
    const [exportFilename, setExportFilename] = useState("untitled-image");
-   
+
    const [resolvedTheme, setResolvedTheme] = useState<"light" | "dark">("light");
 
    useEffect(() => {
@@ -128,13 +129,13 @@ export default function CanvasOptions() {
       const height = Math.max(1, maxY - minY + padding * 2);
 
       let svgContent = `<svg viewBox="0 0 ${width} ${height}" width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">`;
-      
+
       if (!isTransparentBg) {
          svgContent += `<rect width="100%" height="100%" fill="${canvas.background}" />`;
       }
 
       svgContent += `<g transform="translate(${-minX + padding}, ${-minY + padding})">`;
-      
+
       canvas.shapeStore.forEach((s) => {
          if (s.type !== "selection" && !s.groupId) {
             if (typeof s.toSVG === "function") {
@@ -143,7 +144,7 @@ export default function CanvasOptions() {
          }
          return false;
       });
-      
+
       svgContent += `</g></svg>`;
 
       const blob = new Blob([svgContent], { type: "image/svg+xml" });
@@ -197,7 +198,7 @@ export default function CanvasOptions() {
       // Must be synchronous for browser security to allow the file picker to open
       const input = document.getElementById('global-board-upload');
       if (input) {
-         // Setup a one-time focus listener to restore pointer-events when the file picker 
+         // Setup a one-time focus listener to restore pointer-events when the file picker
          // closes (especially when cancelled, since onChange won't fire)
          const handleFocus = () => {
             // Slight delay to ensure the browser has fully closed the picker
@@ -207,7 +208,7 @@ export default function CanvasOptions() {
             window.removeEventListener("focus", handleFocus);
          };
          window.addEventListener("focus", handleFocus);
-         
+
          input.click();
       }
    };
@@ -272,13 +273,13 @@ export default function CanvasOptions() {
                         <div className="flex flex-col gap-2">
                            <Label className="text-xs">Custom Hex Color</Label>
                            <div className="flex gap-2">
-                              <Input 
-                                 value={background} 
+                              <Input
+                                 value={background}
                                  onChange={(e) => setBackground(e.target.value)}
                                  className="h-8 flex-1"
                                  placeholder="#ffffff"
                               />
-                              <div 
+                              <div
                                  className="w-8 h-8 rounded-md border shrink-0"
                                  style={{ backgroundColor: background }}
                               />
@@ -307,7 +308,7 @@ export default function CanvasOptions() {
                      Open / Export...
                   </Button>
                </DialogTrigger>
-               <DialogContent 
+               <DialogContent
                   className="sm:max-w-[425px]"
                   onInteractOutside={(e) => {
                      if (e.type === "focusoutside") {

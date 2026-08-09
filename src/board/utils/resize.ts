@@ -70,15 +70,26 @@ function isDraggableWithRotation({
    const dx = point.x - centerX;
    const dy = point.y - centerY;
 
+   const halfW = Math.abs(width) / 2;
+   const halfH = Math.abs(height) / 2;
+
+   // 1. Quick AABB check to avoid expensive trig operations for distant shapes
+   const maxRadius = halfW + halfH;
+   if (Math.abs(dx) > maxRadius || Math.abs(dy) > maxRadius) {
+       return false;
+   }
+
+   // 2. Fast path for unrotated shapes
+   if (!rotate) {
+       return dx > -halfW && dx < halfW && dy > -halfH && dy < halfH;
+   }
+
+   // 3. Fallback to precise trigonometric check for rotated shapes
    // Apply inverse rotation to transform point to local space
    const cos = Math.cos(-rotate);
    const sin = Math.sin(-rotate);
    const localX = dx * cos - dy * sin;
    const localY = dx * sin + dy * cos;
-
-   // Check against unrotated rectangle bounds (centered at origin)
-   const halfW = width / 2;
-   const halfH = height / 2;
 
    return localX > -halfW && localX < halfW && localY > -halfH && localY < halfH;
 }

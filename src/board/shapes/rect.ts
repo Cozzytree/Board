@@ -31,7 +31,7 @@ class Rect extends Shape {
 
    clone(): Shape {
       const props = this.cloneProps();
-      return new Rect({ ...props, radius: this.radius });
+      return new Rect({ ...props });
    }
 
    toSVG(): string {

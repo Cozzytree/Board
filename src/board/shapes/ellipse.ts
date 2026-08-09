@@ -29,8 +29,8 @@ class Ellipse extends Shape {
 
    constructor(props: ShapeProps & EllipseProps) {
       super(props);
-      this.rx = props.rx || 10;
-      this.ry = props.ry || 10;
+      this.rx = props.rx ?? 10;
+      this.ry = props.ry ?? 10;
       this.width = this.rx * 2;
       this.height = this.ry * 2;
 

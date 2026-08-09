@@ -3,6 +3,7 @@ import { BoardZoomControls } from "@/board/components/zoom_controls";
 import { BoardCenterButton } from "@/board/components/center_button";
 import { BoardLibrarySidebar } from "@/board/components/library_sidebar";
 import { useBoard } from "@/board/board-context";
+import { useBoardStore } from "@/board/store";
 import { createFileRoute } from "@tanstack/react-router";
 import React, { Suspense } from "react";
 import { useTheme } from "@/components/theme-provider";
@@ -58,7 +59,8 @@ function LocalBoardPage() {
 
 /** Separated so it can call useBoard() inside the provider tree */
 function BoardUI() {
-  const { isMinimal, undo, redo, undoStack, redoStack } = useBoard();
+  const { undo, redo, undoStack, redoStack } = useBoard();
+  const isMinimal = useBoardStore((s) => s.isMinimal);
   const isMobile = useIsMobile();
 
   return (
@@ -177,36 +179,36 @@ function BoardUI() {
 
       {
         !isMobile &&
-          <div className="absolute z-[999] bottom-2 left-2 flex items-center gap-2">
-            <BoardZoomControls />
-            <Button
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                undo();
-              }}
-              onPointerDown={(e) => e.stopPropagation()}
-              onPointerUp={(e) => e.stopPropagation()}
-              disabled={undoStack.length <= 1}
-              variant={"outline"} size="xs"
-              className="border-none">
-              <UndoIcon />
-            </Button>
-            <Button
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                redo();
-              }}
-              onPointerDown={(e) => e.stopPropagation()}
-              onPointerUp={(e) => e.stopPropagation()}
-              disabled={redoStack.length === 0}
-              variant={"outline"}
-              size="xs"
-              className="border-none">
-              <RedoIcon />
-            </Button>
-          </div>
+        <div className="absolute z-[999] bottom-2 left-2 flex items-center gap-2">
+          <BoardZoomControls />
+          <Button
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              undo();
+            }}
+            onPointerDown={(e) => e.stopPropagation()}
+            onPointerUp={(e) => e.stopPropagation()}
+            disabled={undoStack.length <= 1}
+            variant={"outline"} size="xs"
+            className="border-none">
+            <UndoIcon />
+          </Button>
+          <Button
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              redo();
+            }}
+            onPointerDown={(e) => e.stopPropagation()}
+            onPointerUp={(e) => e.stopPropagation()}
+            disabled={redoStack.length === 0}
+            variant={"outline"}
+            size="xs"
+            className="border-none">
+            <RedoIcon />
+          </Button>
+        </div>
       }
       <StatsForNerds className="backdrop-blur fixed z-[999] top-10 md:top-15 right-2 md:right-5" />
       {isMobile === false &&

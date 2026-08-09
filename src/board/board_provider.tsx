@@ -1,3 +1,4 @@
+import { useBoardStore } from "./store";
 import * as React from "react";
 import {
   BoxIcon,
@@ -122,24 +123,17 @@ const BoardProvider = ({
     foreground?: string;
   }) => void;
 }) => {
-  const [boardTheme, setBoardThemeState] = React.useState<"dark" | "light">(
-    theme === "dark" || theme === "system" ? "dark" : "light",
-  );
+  const { background, setBackground, foreground, setForeground, setTheme, theme: boardTheme } = useBoardStore();
   const [isLockedCanvas] = React.useState(canvasLock);
-  const [background, setBackground] = React.useState(boardTheme === "dark" ? "#181818" : "#efefef");
-  const [foreground, setForeground] = React.useState(boardTheme === "dark" ? "#cccccc" : "#202020");
+  // const [background, setBackground] = React.useState(boardTheme === "dark" ? "#181818" : "#efefef");
+  // const [foreground, setForeground] = React.useState(boardTheme === "dark" ? "#cccccc" : "#202020");
   React.useEffect(() => {
-    if (boardTheme === "dark") {
-      setForeground("#cccccc");
-      setBackground("#181818");
-    } else {
-      setForeground("#202020");
-      setBackground("#efefef");
-    }
-  }, [boardTheme]);
+    if (theme)
+      setTheme(theme);
+  }, [theme])
 
   const handleThemeChange = React.useCallback((newTheme: Theme) => {
-    setBoardThemeState(newTheme as any);
+    // setBoardThemeState(newTheme as any);
     onThemeChange?.({ theme: newTheme, background, foreground })
   }, []);
 
@@ -307,6 +301,10 @@ const BoardProvider = ({
     m: "cursor",
     sm: "free",
   });
+  React.useEffect(() => {
+    useBoardStore.setState({ activeShape, isMinimal, mode, canvas: borderRef.current });
+  }, [activeShape, isMinimal, mode]);
+
   const canvasRef = React.useRef<HTMLCanvasElement>(null);
   const canvas2Ref = React.useRef<HTMLCanvasElement>(null);
   const remoteCanvasRef = React.useRef<HTMLCanvasElement>(null);
@@ -325,15 +323,7 @@ const BoardProvider = ({
       }
       return false;
     });
-    const seen = new WeakSet();
-    const str = JSON.stringify(shapes, (_key, value) => {
-      if (typeof value === "object" && value !== null) {
-        if (seen.has(value)) return undefined;
-        seen.add(value);
-      }
-      return value;
-    });
-    return JSON.parse(str);
+    return shapes;
   }, []);
 
   const pushHistory = React.useCallback((board: Board) => {
@@ -416,14 +406,14 @@ const BoardProvider = ({
   }, []);
 
   /** Serialize all shapes in the store to localStorage */
-  const saveShapesToStorage = React.useCallback((board: Board) => {
+  const saveShapesToStorage = React.useMemo(() => debounce((board: Board) => {
     try {
       const serialized = serializeBoard(board);
       localStorage.setItem(STORAGE_KEY, JSON.stringify(serialized));
     } catch (err) {
       console.error("Failed to save shapes to localStorage", err);
     }
-  }, [serializeBoard]);
+  }, 200), [serializeBoard]);
 
   const saveStatStateToLocalStorage = (v: boolean) => {
     try {

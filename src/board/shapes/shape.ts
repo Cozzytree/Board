@@ -151,18 +151,18 @@ abstract class Shape implements ShapeProps {
       fillStyle,
       radius
    }: ShapeProps) {
-      this.radius = radius || 10;
+      this.radius = radius ?? 10;
       this.fillStyle = fillStyle || "hachure";
       this.roughness = roughness ?? 1;
       this.ease = ease ?? 0.8;
       this.locked = locked || false;
       this.fill = fill || "#00000000";
-      this.height = height || 100;
-      this.width = width || 100;
-      this.left = left || 0;
-      this.rotate = rotate || 0;
+      this.height = height ?? 100;
+      this.width = width ?? 100;
+      this.left = left ?? 0;
+      this.rotate = rotate ?? 0;
       this.stroke = stroke || "#FFFFFF";
-      this.top = top || 0;
+      this.top = top ?? 0;
       this.ctx = ctx;
       this._board = _board;
       this.scale = scale || 1;
@@ -205,6 +205,7 @@ abstract class Shape implements ShapeProps {
 
    protected cloneProps(): ShapeProps {
       return {
+         radius: this.radius,
          fill: this.fill,
          _board: this._board,
          ctx: this.ctx,

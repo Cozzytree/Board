@@ -1,6 +1,6 @@
+import { useBoardStore } from "@/board/store";
 import { AlignOptions, BoldOption, DeleteOption, DuplicateOption, FillOption, FillStyleOption, FontFamilyOption, FontSizes, ItalicOption, OpacityOption, RadiusOption, RotationOption, RoughnessOption, StrokeDash, StrokeOption, StrokeSize, VerticalAlignOptions, ZOrderButtons } from "@/board/components/shapeoptions";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { useBoard } from "@/board/board-context";
 import { AlignCenter, AlignVerticalSpaceAround, Layers3Icon, SlidersHorizontal } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "../components/ui/popover.tsx";
 import type { Board } from "@/lib.ts";
@@ -29,7 +29,10 @@ function DrawOptions({ board }: { board: Board }) {
 
 export default function ExcalidrawOptionsPanel() {
   const isMobile = useIsMobile();
-  const { activeShape, isMinimal, mode, canvas } = useBoard();
+  const activeShape = useBoardStore((s) => s.activeShape);
+  const isMinimal = useBoardStore((s) => s.isMinimal);
+  const mode = useBoardStore((s) => s.mode);
+  const canvas = useBoardStore((s) => s.canvas);
   const debounceMs = 200;
   const isDraw = mode?.m === "draw";
 
@@ -95,98 +98,95 @@ export default function ExcalidrawOptionsPanel() {
     );
   }
 
-  const Content = () => (
-    <div className="h-full">
-      <div className="overflow-y-auto px-3 flex max-h-[80vh] flex-col gap-5 py-5 w-60 pointer-events-auto">
-        <div className="flex flex-col gap-3">
-          <div className="w-full flex flex-col justify-between items-start">
-            <span className="text-sm text-muted-foreground font-medium">Stroke</span>
-            <StrokeOption className="w-full" debounceMs={debounceMs} />
-          </div>
-          <div className="w-full flex flex-col justify-between items-start">
-            <span className="text-sm text-muted-foreground font-medium">Background</span>
-            <FillOption className="w-full" debounceMs={debounceMs} />
-          </div>
-        </div>
-
-        <div className="flex flex-col">
-          <span>
-            Roundness
-          </span>
-          <RadiusOption className="flex gap-2 items-center" />
-        </div>
-
-        <div className="flex flex-col gap-4">
-          <div className="w-full flex items-center gap-2">
-            <span className="text-sm text-muted-foreground font-medium">Opacity</span>
-            <OpacityOption debounceMs={debounceMs} standalone />
-          </div>
-          {activeShape.type !== "text" &&
-            <div className="w-full flex items-center justify-between gap-2">
-              <span className="text-sm text-muted-foreground font-medium">Fill Style</span>
-              <FillStyleOption debounceMs={debounceMs} standalone />
-            </div>
-          }
-        </div>
-
-        {activeShape.type !== "text" && activeShape.type !== "group" &&
-          <div className="flex flex-col gap-4">
-            <div className="w-full flex flex-col gap-2">
-              <span className="text-sm text-muted-foreground font-medium">Stroke Width</span>
-              <StrokeSize className="flex items-center gap-2" debounceMs={debounceMs} standalone />
-            </div>
-
-            <div className="w-full flex flex-col gap-2">
-              <span className="text-sm text-muted-foreground font-medium">Stroke Style</span>
-              <StrokeDash debounceMs={debounceMs} className="flex" standalone />
-            </div>
-
-            <div className="w-full flex flex-col gap-2">
-              <span className="text-sm text-muted-foreground font-medium">Roughness</span>
-              <RoughnessOption debounceMs={debounceMs} standalone />
-            </div>
-          </div>
-        }
-        {activeShape.get("text")?.length > 0 &&
+  return (
+    <div className="absolute left-[1em] top-[4em] z-[10] pointer-events-auto bg-background border rounded-md">
+      <div className="h-full">
+        <div className="overflow-y-auto px-3 flex max-h-[80vh] flex-col gap-5 py-5 w-60 pointer-events-auto">
           <div className="flex flex-col gap-3">
-            <span className="text-sm text-muted-foreground font-medium pb-1">Typography</span>
-            <div className="w-full flex flex-col gap-3">
-              <FontFamilyOption className="flex" debounceMs={debounceMs} />
-              <FontSizes className="flex items-center gap-1" debounceMs={debounceMs} standalone />
-              <div className="flex items-center justify-between">
-                <div className="flex bg-muted/50 rounded-md border p-0.5">
-                  <BoldOption debounceMs={debounceMs} />
-                  <ItalicOption debounceMs={debounceMs} />
-                </div>
-                <AlignOptions debounceMs={debounceMs} />
-                <VerticalAlignOptions debounceMs={debounceMs} />
+            <div className="w-full flex flex-col justify-between items-start">
+              <span className="text-sm text-muted-foreground font-medium">Stroke</span>
+              <StrokeOption className="w-full" debounceMs={debounceMs} />
+            </div>
+            <div className="w-full flex flex-col justify-between items-start">
+              <span className="text-sm text-muted-foreground font-medium">Background</span>
+              <FillOption className="w-full" debounceMs={debounceMs} />
+            </div>
+          </div>
+
+          <div className="flex flex-col">
+            <span>
+              Roundness
+            </span>
+            <RadiusOption className="flex gap-2 items-center" />
+          </div>
+
+          <div className="flex flex-col gap-4">
+            <div className="w-full flex items-center gap-2">
+              <span className="text-sm text-muted-foreground font-medium">Opacity</span>
+              <OpacityOption debounceMs={debounceMs} standalone />
+            </div>
+            {activeShape.type !== "text" &&
+              <div className="w-full flex items-center justify-between gap-2">
+                <span className="text-sm text-muted-foreground font-medium">Fill Style</span>
+                <FillStyleOption debounceMs={debounceMs} standalone />
+              </div>
+            }
+          </div>
+
+          {activeShape.type !== "text" && activeShape.type !== "group" &&
+            <div className="flex flex-col gap-4">
+              <div className="w-full flex flex-col gap-2">
+                <span className="text-sm text-muted-foreground font-medium">Stroke Width</span>
+                <StrokeSize className="flex items-center gap-2" debounceMs={debounceMs} standalone />
+              </div>
+
+              <div className="w-full flex flex-col gap-2">
+                <span className="text-sm text-muted-foreground font-medium">Stroke Style</span>
+                <StrokeDash debounceMs={debounceMs} className="flex" standalone />
+              </div>
+
+              <div className="w-full flex flex-col gap-2">
+                <span className="text-sm text-muted-foreground font-medium">Roughness</span>
+                <RoughnessOption debounceMs={debounceMs} standalone />
               </div>
             </div>
-          </div>
-        }
+          }
+          {activeShape.get("text")?.length > 0 &&
+            <div className="flex flex-col gap-3">
+              <span className="text-sm text-muted-foreground font-medium pb-1">Typography</span>
+              <div className="w-full flex flex-col gap-3">
+                <FontFamilyOption className="flex" debounceMs={debounceMs} />
+                <FontSizes className="flex items-center gap-1" debounceMs={debounceMs} standalone />
+                <div className="flex items-center justify-between">
+                  <div className="flex bg-muted/50 rounded-md border p-0.5">
+                    <BoldOption debounceMs={debounceMs} />
+                    <ItalicOption debounceMs={debounceMs} />
+                  </div>
+                  <AlignOptions debounceMs={debounceMs} />
+                  <VerticalAlignOptions debounceMs={debounceMs} />
+                </div>
+              </div>
+            </div>
+          }
 
-        <div className="flex flex-col gap-3">
-          <span className="text-sm text-muted-foreground font-medium pb-1">Transform</span>
-          <div className="w-full flex flex-col gap-2">
-            <RotationOption debounceMs={debounceMs} standalone />
+          <div className="flex flex-col gap-3">
+            <span className="text-sm text-muted-foreground font-medium pb-1">Transform</span>
+            <div className="w-full flex flex-col gap-2">
+              <RotationOption debounceMs={debounceMs} standalone />
+            </div>
           </div>
-        </div>
 
-        <div className="flex flex-col gap-3">
-          <span className="text-sm text-muted-foreground font-medium pb-1">Actions</span>
-          <div className="flex mt-2 gap-1">
-            <ZOrderButtons className="flex gap-1" debounceMs={debounceMs} />
-            <DuplicateOption />
-            <DeleteOption />
+          <div className="flex flex-col gap-3">
+            <span className="text-sm text-muted-foreground font-medium pb-1">Actions</span>
+            <div className="flex mt-2 gap-1">
+              <ZOrderButtons className="flex gap-1" debounceMs={debounceMs} />
+              <DuplicateOption />
+              <DeleteOption />
+            </div>
           </div>
         </div>
       </div>
     </div>
-  );
 
-  return (
-    <div className="absolute left-[1em] top-[4em] z-[10] pointer-events-auto bg-background border rounded-md">
-      <Content />
-    </div>
   );
 }

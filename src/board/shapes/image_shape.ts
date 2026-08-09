@@ -181,7 +181,7 @@ class ImageShape extends Shape {
 
     const adjustedHeight = this.adjustHeight(newBounds.height);
 
-    this.setTarget({
+    this.setSilent({
       left: newBounds.left,
       top: newBounds.top,
       width: newBounds.width,
@@ -195,7 +195,7 @@ class ImageShape extends Shape {
     const dx = current.x - prev.x;
     const dy = current.y - prev.y;
 
-    this.dragTarget(dx, dy);
+    this.dragInstant(dx, dy);
 
     return super.dragging(prev, current);
   }

@@ -16,12 +16,13 @@ class ShapeTool implements ToolInterface {
   private submode: submodes;
   private newShape: Shape | null = null;
   private oldShapeProps: Box;
-  
+
   private getDefaultProps(p: any, w: number) {
     return {
       ...this._board.defaultShapeProps,
       stroke: this._board.defaultShapeProps.stroke || this._board.foreground,
       fill: this._board.defaultShapeProps.fill || "transparent",
+      radius: this._board.defaultShapeProps.radius || 0,
       _board: this._board,
       ctx: this._board.ctx,
       width: w,
@@ -40,11 +41,11 @@ class ShapeTool implements ToolInterface {
   cleanUp(): void { }
 
   getConf(_: string) {
-    
+
   }
 
   setConf(key: string, val: any) { }
-  
+
   pointerDown({ p }: ToolEventData): void {
     this._board.renderClickEffect(p);
     this._board.discardActiveShapes();

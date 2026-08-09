@@ -200,7 +200,7 @@ class Text extends Shape {
          }
 
          this.setSilent({ left: newLeft, top: newTop });
-         this.setTarget({ width: newWidth, height: newHeight });
+         this.setSilent({ width: newWidth, height: newHeight });
          return super.Resize(current, old, d);
       } else {
          // Horizontal
@@ -218,7 +218,7 @@ class Text extends Shape {
             newHeight = Math.max(oldHeight, this.getWrappedHeight(newWidth));
          }
 
-         this.setTarget({ width: newWidth, height: newHeight });
+         this.setSilent({ width: newWidth, height: newHeight });
          return super.Resize(current, old, d);
       }
    }

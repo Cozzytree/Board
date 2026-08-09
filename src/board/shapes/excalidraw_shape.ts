@@ -527,7 +527,7 @@ class ExcalidrawShape extends Shape {
          flipY,
       });
 
-      this.setTarget({
+      this.setSilent({
          left: newBounds.left,
          top: newBounds.top,
          width: newWidth,
@@ -540,7 +540,7 @@ class ExcalidrawShape extends Shape {
    dragging(prev: Point, current: Point) {
       const dx = current.x - prev.x;
       const dy = current.y - prev.y;
-      this.dragTarget(dx, dy);
+      this.dragInstant(dx, dy);
       return super.dragging(prev, current);
    }
 }

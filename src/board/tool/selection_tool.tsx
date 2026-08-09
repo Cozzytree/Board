@@ -442,6 +442,10 @@ class SelectionTool implements ToolInterface {
     if (this.isTouchGesture) return;
     this.hoveredShape = null;
 
+    if ('touches' in e && (e as TouchEvent).touches.length >= 2) {
+      return;
+    }
+
     const isTouch = ('touches' in e) || (('pointerType' in e) && (e as any).pointerType === 'touch');
     const touchPadding = isTouch ? 20 : 0;
 

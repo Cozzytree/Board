@@ -17,6 +17,7 @@ export type ActiveSeletionProps = {
 
 class ActiveSelection extends Shape {
   private setUp = 0;
+  private _boundsCache?: Map<string, Box>;
   declare shapes: ActiveSelectionShape[];
 
   /**
@@ -395,10 +396,18 @@ class ActiveSelection extends Shape {
         return new Box({ x1: minX, x2: maxX, y1: minY, y2: maxY });
       };
 
+      if (!this._boundsCache) {
+        this._boundsCache = new Map();
+      }
+
       this._board.shapeStore.forEach((shape) => {
         if (shape.ID() === this.ID() || shape.type === "selection" || shape.groupId) return false;
 
-        const inner = getRotatedBounds(shape);
+        let inner = this._boundsCache!.get(shape.ID());
+        if (!inner) {
+          inner = getRotatedBounds(shape);
+          this._boundsCache!.set(shape.ID(), inner);
+        }
 
         if (!outer.fullyContains(inner)) return false;
 
