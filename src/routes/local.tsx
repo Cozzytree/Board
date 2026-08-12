@@ -3,7 +3,6 @@ import { BoardZoomControls } from "@/board/components/zoom_controls";
 import { BoardCenterButton } from "@/board/components/center_button";
 import { BoardLibrarySidebar } from "@/board/components/library_sidebar";
 import { useBoard } from "@/board/board-context";
-import { useBoardStore } from "@/board/store";
 import { createFileRoute } from "@tanstack/react-router";
 import React, { Suspense } from "react";
 import { useTheme } from "@/components/theme-provider";
@@ -59,8 +58,8 @@ function LocalBoardPage() {
 
 /** Separated so it can call useBoard() inside the provider tree */
 function BoardUI() {
-  const { undo, redo, undoStack, redoStack } = useBoard();
-  const isMinimal = useBoardStore((s) => s.isMinimal);
+  const { undo, redo, undoStack, redoStack, activeShape } = useBoard();
+  const { isMinimal } = useBoard();
   const isMobile = useIsMobile();
 
   return (
@@ -213,7 +212,9 @@ function BoardUI() {
       <StatsForNerds className="backdrop-blur fixed z-[999] top-10 md:top-15 right-2 md:right-5" />
       {isMobile === false &&
         <Suspense fallback={null}>
-          <ExcalidrawOptionsPanel />
+          {activeShape &&
+            <ExcalidrawOptionsPanel />
+          }
         </Suspense>
       }
     </>

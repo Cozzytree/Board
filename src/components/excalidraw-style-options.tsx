@@ -1,6 +1,6 @@
-import { useBoardStore } from "@/board/store";
 import { AlignOptions, BoldOption, DeleteOption, DuplicateOption, FillOption, FillStyleOption, FontFamilyOption, FontSizes, ItalicOption, OpacityOption, RadiusOption, RotationOption, RoughnessOption, StrokeDash, StrokeOption, StrokeSize, VerticalAlignOptions, ZOrderButtons } from "@/board/components/shapeoptions";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useBoard } from "../board/board-context.tsx";
 import { AlignCenter, AlignVerticalSpaceAround, Layers3Icon, SlidersHorizontal } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "../components/ui/popover.tsx";
 import type { Board } from "@/lib.ts";
@@ -29,10 +29,7 @@ function DrawOptions({ board }: { board: Board }) {
 
 export default function ExcalidrawOptionsPanel() {
   const isMobile = useIsMobile();
-  const activeShape = useBoardStore((s) => s.activeShape);
-  const isMinimal = useBoardStore((s) => s.isMinimal);
-  const mode = useBoardStore((s) => s.mode);
-  const canvas = useBoardStore((s) => s.canvas);
+  const { activeShape, isMinimal, mode, canvas } = useBoard();
   const debounceMs = 200;
   const isDraw = mode?.m === "draw";
 

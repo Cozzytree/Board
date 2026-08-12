@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { useBoardStore } from "../store";
+import { useBoard } from "../board-context";
 
 const BACKGROUNDS = {
    light: ["#ffffff", "#f8f9fa", "#f1f3f5", "#fff5f5", "#fff0f6", "#f8f0fc", "#f3f0ff", "#edf2ff", "#e6fcf5", "#ebfbee", "#f4fce3", "#fff9db", "#fff4e6"],
@@ -16,7 +16,7 @@ const BACKGROUNDS = {
 };
 
 export default function CanvasOptions() {
-   const { setTheme, theme, canvas, background, setBackground } = useBoardStore();
+   const { setTheme, theme, canvas, background, setBackground } = useBoard();
    const [filename, setFilename] = useState("untitled-board");
    const [isFileOpDialogOpen, setIsFileOpDialogOpen] = useState(false);
    const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);

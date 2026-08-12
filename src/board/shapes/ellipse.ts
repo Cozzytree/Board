@@ -122,7 +122,7 @@ class Ellipse extends Shape {
       super.mouseup(s);
    }
 
-   mouseover(s: ShapeEventData): void {
+   mouseover(s: ShapeEventData, hitPadding: number = 0): void {
       const r = resizeRect(
          s.e.point,
          new Box({
@@ -131,7 +131,7 @@ class Ellipse extends Shape {
             x2: this.left + this.width,
             y2: this.top + this.height,
          }),
-         this.padding,
+         this.padding + hitPadding,
       );
       if (r) {
          switch (r.rd) {

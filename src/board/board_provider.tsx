@@ -1,4 +1,3 @@
-import { useBoardStore } from "./store";
 import * as React from "react";
 import {
   BoxIcon,
@@ -28,8 +27,7 @@ import { debounce } from "@/lib/utils";
 import Board from "./board.ts";
 import Rect from "./shapes/rect.ts";
 import Shape from "./shapes/shape.ts";
-import ActiveSelection from "./shapes/active_selection.tsx"
-import type { modes, submodes, CustomShapeDef, EventData, ShapeProps } from "./types";
+import type { modes, submodes, CustomShapeDef, EventData, ShapeProps, view_t } from "./types";
 import { generateShapeByShapeType } from "./utils/shape_factory";
 import { saveLibraryItems } from "./utils/library_db";
 import { loadShapesFromProps } from "@/lib/shape-loader";
@@ -42,8 +40,9 @@ import {
 import CloudShape from "./shapes/paths/cloud_shape";
 import { BoardContext, useBoard } from "./board-context";
 import type { HocuspocusProvider } from "@hocuspocus/provider";
-import { CURSOR_COLORS } from "./constants";
 import { TooltipProvider } from "@/components/ui/tooltip.tsx";
+import { useBoardEngine } from "./hooks/useBoard.ts";
+const RemoteStateManager = React.lazy(() => import("./remote_state_manager.tsx"));
 
 const isEditingText = (e: KeyboardEvent) => {
   const target = e.target as HTMLElement;
@@ -55,18 +54,6 @@ const isEditingText = (e: KeyboardEvent) => {
 };
 
 export type Theme = "dark" | "light" | "system";
-
-type CursorData = {
-  x: number;
-  y: number;
-  id?: number;
-  name?: string
-}
-
-type RemoteCursor = {
-  clientId: number;
-  cursor: CursorData;
-}
 
 const STORAGE_KEY = "board_shapes";
 const VIEW_STORAGE_KEY = "board_view";
@@ -123,20 +110,11 @@ const BoardProvider = ({
     foreground?: string;
   }) => void;
 }) => {
-  const { background, setBackground, foreground, setForeground, setTheme, theme: boardTheme } = useBoardStore();
-  const [isLockedCanvas] = React.useState(canvasLock);
-  // const [background, setBackground] = React.useState(boardTheme === "dark" ? "#181818" : "#efefef");
-  // const [foreground, setForeground] = React.useState(boardTheme === "dark" ? "#cccccc" : "#202020");
-  React.useEffect(() => {
-    if (theme)
-      setTheme(theme);
-  }, [theme])
+  const [boardTheme, setBoardTheme] = React.useState<Theme>(theme || "dark")
+  const [background, setBackground] = React.useState(boardTheme === "dark" ? "#181818" : "#efefef");
+  const [foreground, setForeground] = React.useState(boardTheme === "dark" ? "#cccccc" : "#202020");
 
-  const handleThemeChange = React.useCallback((newTheme: Theme) => {
-    // setBoardThemeState(newTheme as any);
-    onThemeChange?.({ theme: newTheme, background, foreground })
-  }, []);
-
+  // const [isLockedCanvas] = React.useState(canvasLock);
   const [isStat, setStat] = React.useState(() => {
     const val = localStorage.getItem(STAT_STORAGE_KEY);
     return Boolean(val) || false;
@@ -166,6 +144,43 @@ const BoardProvider = ({
       return true;
     }
   });
+
+  const onModeChange = (m: modes, sm: submodes) => {
+    setMode({ m, sm });
+  };
+  const onActiveShape = (ac: Shape | null) => {
+    setActiveShape(ac);
+  };
+  const onZoom = (v: view_t, board: Board) => {
+    setZoom(v.scl * 100);
+    setOffset([v.x, v.y]);
+    debounce((board: Board) => saveViewToStorage(board), 200)(board);
+  };
+  const onScroll = (v: view_t, board: Board) => {
+    setOffset([v.x, v.y]);
+    setZoom(v.scl * 100);
+    debounce((board: Board) => saveViewToStorage(board), 200)(board);
+  };
+
+  const { boardRef, canvas2Ref, canvasRef, remoteCanvasRef } = useBoardEngine({
+    container: container?.current || undefined,
+    background,
+    foreground,
+    onImageUpload,
+    width,
+    height,
+    initialShapes: initialShapes || [],
+    onActiveShape,
+    onScroll,
+    onZoom,
+    onModeChange,
+    onBoardReady,
+  });
+
+  const handleThemeChange = React.useCallback((newTheme: Theme) => {
+    setBoardTheme(newTheme as any);
+    onThemeChange?.({ theme: newTheme, background, foreground })
+  }, []);
 
   const setSnap = React.useCallback((v: boolean | ((prev: boolean) => boolean)) => {
     setSnapState((prev) => {
@@ -301,14 +316,6 @@ const BoardProvider = ({
     m: "cursor",
     sm: "free",
   });
-  React.useEffect(() => {
-    useBoardStore.setState({ activeShape, isMinimal, mode, canvas: borderRef.current });
-  }, [activeShape, isMinimal, mode]);
-
-  const canvasRef = React.useRef<HTMLCanvasElement>(null);
-  const canvas2Ref = React.useRef<HTMLCanvasElement>(null);
-  const remoteCanvasRef = React.useRef<HTMLCanvasElement>(null);
-  const borderRef = React.useRef<Board>(null);
 
   const undoStack = React.useRef<Record<string, any>[][]>([]);
   const redoStack = React.useRef<Record<string, any>[][]>([]);
@@ -469,7 +476,7 @@ const BoardProvider = ({
     },
     [onDeleteShape],
   );
-  const onMouseUp = React.useCallback(() => { }, []);
+
   const onMouseMove = React.useCallback(
     (e: EventData) => {
       if (provider) {
@@ -491,10 +498,6 @@ const BoardProvider = ({
   onShapesChangedRef.current = onShapesChanged;
 
   const hasInitialShapes = !!initialShapes;
-
-  const onModeChange = React.useCallback((m: modes, sm: submodes) => {
-    setMode({ m, sm });
-  }, []);
 
   const handleUndo = React.useCallback((board: Board) => {
     if (undoStack.current.length > 1) { // Leave the very first state intact
@@ -521,50 +524,51 @@ const BoardProvider = ({
     }
   }, [restoreShapesFromData])
 
-  React.useLayoutEffect(() => {
-    if (!canvasRef.current || !canvas2Ref.current) return;
+  React.useEffect(() => {
+    // if (!canvasRef.current || !canvas2Ref.current) return;
+    if (!boardRef.current) return;
 
     const debouncedSaveViewToStorage = debounce((board: Board) => saveViewToStorage(board), 200);
+    const newBoard = boardRef.current;
 
-    const newBoard = new Board({
-      clickEffect: true,
-      snapGrid,
-      scrollEase: 1,
-      isLocked: isLockedCanvas,
-      initialShapes: initialShapes || [],
-      width,
-      container: container?.current || undefined,
-      foreground,
-      background,
-      height,
-      canvas: canvasRef.current,
-      canvas2: canvas2Ref.current,
-      canvasRemote: remoteCanvasRef.current,
-      snap: isSnap,
-      hoverEffect: isHover,
-      onModeChange: onModeChange,
-      onActiveShape: (ac) => {
-        setActiveShape(ac);
-      },
-      onZoom: (v) => {
-        setZoom(v.scl * 100);
-        setOffset([v.x, v.y]);
-        debouncedSaveViewToStorage(newBoard);
-      },
-      onScroll: (v) => {
-        setOffset([v.x, v.y]);
-        setZoom(v.scl * 100);
-        debouncedSaveViewToStorage(newBoard);
-      },
-      customShapes,
-      onImageUpload,
-    });
+    // const newBoard = new Board({
+    //   clickEffect: true,
+    //   snapGrid,
+    //   scrollEase: 1,
+    //   isLocked: isLockedCanvas,
+    //   initialShapes: initialShapes || [],
+    //   width,
+    //   container: container?.current || undefined,
+    //   foreground,
+    //   background,
+    //   height,
+    //   canvas: canvasRef.current,
+    //   canvas2: canvas2Ref.current,
+    //   canvasRemote: remoteCanvasRef.current,
+    //   snap: isSnap,
+    //   hoverEffect: isHover,
+    //   onModeChange: onModeChange,
+    //   onActiveShape: (ac) => {
+    //     setActiveShape(ac);
+    //   },
+    //   onZoom: (v) => {
+    //     setZoom(v.scl * 100);
+    //     setOffset([v.x, v.y]);
+    //     debouncedSaveViewToStorage(newBoard);
+    //   },
+    //   onScroll: (v) => {
+    //     setOffset([v.x, v.y]);
+    //     setZoom(v.scl * 100);
+    //     debouncedSaveViewToStorage(newBoard);
+    //   },
+    //   customShapes,
+    //   onImageUpload,
+    // });
 
     // Notify parent that board is ready
     onBoardReady?.(newBoard);
 
-    newBoard.on("mouseup", (e) => {
-      onMouseUp();
+    const onMouseUp = (e: EventData) => {
       if (e.e.target?.length) {
         setActiveShape(e.e.target[e.e.target.length - 1]);
       }
@@ -574,15 +578,17 @@ const BoardProvider = ({
       } else if (!hasInitialShapes) {
         saveShapesToStorage(newBoard);
       }
-    });
-    newBoard.on("mousedown", (e) => {
+    }
+
+    const onMouseDown = (e: EventData) => {
       if (e.e.target?.length) {
         setActiveShape(e.e.target[e.e.target.length - 1]);
       }
-    });
-    newBoard.on("mousemove", (e) => {
-      onMouseMove(e);
-    });
+    }
+
+    newBoard.on("mouseup", onMouseUp);
+    newBoard.on("mousedown", onMouseDown);
+    newBoard.on("mousemove", onMouseMove);
     newBoard.on("shape:delete", (e) => {
       onDelete(e.e.target || []);
       pushHistory(newBoard);
@@ -660,44 +666,26 @@ const BoardProvider = ({
     };
     document.addEventListener("keydown", handleKeyDown);
 
-    borderRef.current = newBoard;
-
     return () => {
       document.removeEventListener("keydown", handleKeyDown);
-      newBoard.clean();
     };
-  }, [
-    width,
-    height,
-    onModeChange,
-    onMouseUp,
-    customShapes,
-    saveShapesToStorage,
-    loadShapesFromStorage,
-    container,
-    hasInitialShapes,
-    initialShapes,
-    onBoardReady,
-    onDelete,
-    onImageUpload,
-    onMouseMove,
-    saveViewToStorage,
-    skipLocalStorage,
-  ]);
+  }, []);
 
   React.useEffect(() => {
-    if (!borderRef.current) return;
-    borderRef.current.snap = isSnap;
-    borderRef.current.hoverEffect = isHover;
-    borderRef.current.foreground = foreground;
-    borderRef.current.background = background;
-    borderRef.current.snapGrid = snapGrid;
-  }, [isSnap, isHover, foreground, background, snapGrid]);
+    if (!boardRef.current) return;
+    boardRef.current.snap = isSnap;
+    boardRef.current.hoverEffect = isHover;
+    boardRef.current.foreground = foreground;
+    boardRef.current.background = background;
+    boardRef.current.snapGrid = snapGrid;
+    boardRef.current.setCanvasHeight = height;
+    boardRef.current.setCanvasWidth = width;
+  }, [isSnap, isHover, foreground, background, snapGrid, width, height]);
 
   const handleModeChange = React.useCallback((m: modes, sm: submodes | null) => {
-    if (!borderRef.current) return;
+    if (!boardRef.current) return;
     setMode({ m, sm });
-    borderRef.current.setMode = { m, sm, originUi: true };
+    boardRef.current.setMode = { m, sm, originUi: true };
 
     setTools((prev) => {
       const tool = prev.find((t) => t.mode === m);
@@ -752,7 +740,7 @@ const BoardProvider = ({
 
       const { mode: targetMode, defaultSm } = mapping;
 
-      if (borderRef.current && mode.m === targetMode) {
+      if (boardRef.current && mode.m === targetMode) {
         const tool = tools.find((t) => t.mode === targetMode);
         if (tool && tool.subMode.length > 1) {
           const currentIdx = tool.subMode.findIndex((s) => s.sm === mode.sm);
@@ -796,9 +784,9 @@ const BoardProvider = ({
   }, [mode, handleModeChange]);
 
   const handleZoom = React.useCallback((v: boolean) => {
-    if (!borderRef.current) return;
+    if (!boardRef.current) return;
 
-    let nextScl = borderRef.current.view.scl;
+    let nextScl = boardRef.current.view.scl;
     if (v) {
       nextScl += 0.1;
     } else {
@@ -808,22 +796,22 @@ const BoardProvider = ({
     if (nextScl < 0.1) nextScl = 0.1;
     if (nextScl > 5) nextScl = 5;
 
-    borderRef.current.view.scl = nextScl;
+    boardRef.current.view.scl = nextScl;
 
     // Keep targetView in sync so wheel scroll doesn't snap back
-    if ((borderRef.current as any).targetView) {
-      (borderRef.current as any).targetView.scl = nextScl;
+    if ((boardRef.current as any).targetView) {
+      (boardRef.current as any).targetView.scl = nextScl;
     }
 
     setZoom(nextScl * 100);
-    borderRef.current.render();
+    boardRef.current.render();
   }, []);
 
   const handleCenter = React.useCallback(() => {
-    if (!borderRef.current) return;
+    if (!boardRef.current) return;
 
-    [borderRef.current.view.x, borderRef.current.view.y] = [0, 0];
-    borderRef.current.render();
+    [boardRef.current.view.x, boardRef.current.view.y] = [0, 0];
+    boardRef.current.render();
     setOffset([0, 0]);
   }, []);
 
@@ -836,9 +824,9 @@ const BoardProvider = ({
     const newShapes: { sm: submodes; I: LucideIcon | string }[] = [];
 
     library.libraryItems.forEach((item: any) => {
-      if (item.name && item.svg && borderRef.current) {
+      if (item.name && item.svg && boardRef.current) {
         // Register the SVG as a custom shape
-        const success = borderRef.current.registerSvgIcon(item.name, item.svg);
+        const success = boardRef.current.registerSvgIcon(item.name, item.svg);
         if (success) {
           newShapes.push({ sm: item.name as submodes, I: item.svg });
         }
@@ -860,9 +848,9 @@ const BoardProvider = ({
   }, []);
 
   const exportBoardAsLibrary = React.useCallback(async () => {
-    if (!borderRef.current) return;
+    if (!boardRef.current) return;
 
-    const board = borderRef.current;
+    const board = boardRef.current;
     const elements: Record<string, any>[] = [];
 
     board.shapeStore.forEach((shape) => {
@@ -929,12 +917,12 @@ const BoardProvider = ({
             redoStack: redoStack.current,
             historyVersion,
             undo() {
-              if (!borderRef.current) return;
-              handleUndo(borderRef.current);
+              if (!boardRef.current) return;
+              handleUndo(boardRef.current);
             },
             redo() {
-              if (!borderRef.current) return;
-              handleRedo(borderRef.current);
+              if (!boardRef.current) return;
+              handleRedo(boardRef.current);
             },
             stat: isStat,
             setStat: (v) => {
@@ -951,7 +939,7 @@ const BoardProvider = ({
             setActiveShape: (s) => {
               setActiveShape(s);
             },
-            canvas: borderRef.current,
+            canvas: boardRef.current,
             activeShape,
             tools,
             mode,
@@ -980,9 +968,11 @@ const BoardProvider = ({
             width,
             height,
           }}>
-          {provider && borderRef.current &&
-            <RemoteStateManager provider={provider} view={borderRef.current.view} />
-          }
+          <React.Suspense fallback={null}>
+            {provider && boardRef.current &&
+              <RemoteStateManager provider={provider} view={boardRef.current.view} />
+            }
+          </React.Suspense>
           <ContextMenuTrigger asChild>
             <div className="touch-none" style={{ position: 'relative', width: width + "px", height: height + "px" }}>
               <canvas
@@ -1049,126 +1039,126 @@ const BoardProvider = ({
   );
 };
 
-function getColorForClient(clientId: number): string {
-  return CURSOR_COLORS[clientId % CURSOR_COLORS.length];
-}
+// function getColorForClient(clientId: number): string {
+//   return CURSOR_COLORS[clientId % CURSOR_COLORS.length];
+// }
 
-function RemoteStateManager({ view, provider }: { provider: HocuspocusProvider, view: { x: number, y: number, scl: number } }) {
-  const [cursors, setCursors] = React.useState<RemoteCursor[]>([]);
-  const { activeShape, canvas } = useBoard();
+// function RemoteStateManager({ view, provider }: { provider: HocuspocusProvider, view: { x: number, y: number, scl: number } }) {
+//   const [cursors, setCursors] = React.useState<RemoteCursor[]>([]);
+//   const { activeShape, canvas } = useBoard();
 
-  React.useEffect(() => {
-    if (!provider) return;
-    if (!activeShape) {
-      provider.awareness?.setLocalStateField("selection", { ids: [] });
-      return;
-    }
+//   React.useEffect(() => {
+//     if (!provider) return;
+//     if (!activeShape) {
+//       provider.awareness?.setLocalStateField("selection", { ids: [] });
+//       return;
+//     }
 
-    if (activeShape instanceof ActiveSelection) {
-      const ids = activeShape.shapes.map((s) => s.s.ID());
-      provider.awareness?.setLocalStateField("selection", { ids })
-    } else {
-      provider.awareness?.setLocalStateField("selection", {
-        ids: [activeShape.ID()]
-      })
-    }
-  }, [activeShape])
+//     if (activeShape instanceof ActiveSelection) {
+//       const ids = activeShape.shapes.map((s) => s.s.ID());
+//       provider.awareness?.setLocalStateField("selection", { ids })
+//     } else {
+//       provider.awareness?.setLocalStateField("selection", {
+//         ids: [activeShape.ID()]
+//       })
+//     }
+//   }, [activeShape])
 
 
-  React.useEffect(() => {
-    if (!provider || !canvas) return;
-    const updateCursors = () => {
-      const states = provider.awareness?.getStates();
-      const localID = provider.awareness?.clientID;
-      const remoteCursors: RemoteCursor[] = [];
-      if (!states) return;
+//   React.useEffect(() => {
+//     if (!provider || !canvas) return;
+//     const updateCursors = () => {
+//       const states = provider.awareness?.getStates();
+//       const localID = provider.awareness?.clientID;
+//       const remoteCursors: RemoteCursor[] = [];
+//       if (!states) return;
 
-      states.forEach((state, clientId) => {
-        if (clientId === localID) return;
-        if (state.cursor && typeof state.cursor.x === "number") {
-          remoteCursors.push({
-            clientId,
-            cursor: state.cursor as CursorData
-          });
-        }
+//       states.forEach((state, clientId) => {
+//         if (clientId === localID) return;
+//         if (state.cursor && typeof state.cursor.x === "number") {
+//           remoteCursors.push({
+//             clientId,
+//             cursor: state.cursor as CursorData
+//           });
+//         }
 
-        if (state?.selection && state.selection?.ids && state.selection.ids.length > 0) {
-          canvas.remoteSelections.set(clientId, {
-            color: getColorForClient(clientId),
-            shapeIds: state.selection.ids as string[],
-          });
-        } else {
-          canvas.remoteSelections.delete(clientId);
-        }
-      })
+//         if (state?.selection && state.selection?.ids && state.selection.ids.length > 0) {
+//           canvas.remoteSelections.set(clientId, {
+//             color: getColorForClient(clientId),
+//             shapeIds: state.selection.ids as string[],
+//           });
+//         } else {
+//           canvas.remoteSelections.delete(clientId);
+//         }
+//       })
 
-      for (const [clientID] of canvas.remoteSelections.entries()) {
-        if (!states.has(clientID)) {
-          canvas.remoteSelections.delete(clientID);
-        }
-      }
+//       for (const [clientID] of canvas.remoteSelections.entries()) {
+//         if (!states.has(clientID)) {
+//           canvas.remoteSelections.delete(clientID);
+//         }
+//       }
 
-      canvas.renderRemoteSelectionsAsync();
-      setCursors(remoteCursors);
-    }
+//       canvas.renderRemoteSelectionsAsync();
+//       setCursors(remoteCursors);
+//     }
 
-    provider.awareness?.on("change", updateCursors);
-    return () => {
-      provider.awareness?.off("change", updateCursors);
-    }
-  }, [provider, canvas])
+//     provider.awareness?.on("change", updateCursors);
+//     return () => {
+//       provider.awareness?.off("change", updateCursors);
+//     }
+//   }, [provider, canvas])
 
-  return <CursorOverlay cursors={cursors} view={view} />
-}
+//   return <CursorOverlay cursors={cursors} view={view} />
+// }
 
-function CursorOverlay({ cursors, view }: { cursors: RemoteCursor[], view?: { x: number, y: number, scl: number } }) {
-  if (cursors.length === 0) return;
+// function CursorOverlay({ cursors, view }: { cursors: RemoteCursor[], view?: { x: number, y: number, scl: number } }) {
+//   if (cursors.length === 0) return;
 
-  return (
-    <div className="fixed inset-0 pointer-events-none overflow-hidden" style={{ zIndex: 45 }}>
-      {cursors.map(({ clientId, cursor }) => {
-        const color = getColorForClient(clientId);
-        const screenX = view ? cursor.x * view.scl + view.x : cursor.x;
-        const screenY = view ? cursor.y * view.scl + view.y : cursor.y;
+//   return (
+//     <div className="fixed inset-0 pointer-events-none overflow-hidden" style={{ zIndex: 45 }}>
+//       {cursors.map(({ clientId, cursor }) => {
+//         const color = getColorForClient(clientId);
+//         const screenX = view ? cursor.x * view.scl + view.x : cursor.x;
+//         const screenY = view ? cursor.y * view.scl + view.y : cursor.y;
 
-        return (
-          <div
-            key={clientId}
-            className="absolute"
-            style={{
-              left: screenX,
-              top: screenY,
-              transition: "left 80ms linear, top 80ms linear",
-            }}>
-            <svg
-              width="16"
-              height="20"
-              viewBox="0 0 16 20"
-              fill="none"
-              style={{ filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.5))" }}>
-              <path
-                d="M0.928711 0.514648L14.9287 8.51465L7.92871 10.5146L4.92871 18.5146L0.928711 0.514648Z"
-                fill={color}
-                stroke="white"
-                strokeWidth="1"
-                strokeLinejoin="round"
-              />
-            </svg>
-            <div
-              className="absolute left-4 top-4 px-1.5 py-0.5 rounded text-[10px] font-medium whitespace-nowrap"
-              style={{
-                backgroundColor: color,
-                color: "white",
-                boxShadow: "0 1px 3px rgba(0,0,0,0.3)",
-              }}>
-              {cursor.name || `User ${clientId.toString().slice(-4)}`}
-            </div>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
+//         return (
+//           <div
+//             key={clientId}
+//             className="absolute"
+//             style={{
+//               left: screenX,
+//               top: screenY,
+//               transition: "left 80ms linear, top 80ms linear",
+//             }}>
+//             <svg
+//               width="16"
+//               height="20"
+//               viewBox="0 0 16 20"
+//               fill="none"
+//               style={{ filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.5))" }}>
+//               <path
+//                 d="M0.928711 0.514648L14.9287 8.51465L7.92871 10.5146L4.92871 18.5146L0.928711 0.514648Z"
+//                 fill={color}
+//                 stroke="white"
+//                 strokeWidth="1"
+//                 strokeLinejoin="round"
+//               />
+//             </svg>
+//             <div
+//               className="absolute left-4 top-4 px-1.5 py-0.5 rounded text-[10px] font-medium whitespace-nowrap"
+//               style={{
+//                 backgroundColor: color,
+//                 color: "white",
+//                 boxShadow: "0 1px 3px rgba(0,0,0,0.3)",
+//               }}>
+//               {cursor.name || `User ${clientId.toString().slice(-4)}`}
+//             </div>
+//           </div>
+//         );
+//       })}
+//     </div>
+//   );
+// }
 
 export { BoardProvider };
 

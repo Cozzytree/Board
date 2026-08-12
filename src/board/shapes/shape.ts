@@ -94,17 +94,17 @@ abstract class Shape implements ShapeProps {
       const fillStr = this.fill === "transparent" ? "none" : this.fill;
       const strokeStr = this.stroke === "transparent" ? "none" : this.stroke;
       const dashStr = this.dash && (this.dash[0] || this.dash[1]) ? `stroke-dasharray="${this.dash.join(',')}"` : "";
-      
+
       const cx = this.left + this.width / 2;
       const cy = this.top + this.height / 2;
-      
+
       let transformStr = "";
       if (this.rotate !== 0 || this.flipX || this.flipY || this.scale !== 1) {
          transformStr = `transform="`;
          if (this.rotate !== 0) {
             transformStr += `rotate(${(this.rotate * 180) / Math.PI} ${cx} ${cy}) `;
          }
-         
+
          if (this.flipX || this.flipY || this.scale !== 1) {
             // Translate to center, scale/flip, translate back
             transformStr += `translate(${cx} ${cy}) scale(${this.flipX ? -this.scale : this.scale}, ${this.flipY ? -this.scale : this.scale}) translate(${-cx} ${-cy})`;
@@ -152,8 +152,8 @@ abstract class Shape implements ShapeProps {
       radius
    }: ShapeProps) {
       this.radius = radius ?? 10;
-      this.fillStyle = fillStyle || "hachure";
-      this.roughness = roughness ?? 1;
+      this.fillStyle = fillStyle || "solid";
+      this.roughness = roughness ?? 0;
       this.ease = ease ?? 0.8;
       this.locked = locked || false;
       this.fill = fill || "#00000000";
@@ -351,7 +351,7 @@ abstract class Shape implements ShapeProps {
       this.emit("mouseup", s);
    }
 
-   mouseover(s: ShapeEventData): void {
+   mouseover(s: ShapeEventData, hitPadding: number = 0): void {
       if (this._board.activeShapes?.ID() == this.ID()) {
          // Check for rotation zone first
          if (this.isRotating(s.e.point)) {
@@ -360,7 +360,7 @@ abstract class Shape implements ShapeProps {
             return;
          }
 
-         const r = this.IsResizable(s.e.point);
+         const r = this.IsResizable(s.e.point, hitPadding);
          if (r) {
             // Calculate rotation-aware cursor
             const cursor = this.getRotatedCursor(r, this.rotate);

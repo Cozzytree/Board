@@ -53,8 +53,8 @@ class Rect extends Shape {
       super.mousedown(s);
    }
 
-   mouseover(s: ShapeEventData): void {
-      super.mouseover(s);
+   mouseover(s: ShapeEventData, hitPadding: number = 0): void {
+      super.mouseover(s, hitPadding);
    }
 
    mouseup(s: ShapeEventData): void {

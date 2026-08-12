@@ -25,6 +25,7 @@ import SvgShape from "./shapes/svg_shape";
 import ShapeStoreArr from "./shapes/shape_store_arr";
 type view_t = { x: number; y: number; scl: number };
 import { INDICATOR_COLOR } from "./constants";
+import { he } from "zod/locales";
 
 type BoardProps = {
   snapGrid?: boolean;
@@ -171,19 +172,19 @@ class Board implements BoardInterface {
     const dpr = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1;
 
     // Use full resolution for normal viewing or zooming in
-    if (this.view.scl >= 0.75) {
+    if (this.view.scl >= 0.8) {
       return dpr;
     }
 
     // Use fixed steps so we aren't constantly resizing the DOM canvas during continuous zooming out!
     // if (this.view.scl < 0.15) return dpr * 0.15;
-    if (this.view.scl < 0.3) return dpr * 0.3;
-    if (this.view.scl < 0.4) return dpr * 0.4;
-    if (this.view.scl < 0.5) return dpr * 0.5;
-    if (this.view.scl < 0.55) return dpr * 0.55;
-    if (this.view.scl < 0.65) return dpr * 0.65;
+    // if (this.view.scl < 0.3) return dpr * 0.3;
+    if (this.view.scl < 0.4) return dpr * 0.5;
+    if (this.view.scl < 0.5) return dpr * 0.7;
+    // if (this.view.scl < 0.55) return dpr * 0.55;
+    // if (this.view.scl < 0.65) return dpr * 0.65;
 
-    return dpr * 0.75;
+    return dpr * 0.8;
   }
 
   syncCanvasResolution() {
@@ -205,7 +206,7 @@ class Board implements BoardInterface {
     }
 
     // Apply pixelated rendering if zoomed out
-    const isPixelated = this.view.scl < 0.5;
+    const isPixelated = this.view.scl < 0.4;
     const imageRendering = isPixelated ? "pixelated" : "auto";
 
     if (this.canvas.style.imageRendering !== imageRendering) {
@@ -388,13 +389,19 @@ class Board implements BoardInterface {
   }
 
   set setCanvasWidth(width: number) {
+    this.cssWidth = width;
+    if (this.canvasRemote) this.canvasRemote.width = width;
     this.canvas.width = width;
     this.canvas2.width = width;
+    this.render();
   }
 
   set setCanvasHeight(height: number) {
+    this.cssHeight = height;
+    if (this.canvasRemote) this.canvasRemote.height = height;
     this.canvas.height = height;
     this.canvas2.height = height;
+    this.render();
   }
 
   getActiveShapes(): Shape | null {
@@ -529,8 +536,8 @@ class Board implements BoardInterface {
 
     const viewLeft = -this.view.x / scale;
     const viewTop = -this.view.y / scale;
-    const viewRight = viewLeft + this.canvas.width / scale;
-    const viewBottom = viewTop + this.canvas.height / scale;
+    const viewRight = viewLeft + this.cssWidth / scale;
+    const viewBottom = viewTop + this.cssHeight / scale;
 
     const shapeLeft = shape.left;
     const shapeTop = shape.top;

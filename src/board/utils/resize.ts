@@ -2,13 +2,20 @@ import type { Point, resizeDirection } from "../types";
 import type Box from "./box";
 
 function resizeRect(down: Point, box: Box, padding: number) {
-   const yTopAlign = down.y >= box.y1 - padding && down.y <= box.y1 + padding;
-   const yBottomAlign = down.y >= box.y2 - padding && down.y <= box.y2 + padding;
-   const xLeftAlign = down.x >= box.x1 - padding && down.x <= box.x1 + padding;
-   const xRightAlign = down.x >= box.x2 - padding && down.x <= box.x2 + padding;
+   const w = box.x2 - box.x1;
+   const h = box.y2 - box.y1;
 
-   const yCenterAlign = down.y >= box.y1 + padding && down.y <= box.y2 - padding;
-   const xCenterAlign = down.x >= box.x1 + padding && down.x <= box.x2 - padding;
+   // Never let the hit-zone swallow the whole shape — keep a draggable core (~25%).
+   const padX = Math.min(padding, (w / 2) * 0.75);
+   const padY = Math.min(padding, (h / 2) * 0.75);
+
+   const yTopAlign = down.y >= box.y1 - padY && down.y <= box.y1 + padY;
+   const yBottomAlign = down.y >= box.y2 - padY && down.y <= box.y2 + padY;
+   const xLeftAlign = down.x >= box.x1 - padX && down.x <= box.x1 + padX;
+   const xRightAlign = down.x >= box.x2 - padX && down.x <= box.x2 + padX;
+
+   const yCenterAlign = down.y >= box.y1 + padY && down.y <= box.y2 - padY;
+   const xCenterAlign = down.x >= box.x1 + padX && down.x <= box.x2 - padX;
 
    const topLeft = yTopAlign && xLeftAlign;
    const topRight = yTopAlign && xRightAlign;

@@ -10,7 +10,6 @@ import Rect from "../shapes/rect";
 import Text from "../shapes/text";
 import Shape from "../shapes/shape";
 import type {
-  BoxInterface,
   EventData,
   Identity,
   Point,
@@ -85,6 +84,17 @@ class SelectionTool implements ToolInterface {
 
   getConf(key: string) { }
 
+  private getResizeHitPadding(isTouch: boolean): number {
+    const scl = this._board.view.scl;
+    // Minimum resize hit-zone size in screen px: bigger cushion for touch.
+    const minScreenPx = isTouch ? 20 : 8;
+    // At/above 100% zoom keep existing behavior (touch cushion only).
+    if (scl >= 1) return isTouch ? minScreenPx / scl : 0;
+    // Zoomed out: keep the zone at `minScreenPx` on screen.
+    // Shapes already add `this.padding` (3) inside IsResizable().
+    return Math.max(0, minScreenPx / scl - 3);
+  }
+
   touchStart(e: TouchEvent) {
     if (e.touches.length < 2) return;
     this.isTouchGesture = true;
@@ -138,7 +148,7 @@ class SelectionTool implements ToolInterface {
     this._board.renderClickEffect(p);
 
     const isTouch = ('touches' in e) || (('pointerType' in e) && (e as any).pointerType === 'touch');
-    const touchPadding = isTouch ? 20 : 0;
+    const hitPadding = this.getResizeHitPadding(isTouch);
 
     // this.snapLines = [];
     // Check if we are currently editing text or if the input exists
@@ -230,7 +240,7 @@ class SelectionTool implements ToolInterface {
           return;
         }
 
-        const resize = currentActive.IsResizable(p, touchPadding);
+        const resize = currentActive.IsResizable(p, hitPadding);
         if (resize) {
           callback?.({ e: { x: p.x, y: p.y, target: [currentActive] } });
 
@@ -303,7 +313,7 @@ class SelectionTool implements ToolInterface {
 
       // if a shape is already active check if resizable
       if (currentActive) {
-        const d = currentActive.IsResizable(p, touchPadding);
+        const d = currentActive.IsResizable(p, hitPadding);
         if (d) {
           callback?.({ e: { x: p.x, y: p.y, target: [currentActive] } });
 
@@ -447,7 +457,7 @@ class SelectionTool implements ToolInterface {
     }
 
     const isTouch = ('touches' in e) || (('pointerType' in e) && (e as any).pointerType === 'touch');
-    const touchPadding = isTouch ? 20 : 0;
+    const hitPadding = this.getResizeHitPadding(isTouch);
 
     if (this.subMode === "grab" && this.isGrabbing) {
       this._board.view.x += this._board.evt.dx;
@@ -677,13 +687,13 @@ class SelectionTool implements ToolInterface {
     if (activeShape && !this.isGrabbing && !isTouch) {
       // For active shapes, check rotation zone, resize zone, or draggable area
       if (activeShape.isRotating && activeShape.isRotating(p)) {
-        activeShape.mouseover({ e: { point: p } });
+        activeShape.mouseover({ e: { point: p } }, hitPadding);
         foundHoveredShape = true;
-      } else if (activeShape.IsResizable(p, touchPadding)) {
-        activeShape.mouseover({ e: { point: p } });
+      } else if (activeShape.IsResizable(p, hitPadding)) {
+        activeShape.mouseover({ e: { point: p } }, hitPadding);
         foundHoveredShape = true;
       } else if (activeShape.IsDraggable(p)) {
-        activeShape.mouseover({ e: { point: p } });
+        activeShape.mouseover({ e: { point: p } }, hitPadding);
         foundHoveredShape = true;
       }
     }
@@ -765,7 +775,7 @@ class SelectionTool implements ToolInterface {
     mousemove({ e: { target: [], x: p.x, y: p.y } });
   }
 
-  pointerup({ p }: ToolEventData, _: ToolCallback, eventCb: (e: EventData) => void): void {
+  pointerup({ p, e }: ToolEventData, _: ToolCallback, eventCb: (e: EventData) => void): void {
     this.resetGrabState();
 
     // Handle rotation end
@@ -788,7 +798,8 @@ class SelectionTool implements ToolInterface {
       return;
     }
 
-    if (this.tryStartTextEdit(p)) {
+    const canEditText = "touches" in e && e.touches.length < 2;
+    if (this.tryStartTextEdit(p) && canEditText) {
       eventCb({ e: { x: p.x, y: p.y, target: null } });
       this.activeShape = null;
       return;

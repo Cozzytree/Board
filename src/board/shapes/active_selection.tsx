@@ -592,7 +592,7 @@ class ActiveSelection extends Shape {
     this.emit("mousedown", e);
   }
 
-  mouseover(s: ShapeEventData): void {
+  mouseover(s: ShapeEventData, hitPadding: number = 0): void {
     if (this._board.activeShapes?.ID() === this.ID()) {
       if (this.isRotating && this.isRotating(s.e.point)) {
         this._board.setCursor("grab");
@@ -600,7 +600,7 @@ class ActiveSelection extends Shape {
         return;
       }
 
-      const d = this.IsResizable(s.e.point);
+      const d = this.IsResizable(s.e.point, hitPadding);
       if (d) {
         const cursor = this.getRotatedCursor(d, this.rotate);
         this._board.setCursor(cursor);

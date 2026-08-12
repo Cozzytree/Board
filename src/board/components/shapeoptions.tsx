@@ -56,7 +56,6 @@ import type Shape from "../shapes/shape";
 import { Input } from "@/components/ui/input";
 import { debounce } from "@/lib/utils";
 import { Label } from "@/components/ui/label";
-import { useBoardStore } from "../store";
 
 const EXCALIDRAW_COLORS = [
   "#1E1E1E",
@@ -499,7 +498,7 @@ function ShapeOptions({ debounceMs = 50, className }: Props) {
 }
 
 function OpacityOption({ debounceMs = 100, className, standalone = false, children, icon }: Props) {
-  const { activeShape, canvas } = useBoardStore();
+  const { activeShape, canvas } = useBoard();
 
   const handleSetOpacity = debounce((v: number) => {
     if (!activeShape || !canvas) return;
@@ -535,7 +534,7 @@ function OpacityOption({ debounceMs = 100, className, standalone = false, childr
 }
 
 function ArrowOption() {
-  const { activeShape, setActiveShape, canvas } = useBoardStore();
+  const { activeShape, setActiveShape, canvas } = useBoard();
 
   const handleArrow = (side: 0 | 1) => {
     if (!activeShape || !canvas) return;
@@ -580,7 +579,7 @@ function ArrowOption() {
 }
 
 function StrokeSize({ className, standalone, icon, children }: Props) {
-  const { activeShape, canvas, setActiveShape, update } = useBoardStore();
+  const { activeShape, canvas, setActiveShape, update } = useBoard();
 
   const handleStrokeSize = (n: number) => {
     if (canvas) canvas.defaultShapeProps.strokeWidth = n;
@@ -674,7 +673,7 @@ function StrokeSize({ className, standalone, icon, children }: Props) {
 }
 
 function StrokeOption({ debounceMs = 200, className, standalone = false, icon, mobile = false }: Props & { mobile?: boolean }) {
-  const { activeShape, canvas, setActiveShape, update } = useBoardStore();
+  const { activeShape, canvas, setActiveShape, update } = useBoard();
   const [shade, setShade] = useState(0);
   const applyStrokeSync = (val: string) => {
 
@@ -833,7 +832,7 @@ function StrokeOption({ debounceMs = 200, className, standalone = false, icon, m
 }
 
 function FillOption({ debounceMs = 200, className, standalone = false, icon, mobile = false }: Props & { mobile?: boolean }) {
-  const { activeShape, canvas, setActiveShape, update } = useBoardStore();
+  const { activeShape, canvas, setActiveShape, update } = useBoard();
   const [shade, setShade] = useState(0);
 
   const applyFillSync = (color: string) => {
@@ -1010,7 +1009,7 @@ function FillOption({ debounceMs = 200, className, standalone = false, icon, mob
 }
 
 function ItalicOption({ debounceMs = 200 }: { debounceMs?: number }) {
-  const { activeShape, canvas, setActiveShape, update } = useBoardStore();
+  const { activeShape, canvas, setActiveShape, update } = useBoard();
   const currentItalic = !!(activeShape ? activeShape.get("italic") : canvas?.defaultShapeProps.italic);
   const [isItalic, setItalic] = useState(currentItalic);
   useEffect(() => setItalic(currentItalic), [currentItalic]);
@@ -1042,7 +1041,7 @@ function ItalicOption({ debounceMs = 200 }: { debounceMs?: number }) {
 }
 
 function AlignOptions({ debounceMs = 100, standalone, icon, children, className }: Props) {
-  const { activeShape, canvas, update } = useBoardStore();
+  const { activeShape, canvas, update } = useBoard();
   const handleUpdate = debounce(() => update(), debounceMs);
 
   const handleAlign = (a: textAlign) => {
@@ -1097,7 +1096,7 @@ function AlignOptions({ debounceMs = 100, standalone, icon, children, className 
 }
 
 function BoldOption({ debounceMs = 200 }: { debounceMs?: number }) {
-  const { activeShape, canvas, update } = useBoardStore();
+  const { activeShape, canvas, update } = useBoard();
   const currentW = (activeShape ? activeShape.get("fontWeight") : canvas?.defaultShapeProps.fontWeight) as number || 500;
   const [w, setW] = useState(currentW);
   useEffect(() => setW(currentW), [currentW]);
@@ -1122,7 +1121,7 @@ function BoldOption({ debounceMs = 200 }: { debounceMs?: number }) {
 }
 
 function FontSizes({ debounceMs = 200, className, standalone, children }: Props) {
-  const { activeShape, canvas, update } = useBoardStore();
+  const { activeShape, canvas, update } = useBoard();
   const handleUpdate = debounce(() => update(), debounceMs);
   const currentSize = activeShape ? activeShape.get("fontSize") : canvas?.defaultShapeProps.fontSize;
   const matchedPreset = FONT_SIZES.find((f) => f.size === currentSize);
@@ -1193,7 +1192,7 @@ function FontSizes({ debounceMs = 200, className, standalone, children }: Props)
 }
 
 function FontFamilyOption({ debounceMs = 200, className, standalone }: Props) {
-  const { activeShape, canvas, update } = useBoardStore();
+  const { activeShape, canvas, update } = useBoard();
   const handleUpdate = debounce(() => update(), debounceMs);
 
   const handleSetFont = (fValue: string) => {
@@ -1277,7 +1276,7 @@ function FontFamilyOption({ debounceMs = 200, className, standalone }: Props) {
 }
 
 function RoughnessOption({ debounceMs = 0, className, standalone, children }: Props) {
-  const { activeShape, canvas, update } = useBoardStore();
+  const { activeShape, canvas, update } = useBoard();
   // Provide a fallback of 1 (Artist) if roughness isn't explicitly set yet
   const activeRoughness = (activeShape ? activeShape.get("roughness") : canvas?.defaultShapeProps.roughness) ?? 1;
   const handleSetRoughness = (v: number) => {
@@ -1351,7 +1350,7 @@ function RoughnessOption({ debounceMs = 0, className, standalone, children }: Pr
 }
 
 function FillStyleOption({ debounceMs = 0, className, standalone, children }: Props) {
-  const { activeShape, canvas, update } = useBoardStore();
+  const { activeShape, canvas, update } = useBoard();
   const activeFillStyle = (activeShape ? activeShape.get("fillStyle") : canvas?.defaultShapeProps.fillStyle) ?? "hachure";
   const handleSetFillStyle = (v: string) => {
 
@@ -1421,7 +1420,7 @@ function FillStyleOption({ debounceMs = 0, className, standalone, children }: Pr
 }
 
 function StrokeDash({ debounceMs = 200, className, standalone, children }: Props) {
-  const { setActiveShape, activeShape, canvas, update } = useBoardStore();
+  const { setActiveShape, activeShape, canvas, update } = useBoard();
   const currentDashState = (activeShape ? activeShape.get("dash") : canvas?.defaultShapeProps.dash)?.toString() || "0,0";
   const [, setS] = useState(currentDashState);
   useEffect(() => setS(currentDashState), [currentDashState]);
@@ -1488,7 +1487,7 @@ function StrokeDash({ debounceMs = 200, className, standalone, children }: Props
 }
 
 function RotationOption({ debounceMs = 200, className, standalone, children }: Props) {
-  const { activeShape, canvas } = useBoardStore();
+  const { activeShape, canvas } = useBoard();
 
   const getRotation = () => {
     if (!activeShape) return 0;
@@ -1577,7 +1576,7 @@ function RotationOption({ debounceMs = 200, className, standalone, children }: P
 }
 
 function VerticalAlignOptions({ debounceMs = 50, children, className, icon, standalone }: Props) {
-  const { activeShape, canvas, update } = useBoardStore();
+  const { activeShape, canvas, update } = useBoard();
   const handleUpdate = debounce(() => update(), debounceMs);
 
   const handleAlign = (a: "top" | "center" | "bottom") => {
@@ -1633,7 +1632,7 @@ function VerticalAlignOptions({ debounceMs = 50, children, className, icon, stan
 }
 
 function DuplicateOption({ className }: Props) {
-  const { activeShape, canvas } = useBoardStore();
+  const { activeShape, canvas } = useBoard();
   if (!activeShape || !canvas) return null;
 
   const handleClone = () => {
@@ -1663,7 +1662,7 @@ function DuplicateOption({ className }: Props) {
 }
 
 function ZOrderButtons({ debounceMs = 200, className }: { debounceMs?: number, className?: string }) {
-  const { activeShape, canvas, update } = useBoardStore();
+  const { activeShape, canvas, update } = useBoard();
   const handleUpdate = debounce(() => update(), debounceMs);
 
   if (!activeShape || activeShape instanceof ActiveSelection) return null;
@@ -1695,7 +1694,7 @@ function ZOrderButtons({ debounceMs = 200, className }: { debounceMs?: number, c
 }
 
 function DeleteOption({ className }: Props) {
-  const { activeShape, canvas } = useBoardStore();
+  const { activeShape, canvas } = useBoard();
   const disabled = (!activeShape || !canvas)
 
   const handleDelete = () => {
@@ -1720,7 +1719,7 @@ function DeleteOption({ className }: Props) {
 }
 
 function RadiusOption({ className, debounceMs = 0 }: Props) {
-  const { canvas, activeShape, update } = useBoardStore()
+  const { canvas, activeShape, update } = useBoard()
 
   const handleRadius = (v: number) => {
     if (!activeShape || !canvas) return;

@@ -1,5 +1,7 @@
 export type Identity<T> = { [K in keyof T]: T[K] | any };
 
+export type view_t = { x: number; y: number; scl: number };
+
 export type textAlign = "left" | "center" | "right";
 
 import type { Shape, Board } from "./index";
@@ -40,20 +42,20 @@ export type LibraryItem = {
 }
 
 export type ShapeEvent =
-   | "mousedown"
-   | "mouseup"
-   | "mouseover"
-   | "mousemove"
-   | "resize"
-   | "shape:removed"
-   | "shape:created"
-   | "shape:updated"
-   | "shape:resize"
-   | "shape:move"
-   | "shape:delete"
-   | "selection:created"
-   | "selection:updated"
-   | "selection:move";
+  | "mousedown"
+  | "mouseup"
+  | "mouseover"
+  | "mousemove"
+  | "resize"
+  | "shape:removed"
+  | "shape:created"
+  | "shape:updated"
+  | "shape:resize"
+  | "shape:move"
+  | "shape:delete"
+  | "selection:created"
+  | "selection:updated"
+  | "selection:move";
 
 export type ShapeEventData = {
   e: { point: Point };
@@ -155,33 +157,33 @@ export type modes = "cursor" | "shape" | "line" | "draw" | "text" | "eraser" | "
 export type submodeline = "line:straight" | "line:anchor" | "line:curve";
 export type submodecursor = "grab" | "free";
 export type submodeshape =
-   | "rect"
-   | "circle"
-   | "path:triangle"
-   | "path:pentagon"
-   | "path:star"
-   | "path:hexagon"
-   | "path:arrow"
-   | "path:message"
-   | "path:plus"
-   | "path:diamond"
-   | "path:trapezoid"
-   | (string & {});
+  | "rect"
+  | "circle"
+  | "path:triangle"
+  | "path:pentagon"
+  | "path:star"
+  | "path:hexagon"
+  | "path:arrow"
+  | "path:message"
+  | "path:plus"
+  | "path:diamond"
+  | "path:trapezoid"
+  | (string & {});
 export type submodedraw = "pencil";
 
 export type submodes = submodecursor | submodeshape | submodedraw | submodeline;
 
 export type shapeType =
-   | "path"
-   | "rect"
-   | "ellipse"
-   | "text"
-   | "selection"
-   | "line"
-   | "group"
-   | "svg"
-   | "excalidraw"
-   | "image";
+  | "path"
+  | "rect"
+  | "ellipse"
+  | "text"
+  | "selection"
+  | "line"
+  | "group"
+  | "svg"
+  | "excalidraw"
+  | "image";
 
 export interface BoxInterface {
   x1: number;
@@ -191,3 +193,29 @@ export interface BoxInterface {
 }
 
 export type resizeDirection = "tl" | "tr" | "bl" | "br" | "l" | "r" | "t" | "b";
+
+export type BoardProps = {
+  snapGrid?: boolean;
+  indicatorColor?: string;
+  scrollEase?: number;
+  initialShapes: any[];
+  container?: HTMLElement;
+  background: string;
+  foreground: string;
+  canvas: HTMLCanvasElement;
+  canvas2: HTMLCanvasElement;
+  canvasRemote?: HTMLCanvasElement | null;
+  width: number;
+  height: number;
+  onModeChange?: (m: modes, sm: submodes) => void;
+  scl?: number;
+  hoverEffect?: boolean;
+  snap?: boolean;
+  onActiveShape?: (e: Shape | null) => void;
+  onZoom?: (n: view_t) => void;
+  onScroll?: (view: view_t) => void;
+  customShapes?: CustomShapeDef[];
+  onImageUpload?: (file: File) => Promise<string>;
+  isLocked?: boolean;
+  clickEffect?: boolean;
+};

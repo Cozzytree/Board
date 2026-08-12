@@ -40,9 +40,7 @@ class ShapeTool implements ToolInterface {
 
   cleanUp(): void { }
 
-  getConf(_: string) {
-
-  }
+  getConf(_: string) {}
 
   setConf(key: string, val: any) { }
 
