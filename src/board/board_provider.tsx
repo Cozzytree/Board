@@ -38,10 +38,11 @@ import {
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
 import CloudShape from "./shapes/paths/cloud_shape";
-import { BoardContext, useBoard } from "./board-context";
+import { BoardContext } from "./board-context";
 import type { HocuspocusProvider } from "@hocuspocus/provider";
 import { TooltipProvider } from "@/components/ui/tooltip.tsx";
-import { useBoardEngine } from "./hooks/useBoard.ts";
+import { useBoardEngine } from "./hooks/useBoardEngine.ts";
+import { db } from "./db.ts";
 const RemoteStateManager = React.lazy(() => import("./remote_state_manager.tsx"));
 
 const isEditingText = (e: KeyboardEvent) => {
@@ -458,21 +459,26 @@ const BoardProvider = ({
   }, []);
 
   /** Load shapes from localStorage and add them to the board */
-  const loadShapesFromStorage = React.useCallback((board: Board) => {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) return false;
-      const data = JSON.parse(raw) as Record<string, any>[];
-      return restoreShapesFromData(board, data);
-    } catch (err) {
-      console.error("Failed to load shapes from localStorage", err);
-    }
-    return false;
+  const loadShapesFromStorage = React.useCallback(async(board: Board) => {
+    const s = await db.shapes.toArray();
+    return restoreShapesFromData(board, s);
+    // try {
+    //   const raw = localStorage.getItem(STORAGE_KEY);
+    //   if (!raw) return false;
+    //   const data = JSON.parse(raw) as Record<string, any>[];
+    //   return restoreShapesFromData(board, data);
+    // } catch (err) {
+    //   console.error("Failed to load shapes from localStorage", err);
+    // }
+    // return false;
   }, [restoreShapesFromData]);
 
   const onDelete = React.useCallback(
-    (shapes: Shape[]) => {
+    async (shapes: Shape[]) => {
       onDeleteShape?.(shapes);
+      await Promise.all(shapes.map(async (shape) => {
+        await db.shapes.delete(shape.ID());
+      }))
     },
     [onDeleteShape],
   );
@@ -525,10 +531,7 @@ const BoardProvider = ({
   }, [restoreShapesFromData])
 
   React.useEffect(() => {
-    // if (!canvasRef.current || !canvas2Ref.current) return;
     if (!boardRef.current) return;
-
-    const debouncedSaveViewToStorage = debounce((board: Board) => saveViewToStorage(board), 200);
     const newBoard = boardRef.current;
 
     // const newBoard = new Board({
@@ -595,11 +598,16 @@ const BoardProvider = ({
     });
     newBoard.on("shape:resize", () => { });
     newBoard.on("shape:move", () => { });
-    newBoard.on("shape:updated", () => {
+    newBoard.on("shape:updated", async ({ e: { target } }) => {
       if (onShapesChangedRef.current) {
         onShapesChangedRef.current(newBoard);
       } else if (!hasInitialShapes) {
-        saveShapesToStorage(newBoard);
+        await Promise.all(target?.map(async (s) => {
+          if (s.type !== "selection" && !s.groupId) {
+            await db.shapes.put(s.toObject(), s.id);
+          }
+        }));
+        // saveShapesToStorage(newBoard);
       }
     });
     newBoard.on("shape:created", () => {

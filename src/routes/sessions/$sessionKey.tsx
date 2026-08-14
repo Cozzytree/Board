@@ -1,6 +1,6 @@
 import { BoardProvider } from "@/board/board_provider";
 import { BoardToolbar } from "@/board/components/toolbar";
-import { BoardShapeOptions } from "@/board/components/shapeoptions";
+import { BoardShapeOptions } from "@/board/components/shapeoptions/generic";
 import { BoardZoomControls } from "@/board/components/zoom_controls";
 import { BoardCenterButton } from "@/board/components/center_button";
 import { useBoard } from "@/board/board-context";
@@ -82,8 +82,8 @@ function SessionCursorLayer() {
   }, [activeShape, provider]);
 
   return (
-    <CursorStateManager 
-      view={{ scl: zoom / 100, x: offset[0], y: offset[1] }} 
+    <CursorStateManager
+      view={{ scl: zoom / 100, x: offset[0], y: offset[1] }}
       board={canvas}
     />
   );
@@ -272,20 +272,20 @@ function SessionInner({ session, sessionKey }: { session: Session; sessionKey: s
   );
 
   const onThemeChange = React.useCallback(
-    (settings: { theme?: "dark" | "light"; background?: string; foreground?: string }) => {
+    (settings: { theme?: "dark" | "light"|"system"; background?: string; foreground?: string }) => {
       if (!isOwner || !ySettingsRef.current) return;
 
-      doc?.transact(() => {
-        if (settings.theme !== undefined) {
-          ySettingsRef.current?.set("theme", settings.theme);
-        }
-        if (settings.background !== undefined) {
-          ySettingsRef.current?.set("background", settings.background);
-        }
-        if (settings.foreground !== undefined) {
-          ySettingsRef.current?.set("foreground", settings.foreground);
-        }
-      });
+      // doc?.transact(() => {
+      //   if (settings.theme !== undefined) {
+      //     ySettingsRef.current?.set("theme", settings.theme);
+      //   }
+      //   if (settings.background !== undefined) {
+      //     ySettingsRef.current?.set("background", settings.background);
+      //   }
+      //   if (settings.foreground !== undefined) {
+      //     ySettingsRef.current?.set("foreground", settings.foreground);
+      //   }
+      // });
     },
     [isOwner, doc],
   );
@@ -319,9 +319,10 @@ function SessionInner({ session, sessionKey }: { session: Session; sessionKey: s
         onDeleteShape={onDeleteShape}
         onBoardReady={onBoardReady}
         onThemeChange={onThemeChange}
-        isOwner={isOwner}
+        // isOwner={isOwner}
         skipLocalStorage
-        onCursorMove={onCursorMove}>
+        // onCursorMove={onCursorMove}
+      >
         <SessionBoardUI
           sessionKey={sessionKey}
           cursorCount={cursorCount}

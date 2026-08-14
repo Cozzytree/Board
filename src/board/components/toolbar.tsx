@@ -8,7 +8,7 @@ export default function Toolbar() {
   const { mode, setMode, tools } = useBoard();
 
   return (
-    <div className="w-fit flex justify-center bg-background gap-1 p-1 items-center rounded-sm border border-muted shadow">
+    <div className="w-fit flex justify-center bg-background gap-1 p-1 items-center rounded-md border border-muted shadow">
       {tools.map((t, i) => {
         const button = (
           <button
@@ -20,7 +20,7 @@ export default function Toolbar() {
             }}
             className={cn(
               mode.m === t.mode ? "text-background bg-foreground" : "hover:bg-foreground/10",
-              "rounded-sm w-10 h-10 flex justify-center items-center",
+              "rounded-sm w-8 h-8 flex justify-center items-center",
             )}>
             <ShowIcon I={t.I} />
           </button>

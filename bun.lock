@@ -18,6 +18,7 @@
         "better-auth": "^1.6.3",
         "class-variance-authority": "^0.7.1",
         "clsx": "^2.1.1",
+        "dexie": "^4.4.4",
         "dotenv": "^17.4.2",
         "drizzle-orm": "^0.45.2",
         "lucide-react": "^0.525.0",
@@ -845,6 +846,8 @@
     "detect-libc": ["detect-libc@2.0.4", "", {}, ""],
 
     "detect-node-es": ["detect-node-es@1.1.0", "", {}, ""],
+
+    "dexie": ["dexie@4.4.4", "", {}, "sha512-jIwsYI8Os2hgnqc6O49YwFDKGc5v5QjGx0wPVp543ip1F53VFAKMLthV2pQosQcVTv3eAskTWYspOx195PM0FQ=="],
 
     "diff": ["diff@8.0.2", "", {}, ""],
 

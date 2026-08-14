@@ -10,263 +10,276 @@ import type { Drawable } from "roughjs/bin/core";
 import Shape from "./shape";
 
 class Rect extends Shape {
-   private roughDrawable: Drawable | null = null;
-   private lastWidth: number = 0;
-   private lastHeight: number = 0;
-   private lastRoughness: number | undefined = undefined;
-   private lastFillStyle: string | undefined = undefined;
-   private lastStroke: string | undefined = undefined;
-   private lastFill: string | undefined = undefined;
-   private lastStrokeWidth: number | undefined = undefined;
-   private lastDash0: number | undefined = undefined;
-   private lastDash1: number | undefined = undefined;
-   private lastRadius: number | undefined = undefined;
+  private roughDrawable: Drawable | null = null;
+  private lastWidth: number = 0;
+  private lastHeight: number = 0;
+  private lastRoughness: number | undefined = undefined;
+  private lastFillStyle: string | undefined = undefined;
+  private lastStroke: string | undefined = undefined;
+  private lastFill: string | undefined = undefined;
+  private lastStrokeWidth: number | undefined = undefined;
+  private lastDash0: number | undefined = undefined;
+  private lastDash1: number | undefined = undefined;
+  private lastRadius: number | undefined = undefined;
 
-   constructor(props: ShapeProps) {
-      super({ ...props });
+  constructor(props: ShapeProps) {
+    super({ ...props });
 
-      this.type = "rect";
-      this.verticalAlign = "center";
-   }
+    this.type = "rect";
+    this.verticalAlign = "center";
+  }
 
-   clone(): Shape {
-      const props = this.cloneProps();
-      return new Rect({ ...props });
-   }
+  clone(): Shape {
+    const props = this.cloneProps();
+    return new Rect({ ...props });
+  }
 
-   toSVG(): string {
-      const attrs = this.getSvgAttributes();
+  toSVG(): string {
+    const attrs = this.getSvgAttributes();
+    const r = Math.min(this.radius || 0, this.width / 2, this.height / 2);
+    return `<rect x="${this.left}" y="${this.top}" width="${this.width}" height="${this.height}" rx="${r}" ${attrs} />`;
+  }
+
+  getLocalPath(): Path2D {
+    if (!this.cachedLocalPath) {
+      this.cachedLocalPath = new Path2D();
       const r = Math.min(this.radius || 0, this.width / 2, this.height / 2);
-      return `<rect x="${this.left}" y="${this.top}" width="${this.width}" height="${this.height}" rx="${r}" ${attrs} />`;
-   }
+      this.cachedLocalPath.roundRect(0, 0, this.width, this.height, r);
+    }
+    return this.cachedLocalPath;
+  }
 
-   getLocalPath(): Path2D {
-      if (!this.cachedLocalPath) {
-         this.cachedLocalPath = new Path2D();
-         const r = Math.min(this.radius || 0, this.width / 2, this.height / 2);
-         this.cachedLocalPath.roundRect(0, 0, this.width, this.height, r);
-      }
-      return this.cachedLocalPath;
-   }
+  mousedown(s: ShapeEventData): void {
+    super.mousedown(s);
+  }
 
-   mousedown(s: ShapeEventData): void {
-      super.mousedown(s);
-   }
+  mouseover(s: ShapeEventData, hitPadding: number = 0): void {
+    super.mouseover(s, hitPadding);
+  }
 
-   mouseover(s: ShapeEventData, hitPadding: number = 0): void {
-      super.mouseover(s, hitPadding);
-   }
+  mouseup(s: ShapeEventData): void {
+    super.set({
+      width: Math.max(this.width, 20),
+      height: Math.max(this.height, 20),
+      locked: false,
+    });
+    super.mouseup(s);
+  }
 
-   mouseup(s: ShapeEventData): void {
-      super.set({
-         width: Math.max(this.width, 20),
-         height: Math.max(this.height, 20),
-         locked: false,
-      });
-      super.mouseup(s);
-   }
-
-   IsDraggable(p: Pointer): boolean {
-      // Use the rotation-aware draggable check utility
-      const d = isDraggableWithRotation({
-         point: p,
-         left: this.left,
-         top: this.top,
-         width: this.width,
-         height: this.height,
-         rotate: this.rotate,
-      });
-      if (d) {
-         this.set({
-            locked: true,
-         });
-      }
-      return d;
-   }
-
-   dragging(prev: Point, current: Point) {
-      const dx = current.x - prev.x;
-      const dy = current.y - prev.y;
-      // this.dragTarget(dx, dy);
+  IsDraggable(p: Pointer): boolean {
+    // Use the rotation-aware draggable check utility
+    const d = isDraggableWithRotation({
+      point: p,
+      left: this.left,
+      top: this.top,
+      width: this.width,
+      height: this.height,
+      rotate: this.rotate,
+    });
+    if (d) {
       this.set({
-         left: this.left += dx,
-         top: this.top += dy,
-      })
-
-      return super.dragging(prev, current);
-   }
-
-   IsResizable(p: Point, hitPadding: number = 0) {
-      const { height, width, top, left, rotate } = this;
-
-      const localBox = new Box({
-         x1: -width / 2,
-         x2: width / 2,
-         y1: -height / 2,
-         y2: height / 2,
+        locked: true,
       });
+    }
+    return d;
+  }
 
-      const d = resizeRect(
-         calcPointWithRotation({ height, width, left, point: p, rotate, top }),
-         localBox,
-         this.padding + hitPadding,
+  dragging(prev: Point, current: Point) {
+    const dx = current.x - prev.x;
+    const dy = current.y - prev.y;
+    // this.dragTarget(dx, dy);
+    this.set({
+      left: this.left += dx,
+      top: this.top += dy,
+    })
+
+    return super.dragging(prev, current);
+  }
+
+  IsResizable(p: Point, hitPadding: number = 0) {
+    const { height, width, top, left, rotate } = this;
+
+    const localBox = new Box({
+      x1: -width / 2,
+      x2: width / 2,
+      y1: -height / 2,
+      y2: height / 2,
+    });
+
+    const d = resizeRect(
+      calcPointWithRotation({ height, width, left, point: p, rotate, top }),
+      localBox,
+      this.padding + hitPadding,
+    );
+    // const d = resizeRect(
+    //    calcPointWithRotation({ height, width, left, point: p, rotate, top }),
+    //    new Box({
+    //       x1: this.left,
+    //       x2: this.left + this.width,
+    //       y1: this.top,
+    //       y2: this.top + this.height,
+    //    }),
+    //    this.padding,
+    // );
+    if (d) {
+      return d.rd;
+    }
+    return null;
+  }
+
+  // activeRect(ctx?: CanvasRenderingContext2D) {
+  //    const context = ctx || this.ctx;
+  //    this.draw({ ctx: context });
+  //    super.activeRect(context);
+  // }
+
+  draw({ addStyles = true, ctx, resize = false }: DrawProps): void {
+    const context = ctx || this.ctx;
+    const r = Math.max(
+      0,
+      Math.min(
+        this.radius - this.strokeWidth / 2,
+        this.width / 2,
+        this.height / 2
+      )
+    );
+
+    context.save();
+
+    if (resize) {
+      context.globalAlpha = 0.5;
+    }
+
+    // Get the current scale BEFORE applying rotation
+    const currentScale = context.getTransform().a;
+
+    const centerX = this.left + this.width * 0.5;
+    const centerY = this.top + this.height * 0.5;
+    context.translate(centerX, centerY);
+    context.rotate(this.rotate);
+    context.translate(-centerX, -centerY);
+    context.beginPath();
+    context.globalAlpha = this.opacity;
+
+    const currentRoughness = this.roughness ?? 1;
+    const currentFillStyle = this.fillStyle || "hachure";
+    const currentFill = this.fill !== "transparent" && this.fill !== "#00000000" ? this.fill : undefined;
+    const dash0 = this.dash?.[0] || 0;
+    const dash1 = this.dash?.[1] || 0;
+
+    if (
+      !this.roughDrawable ||
+      this.width !== this.lastWidth ||
+      this.height !== this.lastHeight ||
+      currentRoughness !== this.lastRoughness ||
+      currentFillStyle !== this.lastFillStyle ||
+      this.stroke !== this.lastStroke ||
+      currentFill !== this.lastFill ||
+      this.strokeWidth !== this.lastStrokeWidth ||
+      dash0 !== this.lastDash0 ||
+      dash1 !== this.lastDash1 ||
+      r !== this.lastRadius
+    ) {
+      const generator = rough.generator();
+      const roughOptions: any = {
+        stroke: this.stroke,
+        fill: currentFill,
+        strokeWidth: this.strokeWidth,
+        fillStyle: currentFillStyle,
+      };
+
+      if (dash0 > 0 || dash1 > 0) {
+        roughOptions.strokeLineDash = [dash0, dash1];
+      }
+
+      const getSvgPathStr = (w: number, h: number, rad: number) => {
+        if (r <= 0) {
+          return `M 0 0 L ${w} 0 L ${w} ${h} L 0 ${h} Z`;
+        }
+        return `M ${rad} 0
+                   L ${w - rad} 0 
+                   Q ${w} 0 ${w} ${rad} 
+                   L ${w} ${h - rad} 
+                   Q ${w} ${h} ${w - rad} ${h} 
+                   L ${rad} ${h} 
+                   Q 0 ${h} 0 ${h - rad} 
+                   L 0 ${rad} 
+                   Q 0 0 ${rad} 0 
+                   Z`;
+      };
+
+      this.roughDrawable = generator.path(
+        getSvgPathStr(this.width, this.height, r),
+        { ...roughOptions, roughness: currentRoughness === 0 ? 0 : currentRoughness === 1 ? 1.5 : 3, seed: this.left + this.top }
       );
-      // const d = resizeRect(
-      //    calcPointWithRotation({ height, width, left, point: p, rotate, top }),
-      //    new Box({
-      //       x1: this.left,
-      //       x2: this.left + this.width,
-      //       y1: this.top,
-      //       y2: this.top + this.height,
-      //    }),
-      //    this.padding,
-      // );
-      if (d) {
-         return d.rd;
-      }
-      return null;
-   }
+      
+      this.lastWidth = this.width;
+      this.lastHeight = this.height;
+      this.lastRoughness = currentRoughness;
+      this.lastFillStyle = currentFillStyle;
+      this.lastStroke = this.stroke;
+      this.lastFill = currentFill;
+      this.lastStrokeWidth = this.strokeWidth;
+      this.lastDash0 = dash0;
+      this.lastDash1 = dash1;
+      this.lastRadius = r;
+    }
+    // We must translate to this.left, this.top since the Drawable is at 0,0
+    context.translate(this.left, this.top);
 
-   // activeRect(ctx?: CanvasRenderingContext2D) {
-   //    const context = ctx || this.ctx;
-   //    this.draw({ ctx: context });
-   //    super.activeRect(context);
-   // }
+    // Context switching!
+    // We grab whichever canvas element owns the current `context` (main, overlay, or offscreen export).
+    const rc = rough.canvas(context.canvas as HTMLCanvasElement);
+    rc.draw(this.roughDrawable);
+    
+    // Translate back so text renders at correct world coordinates
+    context.translate(-this.left, -this.top);
 
-   draw({ addStyles = true, ctx, resize = false }: DrawProps): void {
-      const context = ctx || this.ctx;
-
-      const r = Math.min(this.radius || 0, this.width / 2, this.height / 2);
-
-      context.save();
-
-      if (resize) {
-         context.globalAlpha = 0.5;
-      }
-
-      // Get the current scale BEFORE applying rotation
-      const currentScale = context.getTransform().a;
-
-      const centerX = this.left + this.width * 0.5;
-      const centerY = this.top + this.height * 0.5;
-      context.translate(centerX, centerY);
-      context.rotate(this.rotate);
-      context.translate(-centerX, -centerY);
-      context.beginPath();
-      context.globalAlpha = this.opacity;
-
-      const currentRoughness = this.roughness ?? 1;
-      const currentFillStyle = this.fillStyle || "hachure";
-      const currentFill = this.fill !== "transparent" && this.fill !== "#00000000" ? this.fill : undefined;
-      const dash0 = this.dash?.[0] || 0;
-      const dash1 = this.dash?.[1] || 0;
-
-      if (
-         !this.roughDrawable ||
-         this.width !== this.lastWidth ||
-         this.height !== this.lastHeight ||
-         currentRoughness !== this.lastRoughness ||
-         currentFillStyle !== this.lastFillStyle ||
-         this.stroke !== this.lastStroke ||
-         currentFill !== this.lastFill ||
-         this.strokeWidth !== this.lastStrokeWidth ||
-         dash0 !== this.lastDash0 ||
-         dash1 !== this.lastDash1 ||
-         r !== this.lastRadius
-      ) {
-         const generator = rough.generator();
-         const roughOptions: any = {
-            stroke: this.stroke,
-            fill: currentFill,
-            strokeWidth: this.strokeWidth,
-            fillStyle: currentFillStyle,
-         };
-
-         if (dash0 > 0 || dash1 > 0) {
-            roughOptions.strokeLineDash = [dash0, dash1];
-         }
-
-         const getSvgPathStr = (w: number, h: number, rad: number) => {
-            return `M ${rad} 0 L ${w - rad} 0 Q ${w} 0 ${w} ${rad} L ${w} ${h - rad} Q ${w} ${h} ${w - rad} ${h} L ${rad} ${h} Q 0 ${h} 0 ${h - rad} L 0 ${rad} Q 0 0 ${rad} 0 Z`;
-         };
-
-         // Only use roughjs if roughness > 0, otherwise draw crisp rect
-         if (currentRoughness === 0) {
-            this.roughDrawable = r > 0
-               ? generator.path(getSvgPathStr(this.width, this.height, r), { ...roughOptions, roughness: 0 })
-               : generator.rectangle(0, 0, this.width, this.height, { ...roughOptions, roughness: 0 });
-         } else {
-            this.roughDrawable = r > 0
-               ? generator.path(getSvgPathStr(this.width, this.height, r), { ...roughOptions, roughness: currentRoughness === 1 ? 1.5 : 3, seed: this.left + this.top })
-               : generator.rectangle(0, 0, this.width, this.height, { ...roughOptions, roughness: currentRoughness === 1 ? 1.5 : 3, seed: this.left + this.top });
-         }
-         this.lastWidth = this.width;
-         this.lastHeight = this.height;
-         this.lastRoughness = currentRoughness;
-         this.lastFillStyle = currentFillStyle;
-         this.lastStroke = this.stroke;
-         this.lastFill = currentFill;
-         this.lastStrokeWidth = this.strokeWidth;
-         this.lastDash0 = dash0;
-         this.lastDash1 = dash1;
-         this.lastRadius = r;
-      }
-      // We must translate to this.left, this.top since the Drawable is at 0,0
-      context.translate(this.left, this.top);
-
-      // Context switching!
-      // We grab whichever canvas element owns the current `context` (main, overlay, or offscreen export).
-      const rc = rough.canvas(context.canvas as HTMLCanvasElement);
-      rc.draw(this.roughDrawable);
-
-      // Translate back so text renders at correct world coordinates
-      context.translate(-this.left, -this.top);
-
-      context.closePath();
-      if (this.text.length) {
-         const t = breakText({
-            ctx: context,
-            text: this.text,
-            width: this.width,
-         }).join("\n");
-         super.renderText({
-            context,
-            text: t,
-         });
-      }
-
-      context.restore();
-   }
-
-   Resize(current: Point, old: BoxInterface, d: resizeDirection) {
-      // New rotation-aware resize logic
-      const newBounds = resizeWithRotation({
-         current,
-         old,
-         direction: d,
-         rotate: this.rotate,
-         minWidth: 20,
-         minHeight: 20,
+    context.closePath();
+    if (this.text.length) {
+      const t = breakText({
+        ctx: context,
+        text: this.text,
+        width: this.width,
+      }).join("\n");
+      super.renderText({
+        context,
+        text: t,
       });
+    }
 
-      // Adjust height for text if needed
-      const adjustedHeight = this.adjustHeight(newBounds.height);
+    context.restore();
+  }
 
-      // this.set({
-      //    left: newBounds.left,
-      //    top: newBounds.top,
-      //    width: newBounds.width,
-      //    height: adjustedHeight,
-      // })
-      this.setTarget({
-         left: newBounds.left,
-         top: newBounds.top,
-         width: newBounds.width,
-         height: adjustedHeight,
-      });
+  Resize(current: Point, old: BoxInterface, d: resizeDirection) {
+    // New rotation-aware resize logic
+    const newBounds = resizeWithRotation({
+      current,
+      old,
+      direction: d,
+      rotate: this.rotate,
+      minWidth: 20,
+      minHeight: 20,
+    });
 
-      return super.Resize(current, old, d);
-   }
+    // Adjust height for text if needed
+    const adjustedHeight = this.adjustHeight(newBounds.height);
+
+    // this.set({
+    //    left: newBounds.left,
+    //    top: newBounds.top,
+    //    width: newBounds.width,
+    //    height: adjustedHeight,
+    // })
+    this.setTarget({
+      left: newBounds.left,
+      top: newBounds.top,
+      width: newBounds.width,
+      height: adjustedHeight,
+    });
+
+    return super.Resize(current, old, d);
+  }
 }
 
 export default Rect;

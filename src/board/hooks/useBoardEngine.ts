@@ -4,17 +4,15 @@ import type Shape from "../shapes/shape";
 import type { modes, submodes } from "../types";
 
 type BoardOptions = {
-  width: number,
-  container?: HTMLElement,
-  height: number
-  background: string
-  foreground: string
-  initialShapes?: any[]
-
+  width: number;
+  container?: HTMLElement;
+  height: number;
+  background: string;
+  foreground: string;
+  initialShapes?: any[];
+  
   onImageUpload?: (file: File) => Promise<string>;
-
   onBoardReady?: (b: Board) => void;
-
   onModeChange?: (m: modes, sm: submodes) => void;
   onActiveShape?: (shape: Shape | null, board: Board) => void;
   onZoom?: (view: { x: number; y: number; scl: number }, board: Board) => void;

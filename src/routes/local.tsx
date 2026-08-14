@@ -12,7 +12,7 @@ import { MenuIcon, RedoIcon, UndoIcon } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { useIsMobile } from "@/hooks/use-mobile.ts"
-import { DeleteOption } from "@/board/components/shapeoptions";
+import { DeleteOption } from "@/board/components/shapeoptions/generic";
 const BoardProvider = React.lazy(() =>
   import("@/board/board_provider").then((m) => ({
     default: m.BoardProvider

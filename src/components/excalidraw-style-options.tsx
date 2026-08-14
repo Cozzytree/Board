@@ -1,5 +1,17 @@
-import { AlignOptions, BoldOption, DeleteOption, DuplicateOption, FillOption, FillStyleOption, FontFamilyOption, FontSizes, ItalicOption, OpacityOption, RadiusOption, RotationOption, RoughnessOption, StrokeDash, StrokeOption, StrokeSize, VerticalAlignOptions, ZOrderButtons } from "@/board/components/shapeoptions";
+import React from "react";
+
 import { useIsMobile } from "@/hooks/use-mobile";
+import { AlignOptions, BoldOption, DeleteOption, DuplicateOption, ItalicOption, RadiusOption, RotationOption, RoughnessOption, VerticalAlignOptions, ZOrderButtons } from "@/board/components/shapeoptions/generic.tsx";
+
+const OpacityOption = React.lazy(() => import("../board/components/shapeoptions/opacity.tsx"));
+const StrokeSize = React.lazy(() => import("../board/components/shapeoptions/stroke_size.tsx"));
+const StrokeOption = React.lazy(() => import("../board/components/shapeoptions/stroke.tsx"));
+const StrokeDash = React.lazy(() => import("../board/components/shapeoptions/stroke_dash.tsx"));
+const FillOption = React.lazy(() => import("../board/components/shapeoptions/fill.tsx"));
+const FontFamilyOption = React.lazy(() => import("../board/components/shapeoptions/fontfamily.tsx"));
+const FillStyleOption = React.lazy(() => import("../board/components/shapeoptions/fillstyle.tsx"));
+const FontSizes = React.lazy(() => import("../board/components/shapeoptions/fontsize.tsx"));
+
 import { useBoard } from "../board/board-context.tsx";
 import { AlignCenter, AlignVerticalSpaceAround, Layers3Icon, SlidersHorizontal } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "../components/ui/popover.tsx";
