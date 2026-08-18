@@ -85,7 +85,7 @@ const BoardProvider = ({
   onDeleteShape,
   onThemeChange,
   initialShapes,
-  canvasLock = false,
+  // canvasLock = false,
   provider
 }: {
   provider?: HocuspocusProvider,
@@ -337,16 +337,19 @@ const BoardProvider = ({
   const pushHistory = React.useCallback((board: Board) => {
     if (isUndoing.current) return;
     const newStateStr = JSON.stringify(serializeBoard(board));
-    if (undoStack.current.length > 0) {
-      const lastStateStr = JSON.stringify(undoStack.current[undoStack.current.length - 1]);
-      if (newStateStr === lastStateStr) return;
-    }
-    undoStack.current.push(JSON.parse(newStateStr));
-    if (undoStack.current.length > 50) {
-      undoStack.current.shift();
-    }
-    redoStack.current = [];
-    setHistoryVersion((v) => v + 1);
+
+    setTimeout(() => {
+      if (undoStack.current.length > 0) {
+        const lastStateStr = JSON.stringify(undoStack.current[undoStack.current.length - 1]);
+        if (newStateStr === lastStateStr) return;
+      }
+      undoStack.current.push(JSON.parse(newStateStr));
+      if (undoStack.current.length > 50) {
+        undoStack.current.shift();
+      }
+      redoStack.current = [];
+      setHistoryVersion((v) => v + 1);
+    }, 0)
   }, [serializeBoard]);
 
   const restoreShapesFromData = React.useCallback((board: Board, data: Record<string, any>[]) => {
@@ -459,7 +462,7 @@ const BoardProvider = ({
   }, []);
 
   /** Load shapes from localStorage and add them to the board */
-  const loadShapesFromStorage = React.useCallback(async(board: Board) => {
+  const loadShapesFromStorage = React.useCallback(async (board: Board) => {
     const s = await db.shapes.toArray();
     return restoreShapesFromData(board, s);
     // try {
@@ -601,7 +604,7 @@ const BoardProvider = ({
     newBoard.on("shape:updated", async ({ e: { target } }) => {
       if (onShapesChangedRef.current) {
         onShapesChangedRef.current(newBoard);
-      } else if (!hasInitialShapes) {
+      } else if (!hasInitialShapes && target) {
         await Promise.all(target?.map(async (s) => {
           if (s.type !== "selection" && !s.groupId) {
             await db.shapes.put(s.toObject(), s.id);

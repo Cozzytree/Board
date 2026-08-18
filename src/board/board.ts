@@ -25,7 +25,6 @@ import SvgShape from "./shapes/svg_shape";
 import ShapeStoreArr from "./shapes/shape_store_arr";
 type view_t = { x: number; y: number; scl: number };
 import { INDICATOR_COLOR } from "./constants";
-import { he } from "zod/locales";
 
 type BoardProps = {
   snapGrid?: boolean;

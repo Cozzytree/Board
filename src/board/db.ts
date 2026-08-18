@@ -7,7 +7,7 @@ class BoardDB extends Dexie {
   constructor() {
     super("board_db");
     this.version(1).stores({
-      shapes: "id, stroke, strokeSize, fill, fillStyle, roughness, top, left, width, height, shapes, radius, italic"
+      shapes: "id, stroke, strokeSize, fill, fillStyle, roughness, top, left, width, height, shapes, radius, italic",
     })
   }
 }

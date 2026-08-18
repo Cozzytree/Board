@@ -8,141 +8,144 @@ import LineShape from "../shapes/line/line_shape";
 import type Shape from "../shapes/shape";
 
 class LineTool extends Tool {
-   private indicator: {
-      show: boolean;
-      rect: Rect;
-   };
-   private newLine: LineShape | null = null;
+  private indicator: {
+    show: boolean;
+    rect: Rect;
+  };
+  private newLine: LineShape | null = null;
 
-   constructor(board: Board) {
-      super(board);
-      this.indicator = {
-         rect: new Rect({
-            _board: board,
-            ctx: this._board.ctx2,
-            strokeWidth: 10,
-            selectionStrokeWidth: 20,
-            selectionColor: "#606060",
-            selectionAlpha: 0.5,
-            selectionDash: [0, 0],
-            rx: 2,
-            ry: 2,
-         }),
-         show: false,
-      };
-   }
+  constructor(board: Board) {
+    super(board);
+    this.indicator = {
+      rect: new Rect({
+        _board: board,
+        ctx: this._board.ctx2,
+        strokeWidth: 10,
+        selectionStrokeWidth: 20,
+        selectionColor: "#606060",
+        selectionAlpha: 0.5,
+        selectionDash: [0, 0],
+        radius: 2
+      }),
+      show: false,
+    };
+  }
 
-   cleanUp(): void {
-      this.newLine = null;
-   }
+  cleanUp(): void {
+    this.newLine = null;
+  }
 
-   pointerDown({ p }: ToolEventData): void {
-      this._board.renderClickEffect(p);
-      if (this._board.modes.sm === "line:straight") {
-         this.newLine = new LineShape({
-            _board: this._board,
-            ctx: this._board.ctx,
-            roughness: 0,
-            points: [
-               { x: 0, y: 0 },
-               { x: 0, y: 0 },
-            ],
-            left: p.x,
-            top: p.y,
-            linetype: "straight",
-            stroke: "white",
-         });
-      } else if (this._board.modes.sm === "line:curve") {
-         this.newLine = new LineShape({
-            _board: this._board,
-            ctx: this._board.ctx,
-            roughness: 0,
-            points: [
-               { x: 0, y: 0 },
-               { x: 0, y: 0 },
-            ],
-            left: p.x,
-            top: p.y,
-            linetype: "curved",
-            stroke: "white",
-         });
+  getConf(_: string) { }
+
+  setConf(key: string, value: string) {}
+  
+  pointerDown({ p }: ToolEventData): void {
+    this._board.renderClickEffect(p);
+    if (this._board.modes.sm === "line:straight") {
+      this.newLine = new LineShape({
+        _board: this._board,
+        ctx: this._board.ctx,
+        roughness: 0,
+        points: [
+          { x: 0, y: 0 },
+          { x: 0, y: 0 },
+        ],
+        left: p.x,
+        top: p.y,
+        linetype: "straight",
+        stroke: "white",
+      });
+    } else if (this._board.modes.sm === "line:curve") {
+      this.newLine = new LineShape({
+        _board: this._board,
+        ctx: this._board.ctx,
+        roughness: 0,
+        points: [
+          { x: 0, y: 0 },
+          { x: 0, y: 0 },
+        ],
+        left: p.x,
+        top: p.y,
+        linetype: "curve",
+        stroke: "white",
+      });
+    } else {
+      this.newLine = new LineShape({
+        _board: this._board,
+        ctx: this._board.ctx,
+        roughness: 0,
+        points: [
+          { x: 0, y: 0 },
+          { x: 0, y: 0 },
+        ],
+        left: p.x,
+        top: p.y,
+        linetype: "anchor",
+        stroke: "white",
+      });
+    }
+    // Set resizeIndex to last point so initial drag moves the endpoint
+    if (this.newLine) {
+      (this.newLine as any).resizeIndex = this.newLine.points.length - 1;
+    }
+  }
+
+  pointermove({ p }: ToolEventData): void {
+    if (this.newLine) {
+      this.newLine.Resize(
+        p,
+        new Box({
+          x1: this.newLine.left,
+          y1: this.newLine.top,
+          x2: this.newLine.left + this.newLine.width,
+          y2: this.newLine.top + this.newLine.height,
+        }),
+        "br",
+      );
+      const shape = this._board.shapeStore.forEach((s) => {
+        if (s.type === "line" || s.ID() === this.newLine?.ID()) return false;
+
+        const a = s.inAnchor(p);
+        if (a.isin) {
+          this.indicator.show = true;
+          this.indicator.rect.set({
+            left: s.left - s.padding,
+            top: s.top - s.padding,
+            width: s.width + s.padding * 2,
+            height: s.height + s.padding * 2,
+          });
+          return true;
+        }
+        return false;
+      });
+      if (shape) {
+        this.draw(this.newLine as unknown as Shape, this.indicator.rect);
       } else {
-         this.newLine = new LineShape({
-            _board: this._board,
-            ctx: this._board.ctx,
-            roughness: 0,
-            points: [
-               { x: 0, y: 0 },
-               { x: 0, y: 0 },
-            ],
-            left: p.x,
-            top: p.y,
-            linetype: "anchor",
-            stroke: "white",
-         });
+        this.indicator.show = false;
+        this.draw(this.newLine as unknown as Shape);
       }
-      // Set resizeIndex to last point so initial drag moves the endpoint
-      if (this.newLine) {
-         (this.newLine as any).resizeIndex = this.newLine.points.length - 1;
-      }
-   }
+    }
+  }
 
-   pointermove({ p }: ToolEventData): void {
-      if (this.newLine) {
-         this.newLine.Resize(
-            p,
-            new Box({
-               x1: this.newLine.left,
-               y1: this.newLine.top,
-               x2: this.newLine.left + this.newLine.width,
-               y2: this.newLine.top + this.newLine.height,
-            }),
-            "br",
-         );
-         const shape = this._board.shapeStore.forEach((s) => {
-            if (s.type === "line" || s.ID() === this.newLine?.ID()) return false;
+  pointerup({ p }: ToolEventData, cb?: ToolCallback, ec?: (cb: EventData) => void): void {
+    this.indicator.show = false;
+    if (this.newLine) {
+      this._board.add(this.newLine as unknown as Shape);
+      this._board.render();
+      this.newLine.setCoords();
+      this.newLine.mouseup({ e: { point: p } });
 
-            const a = s.inAnchor(p);
-            if (a.isin) {
-               this.indicator.show = true;
-               this.indicator.rect.set({
-                  left: s.left - s.padding,
-                  top: s.top - s.padding,
-                  width: s.width + s.padding * 2,
-                  height: s.height + s.padding * 2,
-               });
-               return true;
-            }
-            return false;
-         });
-         if (shape) {
-            this.draw(this.newLine as unknown as Shape, this.indicator.rect);
-         } else {
-            this.indicator.show = false;
-            this.draw(this.newLine as unknown as Shape);
-         }
-      }
-   }
+      ec?.({ e: { target: [this.newLine as unknown as Shape], x: p.x, y: p.y } });
 
-   pointerup({ p }: ToolEventData, cb?: ToolCallback, ec?: (cb: EventData) => void): void {
-      this.indicator.show = false;
-      if (this.newLine) {
-         this._board.add(this.newLine as unknown as Shape);
-         this._board.render();
-         this.newLine.setCoords();
-         this.newLine.mouseup({ e: { point: p } });
+      this.newLine = null;
+    }
 
-         ec?.({ e: { target: [this.newLine as unknown as Shape], x: p.x, y: p.y } });
+    cb?.({ mode: "cursor", submode: "free" });
+  }
 
-         this.newLine = null;
-      }
+  dblClick() { }
 
-      cb?.({ mode: "cursor", submode: "free" });
-   }
-
-   dblClick() { }
-
-   onClick(): void { }
+  onClick(): void { }
 }
 
 export default LineTool;

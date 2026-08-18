@@ -80,9 +80,9 @@ class SelectionTool implements ToolInterface {
     document.addEventListener("keydown", this.handleKeyDown);
   }
 
-  setConf(key: string, value: any): void { }
+  setConf(): void { }
 
-  getConf(key: string) { }
+  getConf() { }
 
   private getResizeHitPadding(isTouch: boolean): number {
     const scl = this._board.view.scl;
@@ -417,6 +417,7 @@ class SelectionTool implements ToolInterface {
 
       if (!this.draggedShape && !this.resizableShape) {
         callback?.({ e: { x: p.x, y: p.y, target: null } });
+        if ("touches" in e && e?.touches.length > 1) return;
 
         this._board.discardActiveShapes();
         this.hasSelectionStarted = true;
@@ -1097,7 +1098,7 @@ class SelectionTool implements ToolInterface {
 
   private createText() {
     if (!this.textEdit) return;
-    const { ctx2: context, canvas2: canvas } = this._board;
+    const { ctx2: context } = this._board;
     this._board.resetContextTransform(context);
     context.clearRect(0, 0, this._board.cssWidth, this._board.cssHeight);
 
@@ -1331,7 +1332,7 @@ class SelectionTool implements ToolInterface {
     // ctx.scale(this._board.scale, this._board.scale);
     ctx.scale(this._board.view.scl, this._board.view.scl);
 
-    const currentScale = this._board.view.scl;
+    // const currentScale = this._board.view.scl;
     this._board.canvas2.style.zIndex = "100";
     shapes.forEach((s) => {
       const isResizing = this.draggedShape || this.resizableShape;
