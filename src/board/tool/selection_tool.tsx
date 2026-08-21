@@ -179,7 +179,9 @@ class SelectionTool implements ToolInterface {
     this.mouseDowmShapeState = [];
     this.isTextEditale = false;
 
-    if (this.subMode === "free") {
+    const IsMultipleTouch =  "touches" e && e.touches?.length > 1;
+    
+    if (this.subMode === "free" && !IsMultipleTouch) {
       // altkey for duplicate
       if (e.altKey) {
         const activeShape = this._board.getActiveShapes();
@@ -417,9 +419,9 @@ class SelectionTool implements ToolInterface {
 
       if (!this.draggedShape && !this.resizableShape) {
         callback?.({ e: { x: p.x, y: p.y, target: null } });
-        if ("touches" in e && e?.touches.length > 1) return;
-
         this._board.discardActiveShapes();
+
+        if ("touches" in e && e?.touches.length > 1) return;
         this.hasSelectionStarted = true;
         this.activeShape = new ActiveSelection({
           ctx: this._board.ctx,
