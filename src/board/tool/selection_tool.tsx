@@ -179,8 +179,8 @@ class SelectionTool implements ToolInterface {
     this.mouseDowmShapeState = [];
     this.isTextEditale = false;
 
-    const IsMultipleTouch =  "touches" e && e.touches?.length > 1;
-    
+    const IsMultipleTouch =  "touches" in e && e.touches?.length > 1;
+
     if (this.subMode === "free" && !IsMultipleTouch) {
       // altkey for duplicate
       if (e.altKey) {

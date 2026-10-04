@@ -29,7 +29,15 @@ class EraserTool extends Tool {
       });
    }
 
-   onClick(e: ToolEventData): void {}
+   getConf() {
+
+   }
+
+   setConf() {
+
+   }
+
+   onClick(_: ToolEventData): void {}
 
    dblClick(): void {}
 

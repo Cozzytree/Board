@@ -4,15 +4,18 @@ import Tool from "./tool";
 import Box from "../utils/box";
 import Rect from "../shapes/rect";
 import type Board from "../board";
-import LineShape from "../shapes/line/line_shape";
 import type Shape from "../shapes/shape";
+import PlainLine from "../shapes/line/line-plain";
+import type Line from "../shapes/line/line";
+import LineCurve from "../shapes/line/line-curve";
+import LineAnchor from "../shapes/line/line-anchor";
 
 class LineTool extends Tool {
   private indicator: {
     show: boolean;
     rect: Rect;
   };
-  private newLine: LineShape | null = null;
+  private newLine: Line | null = null;
 
   constructor(board: Board) {
     super(board);
@@ -37,12 +40,12 @@ class LineTool extends Tool {
 
   getConf(_: string) { }
 
-  setConf(key: string, value: string) {}
-  
+  setConf(key: string, value: string) { }
+
   pointerDown({ p }: ToolEventData): void {
     this._board.renderClickEffect(p);
     if (this._board.modes.sm === "line:straight") {
-      this.newLine = new LineShape({
+      this.newLine = new PlainLine({
         _board: this._board,
         ctx: this._board.ctx,
         roughness: 0,
@@ -52,11 +55,10 @@ class LineTool extends Tool {
         ],
         left: p.x,
         top: p.y,
-        linetype: "straight",
         stroke: "white",
       });
     } else if (this._board.modes.sm === "line:curve") {
-      this.newLine = new LineShape({
+      this.newLine = new LineCurve({
         _board: this._board,
         ctx: this._board.ctx,
         roughness: 0,
@@ -66,11 +68,11 @@ class LineTool extends Tool {
         ],
         left: p.x,
         top: p.y,
-        linetype: "curve",
+        // linetype: "curve",
         stroke: "white",
       });
     } else {
-      this.newLine = new LineShape({
+      this.newLine = new LineAnchor({
         _board: this._board,
         ctx: this._board.ctx,
         roughness: 0,
@@ -80,7 +82,7 @@ class LineTool extends Tool {
         ],
         left: p.x,
         top: p.y,
-        linetype: "anchor",
+        // linetype: "anchor",
         stroke: "white",
       });
     }

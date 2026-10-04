@@ -28,7 +28,7 @@ export default function Toolbar() {
 
         return (
           <div key={i} className="flex items-center">
-            {t.subMode && t.subMode.length > 0 ? (
+            {t.subMode.length === 1 ? button : (
               <Popover>
                 <PopoverTrigger asChild>
                   {button}
@@ -53,8 +53,6 @@ export default function Toolbar() {
                   ))}
                 </PopoverContent>
               </Popover>
-            ) : (
-              button
             )}
           </div>
         );

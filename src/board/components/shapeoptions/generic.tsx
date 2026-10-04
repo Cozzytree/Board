@@ -145,9 +145,6 @@ function ThemeToggle() {
     const nextColors = THEME_DEFAULTS[newTheme];
 
     setTheme(newTheme);
-    setForeground(nextColors.foreground);
-    setBackground(nextColors.background);
-
     remapShapeColorsForTheme(
       canvas,
       newTheme,
@@ -159,11 +156,6 @@ function ThemeToggle() {
 
     canvas?.render();
     update();
-    onThemeChange?.({ theme: newTheme });
-    onThemeChange?.({
-      foreground: nextColors.foreground,
-      background: nextColors.background,
-    });
   };
 
   const handleColorChange = (type: "foreground" | "background", color: string) => {

@@ -22,6 +22,8 @@ import {
   ImageIcon,
   CheckIcon,
   VectorSquareIcon,
+  LockIcon,
+  UnlockIcon,
 } from "lucide-react";
 import { debounce } from "@/lib/utils";
 import Board from "./board.ts";
@@ -56,9 +58,45 @@ const isEditingText = (e: KeyboardEvent) => {
 
 export type Theme = "dark" | "light" | "system";
 
+const CANVAS_HOVER_KEY = "canvas_hover_key";
+const CANVAS_CLICK_KEY = "canvas_click_key";
+const CANVAS_LOCK_KEY = "canvas_lock_key";
+const SNAP_GRID_KEY = "board_snap_grid";
+const FG_KEY = "board_foreground";
+const BG_KEY = "board_background";
 const STORAGE_KEY = "board_shapes";
 const VIEW_STORAGE_KEY = "board_view";
 const STAT_STORAGE_KEY = "stat_key";
+const THEME_COLORS = {
+  dark: { foreground: "#cccccc", background: "#181818" },
+  light: { foreground: "#202020", background: "#efefef" },
+} as const;
+
+const getResolvedTheme = (value: Theme): "dark" | "light" => {
+  if (value === "system") {
+    return typeof window !== "undefined" && window.matchMedia("(prefers-color-scheme: dark)").matches
+      ? "dark"
+      : "light";
+  }
+  return value === "light" ? "light" : "dark";
+};
+
+const readStoredColor = (key: string): string | null => {
+  try {
+    return localStorage.getItem(key);
+  } catch (err) {
+    console.error(`Failed to read ${key} from localStorage`, err);
+    return null;
+  }
+};
+
+const persistColor = (key: string, color: string) => {
+  try {
+    localStorage.setItem(key, color);
+  } catch (err) {
+    console.error(`Failed to save ${key} to localStorage`, err);
+  }
+};
 
 const DEFAULT_CUSTOM_SHAPES: CustomShapeDef[] = [
   {
@@ -85,7 +123,7 @@ const BoardProvider = ({
   onDeleteShape,
   onThemeChange,
   initialShapes,
-  // canvasLock = false,
+  canvasLock,
   provider
 }: {
   provider?: HocuspocusProvider,
@@ -111,18 +149,30 @@ const BoardProvider = ({
     foreground?: string;
   }) => void;
 }) => {
-  const [boardTheme, setBoardTheme] = React.useState<Theme>(theme || "dark")
-  const [background, setBackground] = React.useState(boardTheme === "dark" ? "#181818" : "#efefef");
-  const [foreground, setForeground] = React.useState(boardTheme === "dark" ? "#cccccc" : "#202020");
+  const [boardTheme, setBoardTheme] = React.useState<Theme>(theme || "dark");
+  const [background, setBackground] = React.useState(() =>
+    readStoredColor(BG_KEY) || THEME_COLORS[getResolvedTheme(theme || "dark")].background,
+  );
+  const [foreground, setForeground] = React.useState(() =>
+    readStoredColor(FG_KEY) || THEME_COLORS[getResolvedTheme(theme || "dark")].foreground,
+  );
 
-  // const [isLockedCanvas] = React.useState(canvasLock);
+  const [isCanvasLocked, setCanvasLock] = React.useState(() => {
+    if (canvasLock !== undefined) return canvasLock;
+    try {
+      return localStorage.getItem(CANVAS_LOCK_KEY) === "true";
+    } catch (err) {
+      console.error("Failed to read canvas lock state from localStorage", err);
+      return false;
+    }
+  });
   const [isStat, setStat] = React.useState(() => {
     const val = localStorage.getItem(STAT_STORAGE_KEY);
     return Boolean(val) || false;
   });
   const [snapGrid, setSnapGrid] = React.useState(() => {
     try {
-      return localStorage.getItem("grid_snap") === "true"
+      return Boolean(localStorage.getItem(SNAP_GRID_KEY)) || false;
     } catch {
       return false;
     }
@@ -133,14 +183,21 @@ const BoardProvider = ({
   const [, forceUpdate] = React.useReducer((x) => x + 1, 0);
   const [isSnap, setSnapState] = React.useState(() => {
     try {
-      return localStorage.getItem("board_snap") === "true";
+      return Boolean(localStorage.getItem(SNAP_GRID_KEY)) || false;
     } catch {
       return false;
     }
   });
+  const [isClickEffect] = React.useState(() => {
+    try {
+      return Boolean(localStorage.getItem(CANVAS_HOVER_KEY)) ?? true;
+    } catch {
+      return true;
+    }
+  })
   const [isHover, setHoverState] = React.useState(() => {
     try {
-      return localStorage.getItem("board_hover") === "true";
+      return Boolean(localStorage.getItem(CANVAS_CLICK_KEY)) ?? false;
     } catch {
       return true;
     }
@@ -164,7 +221,12 @@ const BoardProvider = ({
   };
 
   const { boardRef, canvas2Ref, canvasRef, remoteCanvasRef } = useBoardEngine({
+    clickEffect: isClickEffect,
+    hoverEffect: isHover,
     container: container?.current || undefined,
+    locked: isCanvasLocked,
+    snap: isSnap,
+    snapGrid,
     background,
     foreground,
     onImageUpload,
@@ -179,15 +241,49 @@ const BoardProvider = ({
   });
 
   const handleThemeChange = React.useCallback((newTheme: Theme) => {
-    setBoardTheme(newTheme as any);
-    onThemeChange?.({ theme: newTheme, background, foreground })
+    const nextColors = THEME_COLORS[getResolvedTheme(newTheme)];
+    setBoardTheme(newTheme);
+    setForeground(nextColors.foreground);
+    setBackground(nextColors.background);
+    persistColor(FG_KEY, nextColors.foreground);
+    persistColor(BG_KEY, nextColors.background);
+    onThemeChange?.({ theme: newTheme, ...nextColors });
+  }, [onThemeChange]);
+
+  const handleUpdateForeground = React.useCallback((color: string) => {
+    setForeground(color);
+    persistColor(FG_KEY, color);
   }, []);
+
+  const handleUpdateBackground = React.useCallback((color: string) => {
+    setBackground(color);
+    persistColor(BG_KEY, color);
+  }, []);
+
+  React.useEffect(() => {
+    if (theme && theme !== boardTheme) handleThemeChange(theme);
+  }, [theme, boardTheme, handleThemeChange]);
+
+  React.useEffect(() => {
+    if (boardTheme !== "system" || typeof window === "undefined") return;
+    const media = window.matchMedia("(prefers-color-scheme: dark)");
+    const updateSystemColors = () => {
+      const nextColors = THEME_COLORS[media.matches ? "dark" : "light"];
+      setForeground(nextColors.foreground);
+      setBackground(nextColors.background);
+      persistColor(FG_KEY, nextColors.foreground);
+      persistColor(BG_KEY, nextColors.background);
+      onThemeChange?.(nextColors);
+    };
+    media.addEventListener("change", updateSystemColors);
+    return () => media.removeEventListener("change", updateSystemColors);
+  }, [boardTheme, onThemeChange]);
 
   const setSnap = React.useCallback((v: boolean | ((prev: boolean) => boolean)) => {
     setSnapState((prev) => {
       const next = typeof v === "function" ? v(prev) : v;
       try {
-        localStorage.setItem("board_snap", String(next));
+        localStorage.setItem(SNAP_GRID_KEY, String(next));
       } catch (err) {
         console.error(err);
       }
@@ -199,7 +295,7 @@ const BoardProvider = ({
     setSnapGrid((prev) => {
       const next = typeof v === "function" ? v(prev) : v;
       try {
-        localStorage.setItem("grid_snap", String(next));
+        localStorage.setItem(SNAP_GRID_KEY, String(next));
       } catch (err) {
         console.error(err);
       }
@@ -207,17 +303,19 @@ const BoardProvider = ({
       return next;
     });
   }, []);
+
   const setHover = React.useCallback((v: boolean | ((prev: boolean) => boolean)) => {
     setHoverState((prev) => {
       const next = typeof v === "function" ? v(prev) : v;
       try {
-        localStorage.setItem("board_hover", String(next));
+        localStorage.setItem(CANVAS_HOVER_KEY, String(next));
       } catch (err) {
         console.error(err);
       }
       return next;
     });
   }, []);
+
   const [isMinimal, setMinimalState] = React.useState(() => {
     try {
       return localStorage.getItem("board_minimal") === "true";
@@ -225,6 +323,7 @@ const BoardProvider = ({
       return false;
     }
   });
+
   const setMinimal = React.useCallback((v: boolean | ((prev: boolean) => boolean)) => {
     setMinimalState((prev) => {
       const next = typeof v === "function" ? v(prev) : v;
@@ -429,6 +528,7 @@ const BoardProvider = ({
   const saveStatStateToLocalStorage = (v: boolean) => {
     try {
       localStorage.setItem(STAT_STORAGE_KEY, String(v));
+      setStat(v);
     } catch {
       console.error("");
     }
@@ -465,15 +565,6 @@ const BoardProvider = ({
   const loadShapesFromStorage = React.useCallback(async (board: Board) => {
     const s = await db.shapes.toArray();
     return restoreShapesFromData(board, s);
-    // try {
-    //   const raw = localStorage.getItem(STORAGE_KEY);
-    //   if (!raw) return false;
-    //   const data = JSON.parse(raw) as Record<string, any>[];
-    //   return restoreShapesFromData(board, data);
-    // } catch (err) {
-    //   console.error("Failed to load shapes from localStorage", err);
-    // }
-    // return false;
   }, [restoreShapesFromData]);
 
   const onDelete = React.useCallback(
@@ -537,40 +628,6 @@ const BoardProvider = ({
     if (!boardRef.current) return;
     const newBoard = boardRef.current;
 
-    // const newBoard = new Board({
-    //   clickEffect: true,
-    //   snapGrid,
-    //   scrollEase: 1,
-    //   isLocked: isLockedCanvas,
-    //   initialShapes: initialShapes || [],
-    //   width,
-    //   container: container?.current || undefined,
-    //   foreground,
-    //   background,
-    //   height,
-    //   canvas: canvasRef.current,
-    //   canvas2: canvas2Ref.current,
-    //   canvasRemote: remoteCanvasRef.current,
-    //   snap: isSnap,
-    //   hoverEffect: isHover,
-    //   onModeChange: onModeChange,
-    //   onActiveShape: (ac) => {
-    //     setActiveShape(ac);
-    //   },
-    //   onZoom: (v) => {
-    //     setZoom(v.scl * 100);
-    //     setOffset([v.x, v.y]);
-    //     debouncedSaveViewToStorage(newBoard);
-    //   },
-    //   onScroll: (v) => {
-    //     setOffset([v.x, v.y]);
-    //     setZoom(v.scl * 100);
-    //     debouncedSaveViewToStorage(newBoard);
-    //   },
-    //   customShapes,
-    //   onImageUpload,
-    // });
-
     // Notify parent that board is ready
     onBoardReady?.(newBoard);
 
@@ -610,15 +667,18 @@ const BoardProvider = ({
             await db.shapes.put(s.toObject(), s.id);
           }
         }));
-        // saveShapesToStorage(newBoard);
       }
     });
-    newBoard.on("shape:created", () => {
+    newBoard.on("shape:created", (e) => {
       pushHistory(newBoard);
       if (onShapesChangedRef.current) {
         onShapesChangedRef.current(newBoard);
       } else if (!hasInitialShapes) {
-        saveShapesToStorage(newBoard);
+        e.e.target?.map((s) => {
+          if (s.type !== "selection" && !s.groupId) {
+            db.shapes.put(s.toObject(), s.id);
+          }
+        })
       }
     });
 
@@ -651,8 +711,11 @@ const BoardProvider = ({
     // Save when shapes are deleted via keyboard and handle Undo/Redo
     const handleKeyDown = (e: KeyboardEvent) => {
       if (isEditingText(e)) return;
-
-      if (e.ctrlKey && e.key === "z") {
+      if (e.key === "Escape") {
+        if (mode.m !== "cursor") {
+          setMode({ m: "cursor", sm: "free" });
+        }
+      } else if (e.ctrlKey && e.key === "z") {
         e.preventDefault();
         if (e.shiftKey) {
           // Redo (Ctrl+Shift+Z)
@@ -684,14 +747,8 @@ const BoardProvider = ({
 
   React.useEffect(() => {
     if (!boardRef.current) return;
-    boardRef.current.snap = isSnap;
     boardRef.current.hoverEffect = isHover;
-    boardRef.current.foreground = foreground;
-    boardRef.current.background = background;
-    boardRef.current.snapGrid = snapGrid;
-    boardRef.current.setCanvasHeight = height;
-    boardRef.current.setCanvasWidth = width;
-  }, [isSnap, isHover, foreground, background, snapGrid, width, height]);
+  }, [isHover]);
 
   const handleModeChange = React.useCallback((m: modes, sm: submodes | null) => {
     if (!boardRef.current) return;
@@ -937,15 +994,14 @@ const BoardProvider = ({
             },
             stat: isStat,
             setStat: (v) => {
-              setStat(v);
               saveStatStateToLocalStorage(v);
             },
             foreground,
             background,
             theme: boardTheme,
             setTheme: handleThemeChange,
-            setForeground,
-            setBackground,
+            setForeground: handleUpdateForeground,
+            setBackground: handleUpdateBackground,
             onThemeChange,
             setActiveShape: (s) => {
               setActiveShape(s);
@@ -1043,6 +1099,21 @@ const BoardProvider = ({
             saveStatStateToLocalStorage(!isStat);
           }}>
             {isStat && <CheckIcon />} Stats
+          </ContextMenuItem>
+          <ContextMenuItem onClick={() => {
+            if (!boardRef.current) return;
+            const next = !isCanvasLocked;
+            setCanvasLock(next);
+            boardRef.current.discardActiveShapes();
+            try {
+              localStorage.setItem(CANVAS_LOCK_KEY, String(next));
+            } catch (err) {
+              console.error("Failed to save canvas lock state to localStorage", err);
+            }
+          }}
+          >
+            {isCanvasLocked ? <LockIcon /> : <UnlockIcon />}
+            <span>{isCanvasLocked ? "Unlock" : "Lock"}</span>
           </ContextMenuItem>
         </ContextMenuContent>
       </ContextMenu >

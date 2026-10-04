@@ -1,4 +1,4 @@
-import { ArrowRightIcon, BoxIcon, CircleIcon, EraserIcon, GrabIcon, Hexagon, ImageIcon, MessageSquare, MinusIcon, MousePointer, PencilIcon, PentagonIcon, PlusIcon, SplineIcon, Star, TriangleIcon, TypeOutlineIcon, VectorSquareIcon, type LucideIcon } from "lucide-react";
+import { ArrowRightIcon, BoxIcon, CircleIcon, DiamondIcon, EraserIcon, GrabIcon, Hexagon, ImageIcon, MessageSquare, MinusIcon, MousePointer, PencilIcon, PentagonIcon, PlusIcon, SplineIcon, Star, TriangleIcon, TypeOutlineIcon, VectorSquareIcon, type LucideIcon } from "lucide-react";
 import type { CustomShapeDef, modes, submodes } from "./types";
 import Pointer from "./utils/point";
 
